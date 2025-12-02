@@ -1,0 +1,162 @@
+.viewport {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+
+  background: #615959;
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  max-width: 700px;
+  min-height: 150%;
+
+  margin: 0 auto;
+  background: #ffffff;
+  box-sizing: border-box;
+
+  padding: 16px 20px;
+  padding-bottom: 220px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.loading {
+  padding: 40px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* 진행바 */
+.progressWrap {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #eef1f6;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.progress {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4f8dff 0%, #7fb3ff 100%);
+}
+
+/* 문제 텍스트 */
+.question {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+/* 입력창 */
+.inputWrapper {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.input {
+  width: 100%;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid #6ea8ff;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.input::placeholder {
+  color: #9ca3af;
+}
+
+/* 정답 확인 버튼 */
+.checkBtn {
+  margin-top: 8px;
+  width: 100%;
+  height: 44px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(90deg, #4f8dff 0%, #7fb3ff 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checkBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* 해설 박스 */
+.answerBox {
+  margin-top: 18px;
+  padding: 14px 16px 16px;
+  border-radius: 18px;
+}
+
+.answerBoxCorrect {
+  background: #e3f1ff;
+}
+
+.answerBoxWrong {
+  background: #ffe5e5;
+}
+
+.answerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.answerLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.sourceBtn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: none;
+  background: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+  color: #111827;
+  cursor: pointer;
+}
+
+.sourceBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.answerText {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #111827;
+}
+
+.bottomSpace {
+  height: 80px;
+}

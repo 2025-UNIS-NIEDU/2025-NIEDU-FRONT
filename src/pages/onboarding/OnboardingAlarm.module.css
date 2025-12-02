@@ -1,0 +1,55 @@
+.header { margin-top: 2vh; margin-bottom: 16px; }
+.title {
+  margin: 0 0 10px 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.5;
+  color: #0f0f0f;
+}
+.sub {
+  margin: 0;
+  font-size: 14px;
+  color: #7a7a7a;
+}
+
+.cardList { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+
+.card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 10px;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+/* 켜짐: 파란 그라데이션 */
+.on { background: linear-gradient(90deg, #5a86ff 0%, #c6d4ff 100%); color: #fff; }
+/* 꺼짐: 회색 */
+.off { background: #ececef; color: #8a8a8f; }
+
+.cardLabel { font-weight: 700; letter-spacing: 0.2px; }
+
+/* 스위치 */
+.switch {
+  position: relative; width: 52px; height: 28px; border-radius: 999px;
+  border: none; cursor: pointer; transition: background 0.2s ease;
+}
+.switchOn { background: rgba(255,255,255,0.45); }
+.switchOff { background: #bdbdc3; }
+
+.knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  transition: transform 0.2s ease;
+}
+.switchOn .knob { transform: translateX(24px); }
+
+/* 안내 박스 */
+.noticeBox {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: auto; margin-bottom: 12px;
+  padding: 12px 14px; border-radius: 10px;
+  border: 1px solid rgba(90,134,255,0.25);
+  background: #f4f7ff; color: #2a5bd7;
+}
+.noticeIcon { font-size: 16px; line-height: 1; }
+.noticeText { font-size: 14px; }

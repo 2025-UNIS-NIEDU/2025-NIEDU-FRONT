@@ -1,0 +1,71 @@
+:root { --app-max-width: 700px; }
+
+/* 뷰포트가 스크롤 담당 */
+.viewport{
+  position: fixed; inset: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: flex; justify-content: center; align-items: stretch;
+  background: #eef0f4;
+}
+
+/* 캔버스 */
+.container{
+  width:100%; max-width: var(--app-max-width);
+  min-height:100%;
+  background:#f6f7fb;
+  padding: 16px 20px 140px; /* 하단바 여유 포함 */
+  box-sizing:border-box;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 헤더 */
+.header{ height:44px; display:flex; align-items:center; }
+.backBtn{
+  width:36px; height:36px; border:none; background:transparent; cursor:pointer;
+  font-size:18px; color:#222; border-radius:10px;
+}
+
+/* 히어로 */
+.hero{ margin-top:8px; text-align:center; }
+.mascot{ width:120px; height:auto; margin:12px auto 10px; display:block; }
+.title{
+  margin: 0 auto; max-width: 300px;
+  color:#0f0f0f; font-size:18px; line-height:1.6; font-weight:800;
+}
+
+/* 단계 */
+.levelSection{ margin-top:18px; display:flex; justify-content:center; position:relative; }
+.levelSelect{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:10px 14px; border-radius:12px;
+  background:#fff; border:1px solid #e5e7eb; color:#111;
+  font-size:14px; box-shadow:0 2px 6px rgba(0,0,0,.06);
+}
+.caret{ font-size:12px; color:#6b7280; }
+
+/* 드롭다운 */
+.levelMenu{
+  position:absolute; top:48px;
+  background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.08);
+  width:140px; padding:6px;
+}
+.levelItem{
+  width:100%; text-align:left; background:#fff; border:none; cursor:pointer;
+  padding:10px 12px; border-radius:10px; font-size:14px; color:#111;
+}
+.levelItem:hover{ background:#f6f7fb; }
+.levelActive{ background:#eef2ff; color:#3349ff; }
+
+/* CTA */
+.cta{
+  display:block; width:88%; max-width:520px; height:56px;
+  margin: 36px auto 0;
+  border:none; border-radius:28px; cursor:pointer;
+  color:#fff; font-weight:700; font-size:16px;
+  background: linear-gradient(90deg, #6aa0ff 0%, #6587ff 100%);
+  box-shadow: 0 6px 18px rgba(101,135,255,.25);
+}
+.cta:disabled{ opacity:.6; cursor:not-allowed; }
+
+.bottomSpace{ height: 110px; } /* BottomNav 영역 확보 */

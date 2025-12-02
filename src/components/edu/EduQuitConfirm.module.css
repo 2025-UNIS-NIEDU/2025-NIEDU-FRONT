@@ -1,0 +1,62 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.card {
+  width: 280px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: pop 0.2s ease;
+}
+
+.mascot {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 12px;
+}
+
+.title {
+  font-size: 15px;
+  color: #111;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.primary {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 0;
+  color: #333;
+  cursor: pointer;
+}
+
+@keyframes pop {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

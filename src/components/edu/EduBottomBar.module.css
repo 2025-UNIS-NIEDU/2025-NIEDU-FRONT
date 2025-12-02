@@ -1,0 +1,107 @@
+:root {
+  --app-max-width: 700px;
+}
+
+/* 전체 고정: BottomNav와 동일 패턴 */
+.nav {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: transparent;
+}
+
+/* 안쪽 바: 둥근 상단 + 흰 배경 */
+.bar {
+  margin: 0 auto;
+  max-width: var(--app-max-width);
+  width: 100%;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  height: clamp(70px, 10vh, 90px);
+  padding: 8px clamp(28px, 8vw, 40px);
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+
+  background: #ffffff;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* 좌우 공통 버튼: 아이콘 위, 텍스트 아래 */
+.sideBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+
+  color: #2563eb;
+  font-size: 12px;
+}
+
+/* 중앙 종료 버튼 */
+.centerBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+
+  color: #2563eb;
+  font-size: 12px;
+}
+
+/* 아이콘 스타일 */
+.icon {
+  width: 48px;
+  height: 48px;
+}
+
+.leftIcon {
+  transform: rotate(0deg); /* 왼쪽 화살표 */
+}
+
+.rightIcon {
+  transform: rotate(180deg); /* 오른쪽 화살표 */
+}
+
+.centerIcon {
+  width: 48px;
+  height: 48px;
+}
+
+/* 텍스트 */
+.label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.centerLabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* 비활성화 상태 */
+.disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* 터치 피드백 */
+.sideBtn:active:not(.disabled),
+.centerBtn:active {
+  transform: translateY(1px);
+}

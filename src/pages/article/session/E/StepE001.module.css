@@ -1,0 +1,127 @@
+.viewport {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+
+  background: #615959;
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  max-width: 700px;
+  min-height: 150%;
+
+  margin: 0 auto;
+  background: #ffffff;
+  box-sizing: border-box;
+
+  padding: 16px 20px;
+  padding-bottom: 220px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 32px 20px 200px; /* 아래 여백은 하단바 자리 */
+  box-sizing: border-box;
+  background: #f7f8fb;
+}
+
+.heading {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 24px;
+}
+
+/* 기사 카드 */
+.articleCard {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: none;
+  outline: none;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  text-align: left;
+  cursor: pointer;
+}
+
+.thumbnailWrapper {
+  margin-right: 12px;
+}
+
+.thumbnail {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.thumbnailPlaceholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  background: #e5e7eb;
+}
+
+.articleText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.articleTitle {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #111827;
+}
+
+.articleMeta {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* 크게 가운데 있는 버튼 */
+.primaryButtonWrapper {
+  margin-top: 120px; /* 위로 띄우고 싶으면 조절 */
+  display: flex;
+  justify-content: center;
+}
+
+.primaryButton {
+  width: 100%;
+  max-width: 320px;
+  height: 56px;
+  border-radius: 999px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  background: linear-gradient(90deg, #5f8cff 0%, #7bb2ff 100%);
+  box-shadow: 0 10px 20px rgba(49, 130, 246, 0.35);
+}

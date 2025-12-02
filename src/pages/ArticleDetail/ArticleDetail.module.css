@@ -1,0 +1,302 @@
+.viewport {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+
+  background: #615959;
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  max-width: 700px;
+  min-height: 150%;
+
+  margin: 0 auto;
+  background: #ffffff;
+  box-sizing: border-box;
+
+  
+  padding-bottom: 220px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+/* HERO 영역 */
+.hero {
+  width: 100%;
+  height: 360px;
+  
+  position: relative;
+  overflow: hidden;
+  background: #ffffff; /* 이미지 없을 때 기본 */
+}
+
+.heroImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 어두운 오버레이 */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+/* 뒤로가기 버튼 (좌상단) */
+.backOnHero {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  border: none;
+  background: none; /* ← 이걸로 배경 완전 제거 */
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.backOnHero img {
+  width: 48px; 
+  height: 48px;
+  filter: brightness(1000%); /* 이미지가 흰색이면 밝기 유지 */
+}
+
+/* 스크랩 버튼 (우상단) */
+.scrapBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 20px;
+background: var(--white1_fill, linear-gradient(290deg, rgba(255, 255, 255, 0.15) 27.98%, rgba(255, 255, 255, 0.09) 71.7%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+/* hero 안 텍스트 래퍼 (하단 정렬) */
+.heroContent {
+  position: absolute;
+  inset: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  color: #ffffff;
+  z-index: 1; /* ::after 아래로 가면 안 되니까 필요하면 1로 올리기 */
+}
+
+/* 타이틀 */
+.heroTitle {
+  color: #FFF;
+text-align: center;
+font-family: Pretendard;
+font-size: 26px;
+font-style: normal;
+font-weight: 700;
+line-height: 130%; /* 33.8px */
+}
+
+/* 상단 카테고리 칩 (정치/외교) */
+.categoryChips {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+   justify-content: center;
+align-items: center;
+gap: 16px;
+}
+
+.categoryChip {
+  padding: 4px 16px;
+  border-radius: 999px;
+
+  border-radius: 20px;
+border: 2px solid var(--white1_stroke, #FFF);
+background: var(--white1_fill, linear-gradient(290deg, rgba(255, 255, 255, 0.15) 27.98%, rgba(255, 255, 255, 0.09) 71.7%));
+
+/* gray1 */
+backdrop-filter: blur(6px);
+  color: #FFF;
+
+font-family: Pretendard;
+font-size: 15px;
+font-style: normal;
+font-weight: 500;
+line-height: 150%;
+}
+
+/* 해시태그 칩 */
+.keywordChips {
+  display: flex;
+padding: 4px 8px;
+justify-content: center;
+align-items: center;
+gap: 8px;
+}
+
+.keywordChip {
+    padding: 4px 8px;
+ border-radius: 20px;
+border: 2px solid var(--white1_stroke, #FFF);
+background: var(--white1_fill, linear-gradient(290deg, rgba(255, 255, 255, 0.15) 27.98%, rgba(255, 255, 255, 0.09) 71.7%));
+
+/* gray1 */
+backdrop-filter: blur(6px);
+color: #FFF;
+
+/* caption */
+font-family: Pretendard;
+font-size: 11px;
+font-style: normal;
+font-weight: 400;
+line-height: 150%; /* 16.5px */
+}
+
+/* 코스 설명 텍스트 */
+.heroDesc {
+  color: #FFF;
+
+/* caption */
+font-family: Pretendard;
+font-size: 13px;
+font-style: normal;
+font-weight: 400;
+line-height: 150%; /* 16.5px */
+}
+
+/* 진행률 + 버튼 섹션 */
+.progressSection {
+  margin-top: 16px;
+  padding: 16px 16px 20px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.progressText {
+  color: var(--mainColor, #6088F8);
+text-align: center;
+
+/* body-xsmall */
+font-family: Pretendard;
+font-size: 13px;
+font-style: normal;
+font-weight: 400;
+line-height: 150%; /* 19.5px */
+  margin-bottom: 14px;
+  
+}
+
+/* 바로 학습하기 버튼 */
+.startButton {
+  width: 80%;
+  height: 52px;
+  
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+
+  border-radius: 28px;
+border: 1px solid var(--white1_stroke, #FFF);
+background: var(--blue2_fill, linear-gradient(90deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%));
+
+/* 3 */
+box-shadow: 0 0 2px 0 rgba(114, 114, 114, 0.50);
+}
+
+/* 공통 섹션 */
+.section {
+  margin-top: 24px;
+}
+
+.sectionTitle {
+  color: #000;
+
+/* Heading5 */
+font-family: Pretendard;
+font-size: 17px;
+font-style: normal;
+font-weight: 700;
+line-height: 150%; /* 25.5px */
+margin-left: 20px;
+}
+
+/* 학습 세션 리스트 */
+.sessionList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  
+}
+
+.sessionItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: 14px;
+  border: none;
+  border-bottom: 1px solid #E3E3E3; /* 👈 아래 선만 */
+  background: #ffffff;
+  padding: 10px 19px;
+  text-align: left;
+
+}
+
+
+/* 썸네일 영역 (임시 회색 박스) */
+.sessionThumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  background: #d1d1d6;
+  flex-shrink: 0;
+  margin-right: 10px;
+}
+
+.sessionText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sessionName {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111111;
+}
+
+.sessionDesc {
+  font-size: 11px;
+  color: #6c6c70;
+}
+
+.sessionArrow {
+  width: 16px;
+  height: 16px;
+}
