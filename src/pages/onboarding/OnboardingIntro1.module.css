@@ -18,28 +18,30 @@
 
 /* 온보딩 일러스트 공통 */
 .illustration {
-  width: 70%;
+  max-height: 50%;
+  width: 50%;
   max-width: 350px;
-  height: auto;
+  
   display: block;
-  margin: 110px auto 0;
+  margin: 40px auto 0;
   margin-bottom: -300px; /* 위쪽 여백 40px, 가운데 정렬 */
 }
 .illustrationON2 {
-  width: 50%;
+  width: 40%;
   max-width: 250px;
-  height: auto;
+  max-height: 40%;
   display: block;
-  margin: -200px auto 24px;
+  margin: -160px auto 0;
   margin-bottom: -200px; /* 위쪽 여백 40px, 가운데 정렬 */
 }
 .illustrationONBoarding3 {
-  width: 120%;
-  max-width: 290px;
-  height: auto;
+   max-height: 50%;
+  width: 50%;
+  max-width: 350px;
+  
   display: block;
-  margin: 100px auto 4px;
-  margin-bottom: -260px; /* 위쪽 여백 40px, 가운데 정렬 */
+  margin: 40px auto 0;
+  margin-bottom: -300px; /* 위쪽 여백 40px, 가운데 정렬 */
 }
 /* 바깥(데스크탑 전체) */
 .viewport {
@@ -81,7 +83,7 @@
 position: relative; line-height: 150%; /* 19.5px */}
 
 /* 본문 */
-.textArea { text-align:left; margin-top:5vh; margin-bottom:auto;margin-left: 24px; }
+.textArea { text-align:left; margin-top:1vh; margin-bottom:40px ;margin-left: 24px; }
 .textArea h2 { font-size:28px; font-weight:700;font-style: normal;font-family: Pretendard; color:#000; margin-bottom:6px; margin-top: 378px;}
 .textArea h1 { font-size:32px; font-weight:700; color:#000; margin-top: 7px; }
 .textArea span { color:#000; font-weight:700; }
@@ -122,16 +124,16 @@ position: relative; line-height: 150%; /* 19.5px */}
 }
 
 .descHeading {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 600;
   color: #0f0f0f;
-  margin: 0 0 24px 0;
+  margin: 0 0 14px 0;
   font-style: normal;
 }
 
 .descParagraph {
-  font-size: 19px;
-  line-height: 1.75;
+  font-size: 18px;
+  line-height: 1.55;
   color: #1a1a1a;
   margin: 0 0 16px 0;
 }

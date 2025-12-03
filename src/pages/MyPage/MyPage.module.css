@@ -1,0 +1,272 @@
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background: #615959;
+  overflow-y: auto;          /* 🔹 전체 스크롤 가능 */
+}
+
+/* 실제 '모바일 화면' 캔버스 */
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  max-width: 700px;
+  min-height: 100%;
+  margin: 0 auto;
+  background: #fff;
+  box-sizing: border-box;
+
+  padding: 6vh 20px;
+  padding-bottom: 80px; ;  /* bottom은 하단바 자리 */
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* 상단 영역 */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;       /* 🔹 간격 조금 줄임 */
+}
+
+.title {
+  olor: #000;
+  margin-left: 20px;
+
+/* Heading1 */
+font-family: Pretendard;
+font-size: 28px;
+font-style: normal;
+font-weight: 700;
+line-height: 150%;
+}
+
+/* 설정 버튼 + 아이콘 */
+.settingsButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+border: 2px solid var(--gray1_stroke, rgba(191, 195, 201, 0.20));
+background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 9.14%, rgba(191, 195, 201, 0.10) 82.53%));
+  color: #000;
+font-family: Pretendard;
+font-size: 13px;
+font-style: normal;
+font-weight: 550;
+line-height: 150%; /* 19.5px */
+margin-right: 20px;
+}
+
+.settingsIcon {
+   width: 18px;
+  height: 18px;
+}
+
+/* 프로필 */
+.profileBox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  margin-left: 22px;
+}
+
+/* 프로필 프레임 + 업로드 */
+.profileImageWrapper {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.profileFrame {
+  width: 72px;
+  height: 72px;
+}
+
+/* 업로드된 사진은 프레임 안쪽 동그라미로 */
+.profilePhoto {
+  position: absolute;
+  inset: 4px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* 사진 추가 버튼 (작은 + 동그라미) */
+.profileUploadButton {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #5b75f9;
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.profileUploadInput {
+  display: none;
+}
+
+.name {
+  color: #000;
+
+/* Heading2 */
+font-family: Pretendard;
+font-size: 24px;
+font-style: normal;
+font-weight: 700;
+line-height: 150%; /* 36px */
+margin-left: 12px;
+}
+
+.streak {
+  display: flex;
+width: 241px;
+flex-direction: column;
+align-items: flex-start;
+  color: var(--mainColor, #6088F8);
+margin-left: 12px;
+/* body-small */
+font-family: Pretendard;
+font-size: 15px;
+font-style: normal;
+font-weight: 500;
+line-height: 150%; /* 22.5px */
+margin-top: -16px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  margin-left: 22px;
+}
+
+/* 캘린더 박스 크기 키움 */
+.calendarBox {
+  background: #f9f9fb;
+  border-radius: 16px;
+  padding: 20px 22px 24px;   /* 🔹 전체적으로 조금씩 키움 */
+}
+
+.monthHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 34px;
+}
+
+.monthArrow {
+  border: none;
+  background: #f0f0f5;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.monthArrowIcon {
+  width: 10px;
+  height: 10px;
+}
+
+/* 왼쪽 화살표는 뒤집기 */
+.monthArrowLeft {
+  transform: rotate(180deg);
+}
+
+.monthLabel {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* 날짜 그리드 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 46px;
+  column-gap: 15px;
+  margin-bottom: 20px;
+}
+
+.emptyCell {
+  height: 48px;
+}
+
+.dayCell {
+  text-align: center;
+}
+
+.dayNumber {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.today {
+  width: 30px;
+  height: 30px;
+  margin: 0 auto 6px;
+  line-height: 30px;
+  background: #5b75f9;
+  color: white;
+  border-radius: 50%;
+}
+
+.tag {
+ display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+
+  /* 🔹 반응형 패딩: 너무 크거나 작지 않게 clamp */
+  padding-inline: clamp(5px, 1.7vw, 8px);
+  padding-block: clamp(3px, 0.9vw, 5px);
+
+    /* 높이도 자연스럽게 */
+  min-height: clamp(12px, 3.4vw, 16px);
+border-radius: 5px;
+background: var(--blue1_fill, linear-gradient(292deg, rgba(96, 136, 248, 0.40) 9.14%, rgba(96, 136, 248, 0.10) 82.53%));
+}
+
+/* 앞 글자(경제) — bold 600 */
+.tagStrong {
+  color: #000;
+  text-align: center;
+  font-family: Pretendard;
+    font-size: clamp(7px, 1.7vw, 9px);
+  font-style: normal;
+  font-weight: 600;
+  line-height: 150%; /* 12px */
+}
+
+/* 뒤 글자(표준어) — normal 400 */
+.tagWeak {
+  color: #000;
+  text-align: center;
+  font-family: Pretendard;
+    font-size: clamp(7px, 1.7vw, 9px);
+  font-style: normal;
+  font-weight: 400;
+  line-height: 150%; /* 12px */
+}

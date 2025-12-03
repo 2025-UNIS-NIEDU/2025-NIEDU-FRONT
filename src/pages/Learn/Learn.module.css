@@ -6,7 +6,7 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
-  background: #615959;
+ background: #eef0f4;
 
   /* ✅ 세로 스크롤 허용 + 가로는 숨김 */
   overflow-y: auto;

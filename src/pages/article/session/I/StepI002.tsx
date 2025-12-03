@@ -1,11 +1,13 @@
 // src/pages/article/session/I/StepI002.tsx
-
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import { submitStepAnswer } from "@/lib/apiClient";
 import type { StepMeta } from "@/pages/article/ArticlePrepare";
 import styles from "./StepI002.module.css";
+
+// 🔹 JSON 통으로 import (타입 any로 쓸 거라 에러 안 남)
+import iPackage from "@/data/economy_2025-11-24_package.json";
 
 type Props = {
   articleId?: string;
@@ -32,6 +34,51 @@ type LocationState = {
   articleUrl?: string;
 };
 
+// 🔍 JSON 어디에 있든 SUMMARY_READING 블록 찾기
+function findSummaryReading(node: any): SummaryReadingContent | undefined {
+  if (!node) return undefined;
+
+  // 배열이면 각 요소 탐색
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findSummaryReading(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  // 객체면 자기 자신 먼저 검사
+  if (typeof node === "object") {
+    if (
+      node.contentType === "SUMMARY_READING" &&
+      Array.isArray(node.contents) &&
+      node.contents.length > 0
+    ) {
+      const content0 = node.contents[0];
+      if (content0.summary && content0.keywords) {
+        return {
+          summary: content0.summary as string,
+          keywords: content0.keywords as KeywordItem[],
+        };
+      }
+    }
+
+    // 프로퍼티들 재귀 탐색
+    for (const key of Object.keys(node)) {
+      const value = (node as any)[key];
+      const found = findSummaryReading(value);
+      if (found) return found;
+    }
+  }
+
+  return undefined;
+}
+
+// JSON 전체에서 한 번만 찾아서 캐싱
+const SUMMARY_FROM_PACKAGE: SummaryReadingContent | undefined = findSummaryReading(
+  iPackage as any
+);
+
 export default function StepI002({
   articleId,
   articleUrl,
@@ -47,18 +94,19 @@ export default function StepI002({
   const [keywords, setKeywords] = useState<string[]>([]);
   const [correctKeywords, setCorrectKeywords] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [revealed, setRevealed] = useState(false); // 정답 공개 여부
+  const [revealed, setRevealed] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const effectiveArticleId = articleId ?? state?.articleId;
   const effectiveArticleUrl = articleUrl ?? state?.articleUrl;
 
-  // ✅ 백엔드에서 내려준 stepMeta.content를 파싱 (StepN001과 동일한 포맷)
+  // ✅ stepMeta.content 있으면 그것부터, 없으면 JSON에서 찾은 SUMMARY_READING 사용
   useEffect(() => {
     setLoading(true);
     setLoadError(null);
 
-    const content = stepMeta?.content as SummaryReadingContent | undefined;
+    const fromMeta = stepMeta?.content as SummaryReadingContent | undefined;
+    const content = fromMeta ?? SUMMARY_FROM_PACKAGE;
 
     if (content && content.summary && Array.isArray(content.keywords)) {
       const allWords = content.keywords.map((k) => k.word);
@@ -71,15 +119,16 @@ export default function StepI002({
       setCorrectKeywords(topicWords);
       setLoading(false);
     } else {
-      console.warn("[StepI002] summary-reading content 없음 또는 포맷 불일치", {
+      console.warn("[StepI002] SUMMARY_READING 데이터 없음/포맷 불일치", {
         stepMeta,
+        SUMMARY_FROM_PACKAGE,
+        rawPkg: iPackage,
       });
       setLoadError("요약문 데이터를 불러오지 못했어요.");
       setLoading(false);
     }
   }, [stepMeta]);
 
-  // 요약문을 일반 텍스트 / 키워드 조각으로 나누기 (StepN001과 동일)
   const segments: Segment[] = useMemo(() => {
     if (!summary || keywords.length === 0) return [{ text: summary }];
 
@@ -111,37 +160,30 @@ export default function StepI002({
       }
 
       segs.push({ text: foundKw, keyword: foundKw });
-
       index = foundPos + foundKw.length;
     }
 
     return segs;
   }, [summary, keywords]);
 
-  // 모든 키워드(정답/오답 상관없이) 선택 가능
   const toggleKeyword = (kw: string) => {
-    if (revealed) return; // 정답 공개 후에는 선택 막기
-
+    if (revealed) return;
     setSelected((prev) =>
       prev.includes(kw) ? prev.filter((w) => w !== kw) : [...prev, kw]
     );
   };
 
-  // 다음 버튼 로직
   const handleNext = async () => {
+    // 1단계: 정답 공개
     if (!revealed) {
-      // 1단계: 정답 공개 + 해설 말풍선 노출
       setRevealed(true);
       return;
     }
 
-    // 2단계: 답안 저장 + 다음 스텝 이동 (StepN001과 비슷한 구조)
+    // 2단계: 답안 저장 + 003으로 이동
     if (courseId && sessionId && stepMeta) {
       try {
-        const userAnswer = {
-          keywords: selected,
-        };
-
+        const userAnswer = { keywords: selected };
         await submitStepAnswer({
           courseId,
           sessionId,
@@ -158,6 +200,9 @@ export default function StepI002({
       state: {
         articleId: effectiveArticleId,
         articleUrl: effectiveArticleUrl,
+        courseId,
+        sessionId,
+        level: "I"
       },
     });
   };
@@ -168,7 +213,7 @@ export default function StepI002({
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행바 (퍼센트는 나중에 전체 스텝 수에 맞춰 조정) */}
+        {/* 진행바 */}
         <div className={styles.progressWrap}>
           <div className={styles.progress} style={{ width: "60%" }} />
         </div>
@@ -180,7 +225,6 @@ export default function StepI002({
           주제라고 생각되는 키워드를 클릭해보세요.
         </p>
 
-        {/* 요약 카드 */}
         <section className={styles.summaryCard} aria-busy={loading}>
           {loading ? (
             <div className={styles.skel}>불러오는 중…</div>
@@ -188,32 +232,31 @@ export default function StepI002({
             <p className={styles.errorText}>{loadError}</p>
           ) : (
             <p className={styles.summaryText}>
-              {segments.map((seg, i) => {
-                if (!seg.keyword) {
-                  return <span key={i}>{seg.text}</span>;
-                }
-
-                const isSelected = selected.includes(seg.keyword);
-                const isCorrectKw = correctKeywords.includes(seg.keyword);
-                const active = !revealed ? isSelected : isCorrectKw;
-
-                return (
+              {segments.map((seg, i) =>
+                seg.keyword ? (
                   <span
                     key={i}
                     className={`${styles.keyword} ${
-                      active ? styles.keywordActive : ""
+                      revealed
+                        ? correctKeywords.includes(seg.keyword)
+                          ? styles.keywordActive
+                          : ""
+                        : selected.includes(seg.keyword)
+                        ? styles.keywordActive
+                        : ""
                     }`}
                     onClick={() => toggleKeyword(seg.keyword!)}
                   >
                     {seg.text}
                   </span>
-                );
-              })}
+                ) : (
+                  <span key={i}>{seg.text}</span>
+                )
+              )}
             </p>
           )}
         </section>
 
-        {/* 정답 공개 후 해설 말풍선 */}
         {revealed && !loadError && (
           <div className={styles.hintBubble}>
             기사의 주제어는 ‘{correctKeywords.join("’, ‘")}’ 예요.

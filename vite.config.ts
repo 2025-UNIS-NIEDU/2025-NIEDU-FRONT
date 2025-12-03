@@ -68,10 +68,11 @@ export default defineConfig({
   server: {
     port: 5173,
 
+    
     // ⭐⭐⭐ API 프록시 추가!!!
     proxy: {
       "/api": {
-        target: "https://winnerteam.store",   // ← 너희 백엔드 URL 넣으면 됨
+        target: "https://api.niedu-service.com",   // ← 백엔드 URL 넣으면 됨
         changeOrigin: true,
         secure: false,
       },

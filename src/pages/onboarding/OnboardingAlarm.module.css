@@ -53,3 +53,33 @@
 }
 .noticeIcon { font-size: 16px; line-height: 1; }
 .noticeText { font-size: 14px; }
+
+.nextButtonStart {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: 90%;               /* ✅ 화면 너비의 90% */
+  max-width: 600px;         /* ✅ 너무 커지는 걸 방지 */
+  margin: 0 auto;           /* ✅ 가운데 정렬 */
+  display: block;
+  /*width: calc(100svw - 40px);*/
+  height: 56px;
+  
+  border: none;
+  border-radius: 28px;
+background: linear-gradient(90deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%);
+
+/* gray1 */
+backdrop-filter: blur(6px);
+  color: #FFF;
+
+text-align: center;
+/* Heading4 */
+font-family: Pretendard;
+font-size: 19px;
+font-style: normal;
+font-weight: 600;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.5);
+  cursor: pointer; z-index: 10;
+}

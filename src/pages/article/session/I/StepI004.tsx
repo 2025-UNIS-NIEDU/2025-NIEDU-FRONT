@@ -1,7 +1,11 @@
+// src/pages/article/session/I/StepI004.tsx
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepI004.module.css";
+
+// 🔹 I 단계 패키지 JSON 전체 import
+import iPackageJson from "@/data/economy_2025-11-24_package.json";
 
 type Props = { articleId?: string; articleUrl?: string };
 
@@ -17,6 +21,62 @@ type QuizItem = {
   explanation: string; // 해설
 };
 
+type ShortAnswerContent = {
+  sourceUrl: string;
+  items: QuizItem[];
+};
+
+// 🔍 JSON 어디에 있든 SHORT_ANSWER 블록 찾아오기
+function findShortAnswer(node: any): ShortAnswerContent | undefined {
+  if (!node) return undefined;
+
+  // 배열이면 요소들 순회
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findShortAnswer(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  // 객체면 자기 자신 먼저 검사
+  if (typeof node === "object") {
+    if (
+      node.contentType === "SHORT_ANSWER" &&
+      Array.isArray(node.contents) &&
+      node.contents.length > 0
+    ) {
+      const contents = node.contents.map((c: any) => ({
+        id: c.contentId,
+        question: c.question,
+        answer: c.correctAnswer,
+        explanation: c.answerExplanation,
+      })) as QuizItem[];
+
+      const sourceUrl =
+        node.sourceUrl ??
+        node.contents[0]?.sourceUrl ??
+        "";
+
+      return { sourceUrl, items: contents };
+    }
+
+    // 프로퍼티들 안으로 재귀
+    for (const key of Object.keys(node)) {
+      const value = (node as any)[key];
+      const found = findShortAnswer(value);
+      if (found) return found;
+    }
+  }
+
+  return undefined;
+}
+
+// JSON 전체에서 한 번만 찾아서 캐싱
+const SHORT_FROM_PACKAGE: ShortAnswerContent | undefined = findShortAnswer(
+  iPackageJson as any
+);
+
 export default function StepI004({ articleId, articleUrl }: Props) {
   const nav = useNavigate();
   const location = useLocation();
@@ -26,55 +86,26 @@ export default function StepI004({ articleId, articleUrl }: Props) {
   const aUrl = state.articleUrl ?? articleUrl;
 
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+
   const [index, setIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
-  // 이 단계에서 걸린 시간(원하면 결과 페이지에서 쓸 수 있음)
   const [startTime] = useState(() => Date.now());
 
+  // 🔹 JSON에서 SHORT_ANSWER 가져오기
   useEffect(() => {
-    const dummy: QuizItem[] = [
-      {
-        id: 1,
-        question: "한국과 싱가포르가 수립한 관계는 무엇인가요?",
-        answer: "전략적 동반자 관계",
-        explanation:
-          "정상회담에서 두 나라는 ‘전략적 동반자 관계’를 수립했다고 발표했습니다.",
-      },
-      {
-        id: 2,
-        question: "정상회담이 열린 나라는 어디인가요?",
-        answer: "대한민국",
-        explanation:
-          "요약문에서 이번 정상회담은 한국 용산 대통령실에서 열렸다고 설명합니다.",
-      },
-      {
-        id: 3,
-        question: "정상회담이 열린 해는 몇 년도인가요?",
-        answer: "2023년",
-        explanation:
-          "기사에서 2023년 10월 2일에 열린 정상회담이라고 명시되어 있습니다.",
-      },
-      {
-        id: 4,
-        question:
-          "양국이 이번 정상회담을 통해 특히 점검한 것은 무엇인가요?",
-        answer: "양국 관계의 훌륭한 상태",
-        explanation:
-          "정상회담을 통해 양국 관계의 훌륭한 상태를 점검하고 확인했습니다.",
-      },
-      {
-        id: 5,
-        question: "두 나라가 협력 강화를 논의한 계기는 수교 몇 주년이기 때문인가요?",
-        answer: "50주년",
-        explanation:
-          "올해는 한국과 싱가포르 수교 50주년으로, 이를 계기로 협력 강화를 논의했습니다.",
-      },
-    ];
-
-    setQuizzes(dummy);
+    if (SHORT_FROM_PACKAGE) {
+      setQuizzes(SHORT_FROM_PACKAGE.items);
+      setSourceUrl(SHORT_FROM_PACKAGE.sourceUrl);
+    } else {
+      console.warn("[StepI004] SHORT_ANSWER 데이터를 찾을 수 없음", {
+        SHORT_FROM_PACKAGE,
+        rawPkg: iPackageJson,
+      });
+    }
   }, []);
 
   const q = quizzes[index];
@@ -92,28 +123,27 @@ export default function StepI004({ articleId, articleUrl }: Props) {
     setConfirmed(true);
   };
 
-  const goNextProblem = () => {
-    if (index < total - 1) {
-      setIndex((prev) => prev + 1);
-      setUserAnswer("");
-      setConfirmed(false);
-      setIsCorrect(null);
-    } else {
-      // 이 단계 시간 계산(원하면 결과 페이지에서 사용)
-      const diffSec = Math.floor((Date.now() - startTime) / 1000);
-      const minutes = Math.floor(diffSec / 60);
-      const seconds = diffSec % 60;
-      const durationLabel = `${minutes}분 ${seconds}초`;
+const goNextProblem = () => {
+  if (index < total - 1) {
+    setIndex((prev) => prev + 1);
+    setUserAnswer("");
+    setConfirmed(false);
+    setIsCorrect(null);
+  } else {
+    const diffSec = Math.floor((Date.now() - startTime) / 1000);
+    const minutes = Math.floor(diffSec / 60);
+    const seconds = diffSec % 60;
+    const durationLabel = `${minutes}분 ${seconds}초`;
 
-      nav("/nie/session/N/result", {
-        state: {
-          durationLabel,
-          articleId: aId,
-          articleUrl: aUrl,
-        },
-      });
-    }
-  };
+    nav("/nie/session/N/result", {
+      state: {
+        streak: 2,       // ✅ N005와 똑같이
+        durationLabel,   // ✅ 결과 페이지가 쓰는 값
+      },
+    });
+  }
+};
+
 
   const goPrev = () => {
     nav(-1);
@@ -126,7 +156,7 @@ export default function StepI004({ articleId, articleUrl }: Props) {
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행바: 5문제 기준 */}
+        {/* 진행바: 문제 수 기준 */}
         <div className={styles.progressWrap}>
           <div
             className={styles.progress}
@@ -147,7 +177,7 @@ export default function StepI004({ articleId, articleUrl }: Props) {
           />
         </div>
 
-        {/* 정답 확인 버튼 (정답 보기 전) */}
+        {/* 정답 확인 버튼 */}
         {!confirmed && (
           <button
             type="button"
@@ -167,16 +197,15 @@ export default function StepI004({ articleId, articleUrl }: Props) {
             }`}
           >
             <div className={styles.answerHeader}>
-              <span className={styles.answerLabel}>
-                정답: {q.answer}
-              </span>
+              <span className={styles.answerLabel}>정답: {q.answer}</span>
 
               <button
                 className={styles.sourceBtn}
                 type="button"
-                disabled={!aUrl}
+                disabled={!sourceUrl && !aUrl}
                 onClick={() => {
-                  if (aUrl) window.open(aUrl, "_blank");
+                  const url = sourceUrl ?? aUrl;
+                  if (url) window.open(url, "_blank");
                 }}
               >
                 뉴스 원문 보기

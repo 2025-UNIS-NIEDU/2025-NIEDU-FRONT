@@ -1,35 +1,35 @@
+// src/pages/article/session/N/StepN002.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { submitStepAnswer } from "@/lib/apiClient";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN002.module.css";
 
+// 🔹 로컬 JSON 데이터
+import economyPackage from "@/data/economy_2025-11-24_package.json";
+
 type StepState = {
   articleId?: string;
   articleUrl?: string;
   startTime: number;
   courseId?: string;
-  sessionId?: string;
+  sessionId?: string | number;
   stepId?: number;
 };
 
 type Term = {
-  id: string;
-  term: string;
+  id: string;        // termId → string
+  term: string;      // name
   definition: string;
-  example: string;
-  extra: string;
-};
-
-type ApiResp = {
-  terms: Term[];
+  example: string;   // exampleSentence
+  extra: string;     // additionalExplanation
 };
 
 export default function StepN002() {
   const nav = useNavigate();
   const location = useLocation();
 
-  // StepRunner → 넘겨준 값
+  // StepRunner / StepN001 → 넘어온 값
   const { articleId, articleUrl, startTime, courseId, sessionId, stepId } =
     (location.state as StepState) || {};
 
@@ -40,64 +40,113 @@ export default function StepN002() {
   const [activeTerm, setActiveTerm] = useState<Term | null>(null);
 
   // ------------------------------------------
-  // ⭐ 실제 API 연동 자리
+  // 🔸 로컬 JSON에서 TERM_LEARNING 용어 데이터 가져오기
   // ------------------------------------------
   useEffect(() => {
     let abort = false;
 
     (async () => {
-      // TODO: /api/edu/... 실제 terms API 연결
-      const data: ApiResp = {
-        terms: [
-          {
-            id: "t1",
-            term: "전략적\n동반자 관계",
-            definition:
-              "전략적 동반자 관계는 두 국가가 외교적 협력을 강화하고 상호 발전을 도모하기 위해 맺는 격상된 관계입니다.",
-            example:
-              "한국과 싱가포르가 정상회담을 통해 전략적 동반자 관계를 수립했습니다.",
-            extra:
-              "두 국가가 서로의 비전을 맞추는 ‘장기 파트너십’ 개념입니다.",
-          },
-          {
-            id: "t2",
-            term: "정상 회담",
-            definition:
-              "국가 최고 지도자가 만나 주요 이슈를 논의하는 회의입니다.",
-            example:
-              "양국 정상은 회담에서 경제·안보 협력 방안을 논의했습니다.",
-            extra: "나라 간의 직접 소통 창구 역할을 합니다.",
-          },
-          {
-            id: "t3",
-            term: "공동언론발표",
-            definition:
-              "회담 합의 내용을 양국이 함께 발표하는 공식 문서입니다.",
-            example:
-              "정상들은 공동언론발표를 통해 협력 내용을 국민에게 알렸습니다.",
-            extra: "같은 내용을 같은 목소리로 전달하는 상징성이 있습니다.",
-          },
-          {
-            id: "t4",
-            term: "외교 관계\n격상",
-            definition:
-              "기존보다 더 높은 수준의 협력 관계로 발전시키는 것을 의미합니다.",
-            example: "양국은 외교 관계를 격상해 긴밀히 협력하기로 했습니다.",
-            extra: "친구 사이에서 ‘절친’으로 진화하는 느낌입니다.",
-          },
-        ],
-      };
+      try {
+        setLoading(true);
 
-      if (!abort) {
-        setTerms(data.terms);
-        setLoading(false);
+        const pkg: any = economyPackage;
+
+        // courseId / articleId → 숫자로 (없으면 1번 코스)
+        const numericCourseId = Number(courseId ?? articleId ?? 1);
+        const numericSessionId = Number(sessionId ?? 1);
+
+        const course =
+          pkg.courses?.find((c: any) => c.courseId === numericCourseId) ??
+          pkg.courses?.[0];
+
+        if (!course) {
+          console.warn("[StepN002] 코스 데이터 없음");
+          if (!abort) {
+            setTerms([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const session =
+          course.sessions?.find(
+            (s: any) => s.sessionId === numericSessionId
+          ) ?? course.sessions?.[0];
+
+        if (!session) {
+          console.warn("[StepN002] 세션 데이터 없음");
+          if (!abort) {
+            setTerms([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // level === "N" 인 퀴즈 블럭
+        const quizN =
+          session.quizzes?.find((q: any) => q.level === "N") ??
+          session.quizzes?.[0];
+
+        if (!quizN) {
+          console.warn("[StepN002] N 레벨 퀴즈 없음");
+          if (!abort) {
+            setTerms([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // stepOrder 2, contentType TERM_LEARNING
+        const step2 =
+          quizN.steps?.find(
+            (s: any) =>
+              s.stepOrder === 2 && s.contentType === "TERM_LEARNING"
+          ) ?? quizN.steps?.find((s: any) => s.contentType === "TERM_LEARNING");
+
+        if (!step2 || !Array.isArray(step2.contents) || !step2.contents[0]) {
+          console.warn("[StepN002] TERM_LEARNING 스텝/contents 없음", step2);
+          if (!abort) {
+            setTerms([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const termBlocks = step2.contents[0].terms;
+        if (!Array.isArray(termBlocks)) {
+          console.warn("[StepN002] contents[0].terms 배열이 아님", step2.contents[0]);
+          if (!abort) {
+            setTerms([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const mapped: Term[] = termBlocks.map((t: any) => ({
+          id: String(t.termId),
+          term: t.name,
+          definition: t.definition,
+          example: t.exampleSentence,
+          extra: t.additionalExplanation,
+        }));
+
+        if (!abort) {
+          setTerms(mapped);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("[StepN002] 용어 데이터 로드 실패:", err);
+        if (!abort) {
+          setTerms([]);
+          setLoading(false);
+        }
       }
     })();
 
     return () => {
       abort = true;
     };
-  }, []);
+  }, [articleId, courseId, sessionId]);
 
   // ------------------------------------------
   // 상태 변경 핸들러
@@ -119,50 +168,47 @@ export default function StepN002() {
 
   const canGoNext = opened.length > 0 && !loading;
 
-  // ==========================================
-  // ⭐ 이전 스텝 이동
-  // ==========================================
-  const goPrev = () => {
-    nav("/nie/session/N/step/001", {
-      state: { articleId, articleUrl, startTime, courseId, sessionId },
+// 이전 단계로
+const goPrev = () => {
+  nav("/nie/session/N/step/001", {
+    state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
+  });
+};
+
+// 다음 단계로
+const goNext = async () => {
+  if (!canGoNext) return;
+
+  if (!courseId || !sessionId || !stepId) {
+    console.warn("필수 값 부족 → API는 건너뛰고 이동만 실행.");
+    nav("/nie/session/N/step/003", {
+      state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
     });
-  };
+    return;
+  }
 
-  // ==========================================
-  // ⭐ 다음 스텝 + ANSWER API 호출
-  // ==========================================
-  const goNext = async () => {
-    if (!canGoNext) return;
+  try {
+    const userAnswer = {
+      openedTermIds: opened,
+      favoriteTermIds: favorites,
+    };
 
-    if (!courseId || !sessionId || !stepId) {
-      console.warn("필수 값 부족 → API는 건너뛰고 이동만 실행.");
-      nav("/nie/session/N/step/003", {
-        state: { articleId, articleUrl, startTime, courseId, sessionId },
-      });
-      return;
-    }
+    await submitStepAnswer({
+      courseId,
+      sessionId: String(sessionId),
+      stepId,
+      contentType: "TERM_LEARNING",
+      userAnswer,
+    });
 
-    try {
-      const userAnswer = {
-        openedTermIds: opened,
-        favoriteTermIds: favorites,
-      };
+    nav("/nie/session/N/step/003", {
+      state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
+    });
+  } catch (err) {
+    console.error("🔥 StepN002 답변 저장 실패:", err);
+  }
+};
 
-      await submitStepAnswer({
-        courseId,
-        sessionId,
-        stepId,
-        contentType: "TERM_LEARNING",
-        userAnswer,
-      });
-
-      nav("/nie/session/N/step/003", {
-        state: { articleId, articleUrl, startTime, courseId, sessionId },
-      });
-    } catch (err) {
-      console.error("🔥 StepN002 답변 저장 실패:", err);
-    }
-  };
 
   return (
     <div className={styles.viewport}>
@@ -253,7 +299,9 @@ export default function StepN002() {
             </button>
 
             <h3 className={styles.modalTitle}>{activeTerm.term}</h3>
-            <p className={styles.modalDefinition}>{activeTerm.definition}</p>
+            <p className={styles.modalDefinition}>
+              {activeTerm.definition}
+            </p>
 
             <div className={styles.modalBlock}>
               <div className={styles.modalBlockTitle}>예시 문장</div>
@@ -268,7 +316,7 @@ export default function StepN002() {
             <button
               type="button"
               className={styles.modalCloseBtn}
-              onClick={closeModal}
+              onClick={() => setActiveTerm(null)}
             >
               ✕
             </button>

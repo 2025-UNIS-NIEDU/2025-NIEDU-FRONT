@@ -26,11 +26,20 @@
 }
 
 /* 히어로 */
-.hero{ margin-top:8px; text-align:center; }
-.mascot{ width:120px; height:auto; margin:12px auto 10px; display:block; }
+.hero{ margin-top:98px; text-align:center; }
+.mascot{ width: clamp(120px, 24vw, 330px); height:auto; margin:22px auto 10px; display:block; }
 .title{
   margin: 0 auto; max-width: 300px;
-  color:#0f0f0f; font-size:18px; line-height:1.6; font-weight:800;
+ color: #000;
+text-align: center;
+margin-top: 22px;
+
+/* Heading3 */
+font-family: Pretendard;
+font-size: 22px;
+font-style: normal;
+font-weight: 700;
+line-height: 150%; /* 33px */
 }
 
 /* 단계 */
@@ -61,10 +70,10 @@
 .cta{
   display:block; width:88%; max-width:520px; height:56px;
   margin: 36px auto 0;
+  margin-top: 140px;
   border:none; border-radius:28px; cursor:pointer;
   color:#fff; font-weight:700; font-size:16px;
-  background: linear-gradient(90deg, #6aa0ff 0%, #6587ff 100%);
-  box-shadow: 0 6px 18px rgba(101,135,255,.25);
+background: linear-gradient(90deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%);  box-shadow: 0 6px 18px rgba(101,135,255,.25);
 }
 .cta:disabled{ opacity:.6; cursor:not-allowed; }
 

@@ -5,10 +5,13 @@ import EduBottomBar from "@/components/edu/EduBottomBar";
 import type { StepMeta } from "@/pages/article/ArticlePrepare";
 import styles from "./StepI001.module.css";
 
+// 🔹 패키지 JSON 가져오기
+import economyPackage from "@/data/economy_2025-11-24_package.json";
+
 type Props = {
   articleId?: string;
   articleUrl?: string;
-  stepMeta?: StepMeta; // 🔹 /start 응답에서 넘어오는 메타
+  stepMeta?: StepMeta; // /start 응답에서 넘어오는 메타
 };
 
 type ArticleReadingContent = {
@@ -29,22 +32,79 @@ type LocationState = {
   nextStepPath?: string;
 };
 
+// 🔹 실제 JSON 구조에 맞춘 타입 (courses → sessions)
+type EconomyJson = {
+  courses: {
+    courseId: number;
+    topic: string;
+    subTopic: string;
+    subTags: string[];
+    courseName: string;
+    courseDescription: string;
+    sessions: {
+      sessionId: number;
+      headline?: string;
+      publishedAt?: string;
+      thumbnailUrl?: string;
+      publisher?: string;
+      sourceUrl?: string;
+      // 나머지 필드는 안 써서 생략
+    }[];
+  }[];
+};
+
+const economyData = economyPackage as EconomyJson;
+
+// 🔹 1번 코스의 1번 세션을 ARTICLE_READING 용으로 사용
+const I_ARTICLE_READING_FROM_PACKAGE: ArticleReadingContent | undefined =
+  economyData.courses?.[0]?.sessions?.[0]
+    ? {
+        thumbnailUrl:
+          economyData.courses[0].sessions[0].thumbnailUrl ?? "",
+        headline:
+          economyData.courses[0].sessions[0].headline ??
+          "선택한 기사 제목이 없습니다.",
+        publisher:
+          economyData.courses[0].sessions[0].publisher ?? "언론사",
+        publishedAt:
+          economyData.courses[0].sessions[0].publishedAt ?? "발행일",
+        sourceUrl:
+          economyData.courses[0].sessions[0].sourceUrl ??
+          "https://www.busan.com/view/busan/view.php?code=2025112419192890066",
+      }
+    : undefined;
+
 export default function StepI001({ articleId, articleUrl, stepMeta }: Props) {
   const nav = useNavigate();
   const { state } = useLocation() as { state?: LocationState };
 
-  // 🔹 ARTICLE_READING content 파싱
-  const content = stepMeta?.content as ArticleReadingContent | undefined;
+  // 1순위: 백엔드 stepMeta.content
+  const contentFromMeta = stepMeta?.content as
+    | ArticleReadingContent
+    | undefined;
 
-  const thumbnailUrl =
-    content?.thumbnailUrl ?? state?.articleImageUrl ?? "";
-  const headline =
-    content?.headline ?? state?.articleTitle ?? "선택한 기사 제목이 없습니다.";
-  const publisher = content?.publisher ?? state?.articleSource ?? "언론사";
-  const publishedAt =
-    content?.publishedAt ?? state?.articlePublishedAt ?? "발행일";
-  const sourceUrl =
-    content?.sourceUrl ?? articleUrl ?? state?.articleUrl ?? "";
+  // 2순위: 패키지 JSON
+  // 3순위: location state
+  const mergedContent: ArticleReadingContent =
+    contentFromMeta ??
+    I_ARTICLE_READING_FROM_PACKAGE ??
+    ({
+      thumbnailUrl: state?.articleImageUrl ?? "",
+      headline:
+        state?.articleTitle ?? "선택한 기사 제목이 없습니다.",
+      publisher: state?.articleSource ?? "언론사",
+      publishedAt: state?.articlePublishedAt ?? "발행일",
+      sourceUrl:
+        state?.articleUrl ??
+        articleUrl ??
+        "https://www.busan.com/view/busan/view.php?code=2025112419192890066",
+    } as ArticleReadingContent);
+
+  const thumbnailUrl = mergedContent.thumbnailUrl;
+  const headline = mergedContent.headline;
+  const publisher = mergedContent.publisher;
+  const publishedAt = mergedContent.publishedAt;
+  const sourceUrl = mergedContent.sourceUrl;
 
   const handleOpenArticle = () => {
     if (!sourceUrl) return;
@@ -53,15 +113,16 @@ export default function StepI001({ articleId, articleUrl, stepMeta }: Props) {
 
   const handlePrev = () => nav(-1);
 
-  const handleNext = () => {
-    // 👉 다음 스텝에서도 원문 URL이 필요할 수 있으니 넘겨줌
-nav("/nie/session/I/step/002", {
-  state: {
-    articleId: articleId ?? state?.articleId,
-    articleUrl: sourceUrl ?? articleUrl ?? state?.articleUrl,
-  },
-});
-  };
+const handleNext = () => {
+  nav("/nie/session/I/step/002", {
+    state: {
+      level: "I", // 🔹 이거 추가
+      articleId: articleId ?? state?.articleId,
+      articleUrl: sourceUrl ?? articleUrl ?? state?.articleUrl,
+    },
+  });
+};
+
 
   return (
     <div className={styles.viewport}>

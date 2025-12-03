@@ -1,25 +1,23 @@
+// src/pages/ArticleDetail/ArticleDetail.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./ArticleDetail.module.css";
 import { useGoToPrepare } from "@/hooks/useGoToPrepare";
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
+import {
+  getCourseDetail,
+  type MockSession,
+} from "@/lib/mockCourseApi";
 
-// 상세 조회 응답 타입
 type CourseDetailData = {
   thumbnailUrl: string;
   title: string;
-  topic: string;
-  progress: number; // % 단위
+  topic: string | null;
+  progress: number;
   longDescription: string;
 };
 
-// 세션 리스트 응답 타입
-type SessionData = {
-  thumbnailUrl: string;
-  headline: string;
-  publisher: string;
-  publishedAt: string; // LocalDate가 문자열로 올 것
-};
+type SessionData = MockSession;
 
 const KEYWORDS = ["#미래", "#전환", "#협력"];
 
@@ -34,93 +32,47 @@ export default function ArticleDetail() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ✅ 코스 상세 조회
+  // ✅ mock 데이터에서 상세 + 세션 가져오기
   useEffect(() => {
     if (!articleId) return;
 
-    const fetchDetail = async () => {
-      try {
-        setLoadingDetail(true);
-        setErrorMsg(null);
+    setLoadingDetail(true);
+    setLoadingSessions(true);
+    setErrorMsg(null);
 
-        // ⚠️ 백엔드 스펙이 /couses 라고 되어 있어서 그대로 사용
-        const res = await fetch(`/api/edu/couses/${articleId}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include", // Cookie: accessToken 자동 포함
-        });
+    const idNum = Number(articleId);
+    if (Number.isNaN(idNum)) {
+      setErrorMsg("잘못된 코스 ID 입니다.");
+      setDetail(null);
+      setSessions([]);
+      setLoadingDetail(false);
+      setLoadingSessions(false);
+      return;
+    }
 
-        const json = await res.json();
+    const data = getCourseDetail(idNum);
 
-        if (!res.ok || !json.success) {
-          const err: any = new Error(
-            json?.message || "코스 상세 조회 중 오류가 발생했어요."
-          );
-          err.status = json?.status ?? res.status;
-          throw err;
-        }
+    if (!data) {
+      setDetail(null);
+      setSessions([]);
+      setLoadingDetail(false);
+      setLoadingSessions(false);
+      return;
+    }
 
-        setDetail(json.data as CourseDetailData);
-      } catch (err: any) {
-        console.error(err);
-        setErrorMsg(err.message ?? "코스 상세 조회 중 오류가 발생했어요.");
-        if (err.status === 401) {
-          // 토큰 만료 시 로그인 등으로 보내기
-          navigate("/login");
-        }
-      } finally {
-        setLoadingDetail(false);
-      }
-    };
+    setDetail({
+      thumbnailUrl: data.thumbnailUrl,
+      title: data.title,
+      topic: data.topic,
+      progress: data.progress,
+      longDescription: data.longDescription,
+    });
+    setSessions(data.sessions);
 
-    fetchDetail();
-  }, [articleId, navigate]);
+    setLoadingDetail(false);
+    setLoadingSessions(false);
+  }, [articleId]);
 
-  // ✅ 세션 리스트 조회
-  useEffect(() => {
-    if (!articleId) return;
-
-    const fetchSessions = async () => {
-      try {
-        setLoadingSessions(true);
-        setErrorMsg(null);
-
-        const res = await fetch(`/api/edu/courses/${articleId}/sessions`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        const json = await res.json();
-
-        if (!res.ok || !json.success) {
-          const err: any = new Error(
-            json?.message || "세션 리스트 조회 중 오류가 발생했어요."
-          );
-          err.status = json?.status ?? res.status;
-          throw err;
-        }
-
-        setSessions(json.data as SessionData[]);
-      } catch (err: any) {
-        console.error(err);
-        setErrorMsg(err.message ?? "세션 리스트 조회 중 오류가 발생했어요.");
-        if (err.status === 401) {
-          navigate("/login");
-        }
-      } finally {
-        setLoadingSessions(false);
-      }
-    };
-
-    fetchSessions();
-  }, [articleId, navigate]);
-
-  // 아직 detail 못 받았을 때
   if (loadingDetail && !detail) {
     return <div className={styles.viewport}>로딩 중...</div>;
   }
@@ -134,10 +86,9 @@ export default function ArticleDetail() {
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 에러 메시지 공통 */}
         {errorMsg && <p className={styles.errorMsg}>{errorMsg}</p>}
 
-        {/* 🔥 HERO (이미지 + 오버레이 + 뒤로가기 + 타이틀/키워드/설명) */}
+        {/* 🔥 HERO */}
         <div className={styles.hero}>
           <img
             src={detail.thumbnailUrl || "/sample-news.png"}
@@ -145,24 +96,17 @@ export default function ArticleDetail() {
             className={styles.heroImg}
           />
 
-          {/* 뒤로가기 버튼 (배경 없이 아이콘만) */}
-          <button
-            className={styles.backOnHero}
-            onClick={() => navigate(-1)}
-          >
+          <button className={styles.backOnHero} onClick={() => navigate(-1)}>
             <img src="/icons/fluent_ios-arrow-24-filled.svg" alt="뒤로가기" />
           </button>
 
-          {/* 즐겨찾기/스크랩 아이콘 */}
           <button className={styles.scrapBtn} type="button">
             <img src="/icons/STAR.svg" alt="스크랩" />
           </button>
 
-          {/* 이미지 위 텍스트 영역 */}
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>{detail.title}</h1>
 
-            {/* topic 하나만 카테고리 칩으로 표시 */}
             {detail.topic && (
               <div className={styles.categoryChips}>
                 <span className={styles.categoryChip}>{detail.topic}</span>
@@ -177,9 +121,7 @@ export default function ArticleDetail() {
               ))}
             </div>
 
-            <p className={styles.heroDesc}>
-              {detail.longDescription}
-            </p>
+            <p className={styles.heroDesc}>{detail.longDescription}</p>
           </div>
         </div>
 
@@ -189,7 +131,16 @@ export default function ArticleDetail() {
           <button
             type="button"
             className={styles.startButton}
-            onClick={() => articleId && goToPrepare(articleId)}
+            onClick={() => {
+              const first = sessions[0];
+              if (!articleId || !first) return;
+
+              // useGoToPrepare 안에서 state.articleTitle 로 변환해줄 거라고 가정
+              goToPrepare(articleId, {
+                sessionId: first.sessionId,
+                title: detail.title,
+              });
+            }}
           >
             바로 학습하기
           </button>
@@ -203,15 +154,20 @@ export default function ArticleDetail() {
             {loadingSessions && sessions.length === 0 ? (
               <p className={styles.loading}>세션 불러오는 중...</p>
             ) : (
-              sessions.map((s, idx) => (
+              sessions.map((s) => (
                 <button
-                  key={idx}
+                  key={s.sessionId}
                   type="button"
                   className={styles.sessionItem}
-                  onClick={() => articleId && goToPrepare(articleId)}
+                  onClick={() =>
+                    articleId &&
+                    goToPrepare(articleId, {
+                      sessionId: s.sessionId,
+                      title: s.headline,
+                    })
+                  }
                 >
                   <div className={styles.sessionThumb}>
-                    {/* 썸네일 필요하면 이미지로 */}
                     {s.thumbnailUrl && (
                       <img
                         src={s.thumbnailUrl}
@@ -237,10 +193,7 @@ export default function ArticleDetail() {
           </div>
         </section>
 
-        {/* 하단바와 겹치지 않게 여백 */}
         <div className={styles.bottomSpace} />
-
-        {/* 👇 학습 탭이 활성화된 BottomNav */}
         <BottomNav activeTab="learn" />
       </div>
     </div>

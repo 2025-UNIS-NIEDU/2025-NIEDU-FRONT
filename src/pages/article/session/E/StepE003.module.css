@@ -9,7 +9,7 @@
   justify-content: center;
   align-items: stretch;
 
-  background: #615959;
+ background: #eef0f4;
 
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -61,17 +61,20 @@
 
 /* 문제 텍스트 */
 .question {
+  margin-top: 50px;
   font-size: 18px;
   font-weight: 700;
   line-height: 1.5;
   color: #111827;
-  margin-bottom: 20px;
+  margin-bottom: 100px;
 }
 
 /* 입력창 */
 .inputWrapper {
   width: 100%;
+  height: max(140px);
   margin-bottom: 16px;
+  
 }
 
 .input {
@@ -80,6 +83,8 @@
   border-radius: 14px;
   border: 1px solid #6ea8ff;
   padding: 0 12px;
+  padding-top: 27px;
+  padding-bottom: 27px;
   font-size: 14px;
   outline: none;
 }
@@ -92,11 +97,15 @@
 .checkBtn {
   margin-top: 8px;
   width: 100%;
-  height: 44px;
+  height: 60px;
   border-radius: 999px;
-  border: none;
-  background: linear-gradient(90deg, #4f8dff 0%, #7fb3ff 100%);
-  color: #ffffff;
+  
+border-radius: 28px;
+border: 1px solid var(--white1_stroke, #FFF);
+background: var(--blue2_fill, linear-gradient(90deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%));
+
+/* 3 */
+box-shadow: 0 0 2px 0 rgba(114, 114, 114, 0.50);  color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -109,54 +118,84 @@
 
 /* 해설 박스 */
 .answerBox {
-  margin-top: 18px;
-  padding: 14px 16px 16px;
-  border-radius: 18px;
+  /* 컨테이너 패딩만큼 양옆을 빼서 전체 화면 꽉 채우기 */
+  margin: 84px -20px 0;
+  padding: 20px 20px 32px;
+  margin-top: 250px;
+  height: 300px;
+
+  background: linear-gradient(180deg, #b9d5ff 0%, #7fa9ff 100%);
+  border-radius: 24px 24px 0 0; /* 위쪽만 둥글게, 아래는 0 */
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .answerBoxCorrect {
-  background: #e3f1ff;
+  border-radius: 20px 20px 0 0;
+background: linear-gradient(180deg, rgba(122, 162, 242, 0.70) 14.35%, rgba(183, 205, 248, 0.70) 63.25%, rgba(255, 255, 255, 0.70) 99.83%);
 }
 
 .answerBoxWrong {
-  background: #ffe5e5;
+  border-radius: 20px 20px 0 0;
+background: linear-gradient(180deg, rgba(251, 174, 174, 0.70) 14.35%, rgba(254, 229, 229, 0.70) 94.9%, rgba(255, 255, 255, 0.70) 99.83%);
 }
 
 .answerHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 16px;
 }
 
 .answerLabel {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: #111827;
 }
+
 
 .sourceBtn {
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: none;
-  background: #ffffff;
-  font-size: 11px;
-  font-weight: 500;
-  color: #111827;
-  cursor: pointer;
-}
+    color: #000;
+font-family: Pretendard;
+font-size: 13px;
+font-style: normal;
+font-weight: 600;
+line-height: 150%; /* 19.5px */
+display: inline-flex;
+padding: 8px 16px;
+justify-content: center;
+align-items: center;
+gap: 8px;
+border-radius: 20px;
+border: 2px solid var(--gray1_stroke, rgba(191, 195, 201, 0.20));
+background: linear-gradient(290deg, rgba(255, 255, 255, 0.70) 27.98%, rgba(255, 255, 255, 0.42) 71.7%);
 
-.sourceBtn:disabled {
-  opacity: 0.5;
-  cursor: default;
+/* white1 */
+backdrop-filter: blur(6px);
 }
 
 .answerText {
-  font-size: 13px;
-  line-height: 1.5;
-  color: #111827;
+  margin-top: 8px;
+  color: #000;
+
+/* body-small */
+font-family: Pretendard;
+font-size: 15px;
+font-style: normal;
+font-weight: 500;
+line-height: 150%; /* 22.5px */
 }
 
+/* 하단 바 여유 공간 */
 .bottomSpace {
-  height: 80px;
+  height: 120px;
 }
+
+.loading {
+  padding: 40px;
+  text-align: center;
+}
+

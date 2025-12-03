@@ -5,15 +5,18 @@ import styles from "./Learn.module.css";
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
 import { useGoToDetail } from "@/hooks/useGoToDetail";
 import { apiFetch } from "@/lib/apiClient";
+import { getCourses } from "@/lib/mockCourseApi";
 
 export type Category = "정치" | "경제" | "사회" | "문화";
 
-// 서버에서 내려주는 코스 타입 (백엔드 스펙에 맞게 필드명만 맞춰주면 됨)
+// 서버에서 내려주는 코스 타입
+// ⚠️ 백엔드는 id 로 내려주고, 나중에 courseId 로 바뀔 수도 있으니까 둘 다 여유 있게 둠
 export type ApiCourse = {
-  courseId: string;
+  id?: number;
+  courseId?: number;
+  thumbnailUrl: string;
   title: string;
-  thumbnailUrl: string | null;
-  longDescription?: string | null;
+  description?: string | null;
   topic?: string | null;
   subTopic?: string | null;
 };
@@ -43,7 +46,7 @@ type FetchCoursesParams = {
   page?: number;
 };
 
-// 🔹 공통 fetch 함수 (이제 apiFetch 사용)
+// 🔹 공통 fetch 함수 (apiFetch 사용)
 async function fetchCourses(params: FetchCoursesParams): Promise<ApiCourse[]> {
   const search = new URLSearchParams({
     type: params.type,
@@ -57,8 +60,6 @@ async function fetchCourses(params: FetchCoursesParams): Promise<ApiCourse[]> {
   console.log("[fetchCourses]", path);
 
   const json = await apiFetch<CoursesResponse>(path);
-
-  // 여기까지 왔다는 건 success === true + status 200 이라는 뜻
   return json.data;
 }
 
@@ -125,6 +126,9 @@ export default function Learn() {
 
   const latest3 = useMemo(() => latestByTopic.slice(0, 3), [latestByTopic]);
 
+  // 공통으로 courseId 뽑는 유틸
+  const getCourseId = (c: ApiCourse) => c.courseId ?? c.id;
+
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
@@ -151,7 +155,7 @@ export default function Learn() {
         {/* 에러 메시지 */}
         {errorMsg && <p className={styles.errorMsg}>{errorMsg}</p>}
 
-        {/* 최신 토픽별 코스 */}
+        {/* 최신 토픽별 세션 */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>최신 토픽별 세션</h2>
@@ -183,27 +187,34 @@ export default function Learn() {
             {loadingLatest && latest3.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
             ) : (
-              latest3.map((c) => (
-                <div
-                  key={c.courseId}
-                  className={styles.courseRow}
-                  onClick={() =>
-                    goToDetail(c.courseId, { from: "learn-latest" })
-                  }
-                >
-                  <img
-                    src={c.thumbnailUrl ?? "/sample-news.png"}
-                    alt=""
-                    className={styles.rowThumb}
-                  />
-                  <div className={styles.rowBody}>
-                    <h3 className={styles.rowTitle}>{c.title}</h3>
-                    <p className={styles.rowSub}>
-                      {c.topic ?? "NIEdu Lab"} · {c.subTopic ?? ""}
-                    </p>
+              latest3.map((c) => {
+                const id = getCourseId(c);
+                return (
+                  <div
+                    key={id ?? c.title}
+                    className={styles.courseRow}
+                    onClick={() => {
+                      if (id == null) {
+                        console.warn("[Learn] courseId/id 없음", c);
+                        return;
+                      }
+                      goToDetail(String(id), { from: "learn-latest" });
+                    }}
+                  >
+                    <img
+                      src={c.thumbnailUrl ?? "/sample-news.png"}
+                      alt=""
+                      className={styles.rowThumb}
+                    />
+                    <div className={styles.rowBody}>
+                      <h3 className={styles.rowTitle}>{c.title}</h3>
+                      <p className={styles.rowSub}>
+                        {c.topic ?? "NIEdu Lab"} · {c.subTopic ?? ""}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
@@ -223,30 +234,37 @@ export default function Learn() {
             {loadingOthers && popular.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
             ) : (
-              popular.map((c) => (
-                <div
-                  key={c.courseId}
-                  className={styles.hCard}
-                  onClick={() =>
-                    goToDetail(c.courseId, { from: "learn-popular" })
-                  }
-                >
-                  <div className={styles.hThumbWrap}>
-                    <img
-                      src={c.thumbnailUrl ?? "/sample-news.png"}
-                      alt=""
-                      className={styles.hThumb}
-                    />
+              popular.map((c) => {
+                const id = getCourseId(c);
+                return (
+                  <div
+                    key={id ?? c.title}
+                    className={styles.hCard}
+                    onClick={() => {
+                      if (id == null) {
+                        console.warn("[Learn] courseId/id 없음", c);
+                        return;
+                      }
+                      goToDetail(String(id), { from: "learn-popular" });
+                    }}
+                  >
+                    <div className={styles.hThumbWrap}>
+                      <img
+                        src={c.thumbnailUrl ?? "/sample-news.png"}
+                        alt=""
+                        className={styles.hThumb}
+                      />
+                    </div>
+                    <h3 className={styles.hTitle}>{c.title}</h3>
+                    <p className={styles.hSub}>{c.topic ?? "코스"}</p>
                   </div>
-                  <h3 className={styles.hTitle}>{c.title}</h3>
-                  <p className={styles.hSub}>{c.topic ?? "코스"}</p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
 
-        {/* 맞춤 추천 코스 */}
+        {/* 맞춤추천 코스 */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>맞춤추천 코스</h2>
@@ -261,25 +279,32 @@ export default function Learn() {
             {loadingOthers && personalized.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
             ) : (
-              personalized.map((c) => (
-                <div
-                  key={c.courseId}
-                  className={styles.hCard}
-                  onClick={() =>
-                    goToDetail(c.courseId, { from: "learn-personalized" })
-                  }
-                >
-                  <div className={styles.hThumbWrap}>
-                    <img
-                      src={c.thumbnailUrl ?? "/sample-news.png"}
-                      alt=""
-                      className={styles.hThumb}
-                    />
+              personalized.map((c) => {
+                const id = getCourseId(c);
+                return (
+                  <div
+                    key={id ?? c.title}
+                    className={styles.hCard}
+                    onClick={() => {
+                      if (id == null) {
+                        console.warn("[Learn] courseId/id 없음", c);
+                        return;
+                      }
+                      goToDetail(String(id), { from: "learn-personalized" });
+                    }}
+                  >
+                    <div className={styles.hThumbWrap}>
+                      <img
+                        src={c.thumbnailUrl ?? "/sample-news.png"}
+                        alt=""
+                        className={styles.hThumb}
+                      />
+                    </div>
+                    <h3 className={styles.hTitle}>{c.title}</h3>
+                    <p className={styles.hSub}>{c.topic ?? "코스"}</p>
                   </div>
-                  <h3 className={styles.hTitle}>{c.title}</h3>
-                  <p className={styles.hSub}>{c.topic ?? "코스"}</p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>
@@ -299,25 +324,32 @@ export default function Learn() {
             {loadingOthers && news.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
             ) : (
-              news.map((c) => (
-                <div
-                  key={c.courseId}
-                  className={styles.hCard}
-                  onClick={() =>
-                    goToDetail(c.courseId, { from: "learn-new" })
-                  }
-                >
-                  <div className={styles.hThumbWrap}>
-                    <img
-                      src={c.thumbnailUrl ?? "/sample-news.png"}
-                      alt=""
-                      className={styles.hThumb}
-                    />
+              news.map((c) => {
+                const id = getCourseId(c);
+                return (
+                  <div
+                    key={id ?? c.title}
+                    className={styles.hCard}
+                    onClick={() => {
+                      if (id == null) {
+                        console.warn("[Learn] courseId/id 없음", c);
+                        return;
+                      }
+                      goToDetail(String(id), { from: "learn-new" });
+                    }}
+                  >
+                    <div className={styles.hThumbWrap}>
+                      <img
+                        src={c.thumbnailUrl ?? "/sample-news.png"}
+                        alt=""
+                        className={styles.hThumb}
+                      />
+                    </div>
+                    <h3 className={styles.hTitle}>{c.title}</h3>
+                    <p className={styles.hSub}>{c.topic ?? "코스"}</p>
                   </div>
-                  <h3 className={styles.hTitle}>{c.title}</h3>
-                  <p className={styles.hSub}>{c.topic ?? "코스"}</p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </section>

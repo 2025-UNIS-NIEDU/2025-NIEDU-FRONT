@@ -55,7 +55,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: auto;
   margin-left: 20px;
 }
 
@@ -76,10 +76,11 @@
 }
 
 .pillSelected {
-  background: #eef4ff;
+  background: linear-gradient(292deg, rgba(96, 136, 248, 0.12) 9.14%, rgba(96, 136, 248, 0.03) 82.53%);
+
   border-color: #cfe1ff;
   color: #2a5bd7;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* 선택 안내 및 에러 박스 */
@@ -94,7 +95,7 @@
   border-radius: 10px;
   color: #2a5bd7;
   margin-top: auto;
-  margin-bottom: 12px;
+  
   font-size: 14px;
   box-sizing: border-box;
   margin-left: 20px;

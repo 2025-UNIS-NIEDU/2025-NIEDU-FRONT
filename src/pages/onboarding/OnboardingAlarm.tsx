@@ -83,7 +83,7 @@ export default function OnboardingAlarm() {
           </span>
         </div>
 
-        <button className={base.nextButton} onClick={handleStart}>
+        <button className={s.nextButtonStart} onClick={handleStart}>
           NIEdu 시작하기
         </button>
       </div>

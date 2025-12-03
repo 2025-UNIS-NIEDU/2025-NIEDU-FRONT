@@ -1,13 +1,14 @@
-// src/pages/Home/Home.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Home.module.css";
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
 import NewsCard from "../onboarding/components/NewsCard/NewsCard";
-import { useGoToPrepare } from "@/hooks/useGoToPrepare";
+import { useGoToDetail } from "@/hooks/useGoToDetail";
+
 import { apiFetch } from "@/lib/apiClient";
-import type { ApiResponse, TodayNewsItem } from "@/types/api";
+import type { ApiResponse } from "@/types/api";
 import api from "@/api/axiosInstance";
+import { getCourses } from "@/lib/mockCourseApi";
 
 // 🔹 /api/user/me 응답 타입
 type UserProfile = {
@@ -15,22 +16,48 @@ type UserProfile = {
   profileImageUrl: string;
 };
 
+// 🔹 /api/attendance/streak 응답 data
+type StreakData = {
+  streak: number;
+};
+
+// 🔹 /api/home/news 응답 data 아이템
+type TodayNewsItem = {
+  thumbnailUrl: string;
+  title: string;
+  publisher: string;
+  topic: string | null;
+};
+
+// 🔹 홈에서 쓰는 코스 타입 (mockCourseApi 기준)
+type HomeCourse = {
+  id?: number;
+  courseId?: number;
+  thumbnailUrl: string;
+  title: string;
+  description: string;
+  topic: string | null;
+  subTopic?: string | null;
+};
+
+// 공통 id 추출
+const getCourseId = (c: HomeCourse) => c.courseId ?? c.id;
+
 export default function Home() {
   const navigate = useNavigate();
-  const goToPrepare = useGoToPrepare();
+  const goToDetail = useGoToDetail();
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
   const [todayNews, setTodayNews] = useState<TodayNewsItem[] | null>(null);
-  const [recentCourses, setRecentCourses] = useState<any[] | null>(null);
-  const [savedCourses, setSavedCourses] = useState<any[] | null>(null);
+  const [recentCourses, setRecentCourses] = useState<HomeCourse[] | null>(null);
+  const [savedCourses, setSavedCourses] = useState<HomeCourse[] | null>(null);
 
   // 🔹 회원 정보 조회 (/api/user/me)
   const fetchUserProfile = async () => {
     try {
       const res = await api.get<ApiResponse<UserProfile>>("/api/user/me");
-
-      console.log("user me:", res.data);
+      console.log("[HOME] user me:", res.data);
 
       if (res.data.success) {
         setUser(res.data.data);
@@ -38,39 +65,39 @@ export default function Home() {
         setUser(null);
       }
     } catch (e) {
-      console.error("fetchUserProfile error:", e);
+      console.error("[HOME] fetchUserProfile error:", e);
       setUser(null);
     }
   };
 
-  // 🔥 출석 스트릭
+  // 🔥 출석 스트릭 (/api/attendance/streak)
   const fetchStreak = async () => {
     try {
       const res = (await apiFetch(
         "/api/attendance/streak"
-      )) as ApiResponse<number>;
+      )) as ApiResponse<StreakData>;
 
-      console.log("streak res:", res);
+      console.log("[HOME] streak res:", res);
 
-      if (res.success) {
-        setStreak(res.data); // data가 숫자라고 가정
+      if (res.success && res.data) {
+        setStreak(res.data.streak);
       } else {
         setStreak(null);
       }
     } catch (e) {
-      console.error(e);
+      console.error("[HOME] fetchStreak error:", e);
       setStreak(null);
     }
   };
 
-  // 🔥 오늘자 뉴스
+  // 🔥 오늘자 뉴스 (/api/home/news)
   const fetchTodayNews = async () => {
     try {
       const res = (await apiFetch("/api/home/news")) as ApiResponse<
         TodayNewsItem[]
       >;
 
-      console.log("todayNews res:", res);
+      console.log("[HOME] todayNews res:", res);
 
       if (res.success && Array.isArray(res.data)) {
         setTodayNews(res.data);
@@ -78,52 +105,42 @@ export default function Home() {
         setTodayNews([]);
       }
     } catch (e) {
-      console.error(e);
+      console.error("[HOME] fetchTodayNews error:", e);
       setTodayNews([]);
     }
   };
 
-  // 🔥 최근 코스
+  // 🔥 최근 코스 (mock 사용)
   const fetchRecentCourses = async () => {
     try {
-      const res = (await apiFetch(
-        "/api/home/courses?type=recent&view=preview"
-      )) as ApiResponse<any[]>;
-
-      console.log("recentCourses res:", res);
-
-      if (res.success && Array.isArray(res.data)) {
-        setRecentCourses(res.data);
-      } else {
-        setRecentCourses([]);
-      }
+      const data = (await getCourses({
+        type: "recent",
+        view: "preview",
+      })) as HomeCourse[];
+      console.log("[HOME] recentCourses (mock) res:", data);
+      setRecentCourses(data);
     } catch (e) {
-      console.error(e);
+      console.error("[HOME] fetchRecentCourses (mock) error:", e);
       setRecentCourses([]);
     }
   };
 
-  // 🔥 즐겨찾기 코스
+  // 🔥 즐겨찾기 코스 (mock 사용 – 일단 custom 으로 구분)
   const fetchSavedCourses = async () => {
     try {
-      const res = (await apiFetch(
-        "/api/home/courses?type=saved&view=preview"
-      )) as ApiResponse<any[]>;
-
-      console.log("savedCourses res:", res);
-
-      if (res.success && Array.isArray(res.data)) {
-        setSavedCourses(res.data);
-      } else {
-        setSavedCourses([]);
-      }
+      const data = (await getCourses({
+        type: "custom",
+        view: "preview",
+      })) as HomeCourse[];
+      console.log("[HOME] savedCourses (mock) res:", data);
+      setSavedCourses(data);
     } catch (e) {
-      console.error(e);
+      console.error("[HOME] fetchSavedCourses (mock) error:", e);
       setSavedCourses([]);
     }
   };
 
-  // ✅ useEffect는 "함수들 정의 후"에 위치해야 함
+  // ✅ 마운트 시 API 호출
   useEffect(() => {
     void fetchUserProfile();
     void fetchStreak();
@@ -132,7 +149,6 @@ export default function Home() {
     void fetchSavedCourses();
   }, []);
 
-  // 🔐 map 안전장치
   const todayNewsList = Array.isArray(todayNews) ? todayNews : [];
   const recentCourseList = Array.isArray(recentCourses) ? recentCourses : [];
   const savedCourseList = Array.isArray(savedCourses) ? savedCourses : [];
@@ -143,9 +159,14 @@ export default function Home() {
         {/* 헤더 */}
         <header className={styles.header}>
           <h1 className={styles.title}>홈</h1>
-          <div className={styles.fireIcon}>
-            <img src="/solar_fire-bold-duotone11.svg" alt="streak" />
-            <span>{streak ?? "-"}</span>
+          <div className={styles.firebox}>
+            <div className={styles.fireIcon}>
+              <img
+                src="/icons/solar_fire-bold-duotone11.svg"
+                alt="streak"
+              />
+              <span>{streak ?? "-"}</span>
+            </div>
           </div>
         </header>
 
@@ -158,9 +179,8 @@ export default function Home() {
               className={styles.bannerIcon}
             />
             <p className={styles.bannerText}>
-              {/* 🔹 하드코딩 이름 → API에서 가져온 닉네임으로 변경 */}
-              {user?.nickname ?? "회원"} 님,{" "}
-              <span>{streak ?? "-"}일 연속 출석</span>하셨어요!
+             
+              이화연 님, 오늘도 뉴스로 상식을 넓혀봐요!
             </p>
           </div>
         </div>
@@ -168,14 +188,16 @@ export default function Home() {
         {/* 오늘자 뉴스 학습하기 */}
         <section className={styles.section}>
           <h2>오늘자 뉴스 학습하기</h2>
-          <p className={styles.date}>25.10.01. 8시 업데이트</p>
+          <p className={styles.date}>25.12.03. 8시 업데이트</p>
 
           <div className={styles.newsScroll}>
             {todayNewsList.map((news, idx) => (
               <button
-                key={idx}
+                key={news.title + idx}
                 className={`${styles.newsItem} ${styles.clickable}`}
-                onClick={() => goToPrepare(news.title, { from: "home-today" })}
+                onClick={() =>
+                  goToDetail(news.title, { from: "home-today" })
+                }
               >
                 <NewsCard title={news.title} source={news.publisher} />
               </button>
@@ -195,31 +217,37 @@ export default function Home() {
             />
           </div>
 
-          {recentCourseList.map((course) => (
-            <div
-              key={course.id ?? course.title}
-              className={`${styles.courseCard} ${styles.clickable}`}
-              onClick={() =>
-                goToPrepare(course.id ?? course.title, { from: "home-recent" })
-              }
-            >
-              <img
-                className={styles.courseThumb}
-                src={course.thumbnailUrl ?? "/sample-news.png"}
-                alt=""
-              />
-              <div className={styles.courseBody}>
-                <h3 className={styles.courseTitle}>{course.title}</h3>
-                <div className={styles.tagRow}>
-                  {(course.tags ?? []).map((t: string, i: number) => (
-                    <span key={i} className={styles.tag}>
-                      {t}
-                    </span>
-                  ))}
+          {recentCourseList.map((course) => {
+            const id = getCourseId(course);
+            return (
+              <div
+                key={id ?? course.title}
+                className={`${styles.courseCard} ${styles.clickable}`}
+                onClick={() => {
+                  if (id == null) {
+                    console.warn("[HOME] recent course id 없음", course);
+                    return;
+                  }
+                  goToDetail(String(id), { from: "home-recent" });
+                }}
+              >
+                <img
+                  className={styles.courseThumb}
+                  src={course.thumbnailUrl ?? "/sample-news.png"}
+                  alt=""
+                />
+                <div className={styles.courseBody}>
+                  <h3 className={styles.courseTitle}>{course.title}</h3>
+                  <p className={styles.courseDesc}>{course.description}</p>
+                  <div className={styles.tagRow}>
+                    {course.topic && (
+                      <span className={styles.tag}>{course.topic}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
 
         {/* 즐겨찾기 코스 */}
@@ -234,31 +262,37 @@ export default function Home() {
             />
           </div>
 
-          {savedCourseList.map((course) => (
-            <div
-              key={course.id ?? course.title}
-              className={`${styles.courseCard} ${styles.clickable}`}
-              onClick={() =>
-                goToPrepare(course.id ?? course.title, { from: "home-saved" })
-              }
-            >
-              <img
-                className={styles.courseThumb}
-                src={course.thumbnailUrl ?? "/sample-news.png"}
-                alt=""
-              />
-              <div className={styles.courseBody}>
-                <h3 className={styles.courseTitle}>{course.title}</h3>
-                <div className={styles.tagRow}>
-                  {(course.tags ?? []).map((t: string, i: number) => (
-                    <span key={i} className={styles.tag}>
-                      {t}
-                    </span>
-                  ))}
+          {savedCourseList.map((course) => {
+            const id = getCourseId(course);
+            return (
+              <div
+                key={id ?? course.title}
+                className={`${styles.courseCard} ${styles.clickable}`}
+                onClick={() => {
+                  if (id == null) {
+                    console.warn("[HOME] saved course id 없음", course);
+                    return;
+                  }
+                  goToDetail(String(id), { from: "home-saved" });
+                }}
+              >
+                <img
+                  className={styles.courseThumb}
+                  src={course.thumbnailUrl ?? "/sample-news.png"}
+                  alt=""
+                />
+                <div className={styles.courseBody}>
+                  <h3 className={styles.courseTitle}>{course.title}</h3>
+                  <p className={styles.courseDesc}>{course.description}</p>
+                  <div className={styles.tagRow}>
+                    {course.topic && (
+                      <span className={styles.tag}>{course.topic}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
 
         <div className={styles.bottomSpace} />

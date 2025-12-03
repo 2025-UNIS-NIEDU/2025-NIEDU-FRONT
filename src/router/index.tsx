@@ -14,7 +14,7 @@ import LoginSuccess from "@/pages/LoginSuccess";
 import StepRunner from "@/pages/article/session/StepRunner";
 import EduResult from "@/components/edu/EduResult";
 import ArticleDetail from "@/pages/ArticleDetail/ArticleDetail";
-
+import MyPage from "@/pages/MyPage/MyPage";
 export default function AppRouter() {
   return (
     <Routes>
@@ -32,7 +32,9 @@ export default function AppRouter() {
      <Route path="/login/success" element={<LoginSuccess />} />
        <Route path="/nie/session/:sessionId/step/:stepId" element={<StepRunner />}  />
        <Route path="/nie/session/N/result" element={<EduResult />} />
+       <Route path="/nie/session/I/result" element={<EduResult />} />
        <Route path="/article/:articleId" element={<ArticleDetail />} />
+       <Route path="/mypage" element={<MyPage />} />
     </Routes>
   );
 }

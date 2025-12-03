@@ -9,7 +9,7 @@
   justify-content: center;
   align-items: stretch;
 
-  background: #615959;
+ background: #eef0f4;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
@@ -100,7 +100,7 @@ line-height: 150%; /* 25.5px */
 .optionSelected {
   border-radius: 20px;
 border: 2px solid var(--blue2_fill, #6088F8);
-background: var(--blue2_fill, linear-gradient(90deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%));
+background: var(--blue2_fill, linear-gradient(80deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%));
   color: #ffffff;
 }
 .optionSelected .optionLabel {
@@ -156,7 +156,8 @@ box-shadow: 0 0 2px 0 rgba(114, 114, 114, 0.50);
   /* 컨테이너 패딩만큼 양옆을 빼서 전체 화면 꽉 채우기 */
   margin: 84px -20px 0;
   padding: 20px 20px 32px;
-  height: 500px;
+  margin-top: 250px;
+  height: 300px;
 
   background: linear-gradient(180deg, #b9d5ff 0%, #7fa9ff 100%);
   border-radius: 24px 24px 0 0; /* 위쪽만 둥글게, 아래는 0 */

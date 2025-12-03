@@ -1,9 +1,11 @@
-// pages/article/session/I/StepI003.tsx
+// src/pages/article/session/I/StepI003.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import { submitStepAnswer } from "@/lib/apiClient";
 import styles from "./StepI003.module.css";
+
+import iPackage from "@/data/economy_2025-11-24_package.json";
 
 type Props = { articleId?: string; articleUrl?: string };
 
@@ -13,23 +15,71 @@ type RouteState = {
   courseId?: string;
   sessionId?: string;
   stepId?: number;
-  // 필요하면 stepMeta 타입 지정해서 써도 됨 (지금은 any로 처리)
   stepMeta?: any;
+};
+
+type QuizItem = {
+  contentId: number;
+  question: string;
+  options: {
+    label: string;
+    text: string;
+  }[];
+  correctAnswer: string;
+  answerExplanation: string;
 };
 
 type StepI003Content = {
   sourceUrl: string;
-  contents: {
-    contentId: number;
-    question: string;
-    options: {
-      label: string; // "A" | "B" | "C" | "D"
-      text: string;
-    }[];
-    correctAnswer: string; // "A" | "B" | "C" | "D"
-    answerExplanation: string;
-  }[];
+  contents: QuizItem[];
 };
+
+const CONTENT_TYPE = "MULTIPLE_CHOICE";
+
+// 🔍 JSON 어디에 있든 contentType === "MULTIPLE_CHOICE" 인 블록 찾아오기
+function findMultipleChoice(node: any): StepI003Content | undefined {
+  if (!node) return undefined;
+
+  // 1) 배열이면 각 요소 순회
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findMultipleChoice(item);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  // 2) 객체이면 우선 자기 자신 검사
+  if (typeof node === "object") {
+    if (
+      node.contentType === "MULTIPLE_CHOICE" &&
+      Array.isArray(node.contents)
+    ) {
+      const sourceUrl =
+        node.sourceUrl ??
+        node.contents[0]?.sourceUrl ??
+        "";
+
+      return {
+        sourceUrl,
+        contents: node.contents as QuizItem[],
+      };
+    }
+
+    // 3) 프로퍼티들 안으로 재귀
+    for (const key of Object.keys(node)) {
+      const value = (node as any)[key];
+      const found = findMultipleChoice(value);
+      if (found) return found;
+    }
+  }
+
+  return undefined;
+}
+
+// JSON 전체에서 한 번만 찾아서 캐싱
+const MULTIPLE_FROM_PACKAGE: StepI003Content | undefined =
+  findMultipleChoice(iPackage as any);
 
 export default function StepI003({ articleId, articleUrl }: Props) {
   const nav = useNavigate();
@@ -47,30 +97,33 @@ export default function StepI003({ articleId, articleUrl }: Props) {
   const aId = sArticleId ?? articleId;
   const aUrl = sArticleUrl ?? articleUrl;
 
-  const [quizzes, setQuizzes] = useState<StepI003Content["contents"]>([]);
+  const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
 
   const [index, setIndex] = useState(0);
-  const [choiceLabel, setChoiceLabel] = useState<string | null>(null); // "A" | "B" ...
+  const [choiceLabel, setChoiceLabel] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
-  const CONTENT_TYPE = "MULTIPLE_CHOICE";
-
-  // 🔹 백엔드 stepMeta.content 로부터 문제 세팅
   useEffect(() => {
-    const content = stepMeta?.content as StepI003Content | undefined;
+    // 1순위: 백엔드 stepMeta.content
+    const fromMeta = stepMeta?.content as StepI003Content | undefined;
+    const content = fromMeta ?? MULTIPLE_FROM_PACKAGE;
 
     if (content && Array.isArray(content.contents)) {
       setQuizzes(content.contents);
       setSourceUrl(content.sourceUrl || null);
     } else {
-      console.warn("StepI003: stepMeta.content 가 비어있어요.", stepMeta);
+      console.warn("StepI003: MULTIPLE_CHOICE 데이터를 찾을 수 없음", {
+        stepMeta,
+        MULTIPLE_FROM_PACKAGE,
+        rawPkg: iPackage,
+      });
     }
   }, [stepMeta]);
 
   const q = quizzes[index];
   const total = quizzes.length;
-  const isCorrect = choiceLabel === q?.correctAnswer;
+  const isCorrect = q && choiceLabel === q.correctAnswer;
 
   const selectOption = (label: string) => {
     if (confirmed) return;
@@ -82,7 +135,6 @@ export default function StepI003({ articleId, articleUrl }: Props) {
     setConfirmed(true);
   };
 
-  // 🔹 userAnswer = [{ contentId, value }] 형식으로 저장
   const sendAnswer = async () => {
     if (!courseId || !sessionId || !stepId || !q) {
       console.warn("StepI003: courseId/sessionId/stepId/q 없음 → API 스킵");
@@ -92,7 +144,7 @@ export default function StepI003({ articleId, articleUrl }: Props) {
     const userAnswer = [
       {
         contentId: q.contentId,
-        value: choiceLabel, // "A" | "B" | "C" | "D"
+        value: choiceLabel,
       },
     ];
 
@@ -110,7 +162,6 @@ export default function StepI003({ articleId, articleUrl }: Props) {
   };
 
   const nextProblem = async () => {
-    // 현재 문제 답안 저장
     await sendAnswer();
 
     if (index < total - 1) {
@@ -120,23 +171,22 @@ export default function StepI003({ articleId, articleUrl }: Props) {
       return;
     }
 
-    // 마지막 문제 → I004로 이동
-    nav("/nie/session/I/step/004", {
-      state: {
-        articleId: aId,
-        articleUrl: aUrl,
-        courseId,
-        sessionId,
-        // 필요하면 여기서 stepMeta(I004용)도 같이 넘겨줄 수 있음
-      },
-    });
+nav("/nie/session/I/step/004", {
+  state: {
+    level: "I",          // ✅ 요거 추가
+    articleId: aId,
+    articleUrl: aUrl,
+    courseId,
+    sessionId,
+  },
+});
+
   };
 
-  const goPrev = () => {
-    nav(-1);
-  };
+  const goPrev = () => nav(-1);
 
   if (!q) {
+    // JSON 탐색 실패했을 때 여기 걸림
     return <div className={styles.loading}>불러오는 중…</div>;
   }
 

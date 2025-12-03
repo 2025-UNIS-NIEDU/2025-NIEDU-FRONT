@@ -11,7 +11,7 @@
   justify-content: center;
   align-items: stretch;
 
-  background: #615959;
+  background: #eef0f4;
 
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -30,7 +30,7 @@
   min-height: 150%;
 
   margin: 0 auto;
-  background: #ffffff;
+ background:#f6f7fb;
   box-sizing: border-box;
 
   padding: 16px 20px;
@@ -76,8 +76,8 @@
 /* ===== 요약 카드 ===== */
 
 .summaryCard {
-  background: #f6f7fb;
-  border-radius: 16px;
+ border-radius: 20px;
+background: #EEEEF2;
   padding: 16px;
 }
 
@@ -101,7 +101,7 @@ font-weight: 500;
 .keyword {
   cursor: pointer;
   border-radius: 999px;
-  padding: 4px 8px;
+  padding: 6px 10px;
   margin: 0 1px;
 
   background: #ffffff;

@@ -1,31 +1,29 @@
-// pages/article/session/n/StepN005.tsx
+// src/pages/article/session/N/StepN005.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN005.module.css";
+
+// 🔹 mock JSON (economy 패키지)
+import economyPackage from "@/data/economy_2025-11-24_package.json";
 
 type Props = { articleId?: string; articleUrl?: string };
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
-  startTime?: number; // ⭐ StepN001에서 넘어온 전체 세션 시작 시간
+  startTime?: number; // StepN001에서 넘어온 전체 세션 시작 시간
+  courseId?: string;
+  sessionId?: string;
+  level?: "N" | "E" | "I";
 };
-type StepN005Content = {
-  sourceUrl: string;
-  contents: {
-    contentId: number;
-    question: string;
-    options: { label: string; text: string }[];
-    correctAnswer: string; // "A"~"D"
-    answerExplanation: string;
-  }[];
-};
+
+// JSON에서 뽑아온 뒤 화면에서 쓸 타입
 type QuizItem = {
   id: number;
   question: string;
   options: string[];
-  answerIndex: number; // 0~3
+  answerIndex: number; // 0~3 (A~D)
   explanation: string;
 };
 
@@ -38,59 +36,76 @@ export default function StepN005({ articleId, articleUrl }: Props) {
   const aId = state.articleId ?? articleId;
   const aUrl = state.articleUrl ?? articleUrl;
   const startTime = state.startTime;
+  const courseId = state.courseId;
+  const sessionId = state.sessionId;
 
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [index, setIndex] = useState(0);
   const [choice, setChoice] = useState<number | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // 더미 데이터 (나중에 API 연동)
+  // 🔹 economy JSON → N단계, stepOrder 5, MULTIPLE_CHOICE 문제로 파싱
   useEffect(() => {
-    const dummy: QuizItem[] = [
-      {
-        id: 1,
-        question: "이재명 대통령과 웡 총리가 만난 장소는 어디인가요?",
-        options: ["용산 대통령실", "청와대", "싱가포르", "국회"],
-        answerIndex: 0,
-        explanation:
-          "이재명 대통령과 웡 총리는 한국 용산 대통령실에서 정상회담을 가졌습니다.",
-      },
-      {
-        id: 2,
-        question: "정상회담에서 두 나라가 새로 수립한 관계는 무엇인가요?",
-        options: ["전략적 동반자 관계", "군사 동맹", "경제 통합체", "환경 협력 파트너"],
-        answerIndex: 0,
-        explanation:
-          "양국은 이번 정상회담을 통해 ‘전략적 동반자 관계’를 공식적으로 수립했습니다.",
-      },
-      {
-        id: 3,
-        question: "정상회담이 열린 해는 언제인가요?",
-        options: ["2021년", "2022년", "2023년", "2024년"],
-        answerIndex: 2,
-        explanation:
-          "해당 기사 내용은 2023년 10월 2일에 열린 한·싱가포르 정상회담을 다루고 있습니다.",
-      },
-      {
-        id: 4,
-        question: "정상회담에서 특히 강화하기로 한 분야가 아닌 것은?",
-        options: ["경제 협력", "안보 협력", "우주 탐사 협력", "첨단 산업 협력"],
-        answerIndex: 2,
-        explanation:
-          "기사는 경제·안보·첨단 산업 등 실질 협력 강화를 다루며, 우주 탐사 협력은 언급되지 않습니다.",
-      },
-      {
-        id: 5,
-        question: "수교 몇 주년을 계기로 관계 강화를 논의했나요?",
-        options: ["10주년", "25주년", "50주년", "70주년"],
-        answerIndex: 2,
-        explanation:
-          "올해는 한국과 싱가포르 수교 50주년으로, 이를 계기로 양국 관계 강화를 논의했습니다.",
-      },
-    ];
+    setLoading(true);
 
-    setQuizzes(dummy);
-  }, []);
+    try {
+      const pkg: any = economyPackage;
+
+      const course =
+        pkg.courses?.find(
+          (c: any) =>
+            String(c.courseId) === String(courseId ?? aId ?? 1)
+        ) ?? pkg.courses?.[0];
+
+      const session =
+        course?.sessions?.find(
+          (s: any) =>
+            String(s.sessionId) === String(sessionId ?? 1)
+        ) ?? course?.sessions?.[0];
+
+      const quizN = session?.quizzes?.find(
+        (q: any) => q.level === "N"
+      );
+
+      const step5 = quizN?.steps?.find(
+        (s: any) =>
+          s.stepOrder === 5 && s.contentType === "MULTIPLE_CHOICE"
+      );
+
+      if (step5 && Array.isArray(step5.contents)) {
+        const mapped: QuizItem[] = step5.contents.map((c: any) => ({
+          id: c.contentId,
+          question: c.question,
+          options: (c.options ?? []).map(
+            (o: any) => o.text as string
+          ),
+          // "A" → 0, "B" → 1 ...
+          answerIndex: Math.max(
+            0,
+            (c.correctAnswer?.charCodeAt(0) ?? 65) - 65
+          ),
+          explanation: c.answerExplanation,
+        }));
+
+        setQuizzes(mapped);
+      } else {
+        console.warn(
+          "[StepN005] mock JSON에서 MULTIPLE_CHOICE(stepOrder=5)를 찾지 못했어요.",
+          { course, session, quizN, step5 }
+        );
+        setQuizzes([]);
+      }
+    } catch (e) {
+      console.error("[StepN005] mock JSON 파싱 실패:", e);
+      setQuizzes([]);
+    }
+
+    setIndex(0);
+    setChoice(null);
+    setConfirmed(false);
+    setLoading(false);
+  }, [aId, courseId, sessionId]);
 
   const q = quizzes[index];
   const total = quizzes.length;
@@ -124,8 +139,8 @@ export default function StepN005({ articleId, articleUrl }: Props) {
 
       nav("/nie/session/N/result", {
         state: {
-          streak: 2,       // 일단 더미 값 (나중에 진짜 연속일수로 교체)
-          durationLabel,   // ⭐ 결과 화면에서 보여줄 "6분 2초" 형식 문자열
+          streak: 2, // 일단 더미 값 (나중에 진짜 연속일수로 교체)
+          durationLabel,
         },
       });
     }
@@ -133,12 +148,23 @@ export default function StepN005({ articleId, articleUrl }: Props) {
 
   const goPrev = () => {
     nav("/nie/session/N/step/004", {
-      state: { articleId: aId, articleUrl: aUrl, startTime },
+      state: {
+        articleId: aId,
+        articleUrl: aUrl,
+        startTime,
+        courseId,
+        sessionId,
+        level: "N",
+      },
     });
   };
 
-  if (!q) {
+  if (loading) {
     return <div className={styles.loading}>불러오는 중…</div>;
+  }
+
+  if (!q) {
+    return <div className={styles.loading}>퀴즈가 준비되지 않았어요.</div>;
   }
 
   const isCorrect = choice !== null && choice === q.answerIndex;
@@ -146,7 +172,7 @@ export default function StepN005({ articleId, articleUrl }: Props) {
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행바: 5문제 기준 */}
+        {/* 진행바 */}
         <div className={styles.progressWrap}>
           <div
             className={styles.progress}
@@ -213,13 +239,12 @@ export default function StepN005({ articleId, articleUrl }: Props) {
                 정답: {String.fromCharCode(65 + q.answerIndex)}
               </span>
 
-              {/* 항상 노출, URL 없으면 disabled */}
               <button
                 className={styles.sourceBtn}
+                type="button"
                 onClick={() => {
                   if (aUrl) window.open(aUrl, "_blank");
                 }}
-                type="button"
                 disabled={!aUrl}
               >
                 뉴스 원문 보기

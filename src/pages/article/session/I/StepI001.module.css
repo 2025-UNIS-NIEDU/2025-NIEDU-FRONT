@@ -8,8 +8,7 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
-
-  background: #615959;
+background: #eef0f4;
 
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -46,6 +45,7 @@
 }
 
 .heading {
+  margin-top: 40px;
   font-size: 22px;
   font-weight: 700;
   color: #111111;
@@ -115,13 +115,16 @@
   width: 100%;
   max-width: 320px;
   height: 56px;
-  border-radius: 999px;
-  border: none;
+  border-radius: 28px;
+border: 1px solid var(--white1_stroke, #FFF);
+background: var(--blue2_fill, linear-gradient(90deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%));
+
+/* 3 */
+box-shadow: 0 0 2px 0 rgba(114, 114, 114, 0.50);
   outline: none;
   font-size: 16px;
   font-weight: 600;
   color: #ffffff;
   cursor: pointer;
-  background: linear-gradient(90deg, #5f8cff 0%, #7bb2ff 100%);
-  box-shadow: 0 10px 20px rgba(49, 130, 246, 0.35);
+ 
 }

@@ -1,11 +1,11 @@
+// src/pages/article/ArticlePrepare.tsx
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
 import styles from "./ArticlePrepare.module.css";
 
-type Level = { code: "N" | "E" | "I"; name: string };
+type Level = { code: "N" | "I" | "E"; name: string };
 
-// 백엔드에서 내려주는 step 메타 타입 (필요한 최소만 정의)
 export type StepMeta = {
   stepId: number;
   stepOrder: number;
@@ -16,21 +16,28 @@ export type StepMeta = {
   isCorrect?: { contentId: number; isCorrect: boolean }[];
 };
 
+type PrepareLocationState = {
+  articleTitle?: string;
+  sessionId?: number;
+};
+
 export default function ArticlePrepare() {
-  // ⚠️ articleId = courseId, sessionId는 라우트에 추가되어 있다고 가정
-  const { articleId, sessionId } = useParams<{
-    articleId: string;
-    sessionId: string;
-  }>();
+  // URL에는 articleId만 있음
+  const { articleId } = useParams<{ articleId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { articleTitle, sessionId } =
+    (location.state as PrepareLocationState) || {};
 
   const [title] = useState(
-    "“한-싱가포르 정상회담…\n'전략적 동반자 관계' 수립”"
+    articleTitle ?? "제목 없는 기사" // ✅ 넘어온 제목 or 기본값
   );
+
   const [levels] = useState<Level[]>([
     { code: "N", name: "N단계" },
-    { code: "E", name: "E단계" },
+    
     { code: "I", name: "I단계" },
+    { code: "E", name: "E단계" },
   ]);
   const [level, setLevel] = useState<Level | null>(null);
   const [open, setOpen] = useState(false);
@@ -58,9 +65,27 @@ export default function ArticlePrepare() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
 
-  // ✅ startSession — 백엔드 세션 시작 API 호출
+  // ✅ 세션 시작
   const startSession = async () => {
-    if (!level || !articleId || !sessionId) return;
+    if (!level || !articleId) {
+      setErrorMsg("필수 정보가 부족해요.");
+      return;
+    }
+
+    // 세션 id 없으면 일단 StepRunner로만 보내기 (API 없이)
+    if (!sessionId) {
+      navigate(`/nie/session/${level.code}/step/1`, {
+        state: {
+          articleId,
+          sessionId: null,
+          level: level.code,
+          steps: [] as StepMeta[],
+          progress: 0,
+        },
+        replace: true,
+      });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -73,9 +98,9 @@ export default function ArticlePrepare() {
           headers: {
             "Content-Type": "application/json",
           },
-          credentials: "include", // Cookie: accessToken 자동 포함
+          credentials: "include",
           body: JSON.stringify({
-            level: level.code, // "N" | "E" | "I"
+            level: level.code,
           }),
         }
       );
@@ -93,8 +118,6 @@ export default function ArticlePrepare() {
       }: { entryStepId: number; steps: StepMeta[]; progress: number } =
         json.data;
 
-      // 👉 StepRunner 로 이동 (첫 스텝으로)
-      // stepId는 백엔드의 entryStepId 를 그대로 사용
       navigate(`/nie/session/${level.code}/step/${entryStepId}`, {
         state: {
           articleId,
@@ -189,7 +212,6 @@ export default function ArticlePrepare() {
         <div className={styles.bottomSpace} />
       </div>
 
-      {/* 하단 탭: 항상 '학습' 활성 */}
       <BottomNav activeTab="learn" />
     </div>
   );

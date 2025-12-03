@@ -1,5 +1,4 @@
 :root {
-  /* 앱 최대 폭(이미 전역에서 쓰고 있으면 그 값 사용됨) */
   --app-max-width: 700px;
 }
 
@@ -9,10 +8,10 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 1000;
-  background: transparent; /* 모서리 둥근 바만 보이도록 */
+  background: transparent;
 }
 
-/* 내부 바: 중앙 정렬 + 반응형 높이/패딩 */
+/* 내부 바 */
 .bar {
   margin: 0 auto;
   max-width: var(--app-max-width);
@@ -22,43 +21,60 @@
   justify-content: space-around;
   align-items: center;
 
-  /* 56~78px 사이에서 반응 (폰 작은/큰 기기 대응) */
   height: clamp(56px, 8.5vh, 78px);
-
   padding: 0 clamp(12px, 4vw, 20px);
-  padding-bottom: max(6px, env(safe-area-inset-bottom)); /* iOS 홈바 회피 */
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
 
   background: linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%);
-  border-radius: 16px 16px 16px 16px;
-  box-shadow: 0 -1px 6px rgba(0,0,0,0.08), 0 -8px 24px rgba(0,0,0,0.06);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -1px 6px rgba(0, 0, 0, 0.08),
+    0 -8px 24px rgba(0, 0, 0, 0.06);
 }
 
-/* 탭 공통(터치 타겟 확보) */
-.nav a {
+/* 링크 공통 */
+.link {
   display: flex;
   align-items: center;
   justify-content: center;
-
-  /* 탭 영역 자체도 반응형 */
-  width: clamp(48px, 12vw, 72px);
-  height: clamp(42px, 10vw, 64px);
-  border-radius: 12px;
+  text-decoration: none;
+  width: clamp(60px, 18vw, 90px);
 }
 
-/* 아이콘 반응형 크기 */
+/* 아이콘 + 텍스트 묶음 */
+.tabItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 아이콘 크기 통일 */
 .icon {
-  width: clamp(40px, 5.5vw, 28px);
-  height: auto;
+  width: 26px;
+  height: 26px;
 }
 
-/* 상태 */
+/* 텍스트 스타일 */
+.labelActive {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3a63ff; /* 파란색 (스크린샷 느낌) */
+}
+
+.labelInactive {
+  font-size: 11px;
+  font-weight: 400;
+  color: #9699a5;
+}
+
+/* 상태별 효과 (아이콘 살짝 확대) */
 .inactive img {
   opacity: 0.6;
-  transition: transform .2s, opacity .2s;
+  transition: transform 0.2s, opacity 0.2s;
 }
 
 .active img {
   opacity: 1;
   transform: scale(1.06);
-  transition: transform .2s, opacity .2s;
+  transition: transform 0.2s, opacity 0.2s;
 }
