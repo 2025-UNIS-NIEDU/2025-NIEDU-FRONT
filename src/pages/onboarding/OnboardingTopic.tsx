@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OnboardingTopic.module.css";
-import { apiFetch } from "@/lib/apiClient";
+//import { apiFetch } from "@/lib/apiClient";
 
 // 🔹 노출 키워드 (한글)
 const ALL_TOPICS = ["정치", "경제", "사회", "국제"];
@@ -34,27 +34,7 @@ export default function OnboardingTopic() {
     }
 
     // ✅ 토픽 API 호출 (선택된 키워드 → 코드 배열로 변환)
-    (async () => {
-      try {
-        const topicCodes = selected.map(
-          (t) => TOPIC_CODE_MAP[t as keyof typeof TOPIC_CODE_MAP]
-        );
-
-        await apiFetch("/api/onboard/topics", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ topics: topicCodes }),
-        });
-      } catch (e) {
-        console.error("토픽 API 호출 실패:", e);
-        // 실패하더라도 온보딩 흐름은 계속 진행
-      } finally {
-        nav("/onboarding/alarm", { state: { topics: selected } });
-      }
-    })();
-  };
+  }
 
   return (
     <div className={styles.viewport}>
