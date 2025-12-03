@@ -39,7 +39,7 @@ export default function OnboardingTopic() {
     console.log("[OnboardingTopic] selected topics:", topicCodes);
 
     // ✅ 다음 화면으로 이동 (예: 홈 화면)
-    nav("/home", {
+    nav("/onboarding/alarm", {
       state: {
         topics: topicCodes,
       },
