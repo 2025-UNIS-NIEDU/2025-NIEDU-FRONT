@@ -4,13 +4,11 @@ import { useNavigate } from "react-router-dom";
 import styles from "./Learn.module.css";
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
 import { useGoToDetail } from "@/hooks/useGoToDetail";
-import { apiFetch } from "@/lib/apiClient";
-import { getCourses } from "@/lib/mockCourseApi";
+import { getCourses, type MockCourse } from "@/lib/mockCourseApi";
 
 export type Category = "정치" | "경제" | "사회" | "문화";
 
-// 서버에서 내려주는 코스 타입
-// ⚠️ 백엔드는 id 로 내려주고, 나중에 courseId 로 바뀔 수도 있으니까 둘 다 여유 있게 둠
+// 서버에서 내려주는 코스 타입(백엔드 연동 시 그대로 재사용 예정)
 export type ApiCourse = {
   id?: number;
   courseId?: number;
@@ -19,14 +17,6 @@ export type ApiCourse = {
   description?: string | null;
   topic?: string | null;
   subTopic?: string | null;
-};
-
-// 백엔드 공통 응답 타입
-type CoursesResponse = {
-  success: boolean;
-  status: number;
-  message: string;
-  data: ApiCourse[];
 };
 
 export const CATEGORIES: Category[] = ["정치", "경제", "사회", "문화"];
@@ -39,29 +29,16 @@ const TOPIC_QUERY_MAP: Record<Category, string> = {
   문화: "world", // 필요하면 "culture" 로 변경
 };
 
-type FetchCoursesParams = {
-  type: "recent" | "popular" | "custom" | "new";
-  view: "preview" | "detail";
-  topic?: string;
-  page?: number;
-};
-
-// 🔹 공통 fetch 함수 (apiFetch 사용)
-async function fetchCourses(params: FetchCoursesParams): Promise<ApiCourse[]> {
-  const search = new URLSearchParams({
-    type: params.type,
-    view: params.view,
-  });
-
-  if (params.topic) search.set("topic", params.topic);
-  if (params.page) search.set("page", String(params.page));
-
-  const path = `/api/edu/courses?${search.toString()}`;
-  console.log("[fetchCourses]", path);
-
-  const json = await apiFetch<CoursesResponse>(path);
-  return json.data;
-}
+// 🔹 mockCourseApi → ApiCourse 형태로 맞춰주는 헬퍼
+const toApiCourse = (c: MockCourse): ApiCourse => ({
+  id: c.id,
+  courseId: c.courseId,
+  thumbnailUrl: c.thumbnailUrl,
+  title: c.title,
+  description: c.description,
+  topic: c.topic,
+  subTopic: c.subTopic,
+});
 
 export default function Learn() {
   const navigate = useNavigate();
@@ -78,51 +55,50 @@ export default function Learn() {
   const [loadingOthers, setLoadingOthers] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ✅ 선택된 토픽이 바뀔 때마다 "최신 토픽별 세션" 호출
+  // ✅ 선택된 토픽이 바뀔 때마다 "최신 토픽별 세션" – 지금은 mock 데이터에서만 가져옴
   useEffect(() => {
     const topicParam = TOPIC_QUERY_MAP[active];
 
     setLoadingLatest(true);
     setErrorMsg(null);
 
-    fetchCourses({ type: "recent", view: "preview", topic: topicParam })
-      .then((data) => setLatestByTopic(data.slice(0, 3)))
-      .catch((err: any) => {
-        console.error(err);
-        setErrorMsg(
-          err.message ?? "최신 토픽별 세션 로딩 중 오류가 발생했어요."
-        );
-        if (err.status === 401) {
-          navigate("/login");
-        }
-      })
-      .finally(() => setLoadingLatest(false));
-  }, [active, navigate]);
+    try {
+      const list = getCourses({
+        type: "recent",
+        view: "preview",
+        topic: topicParam,
+      });
+      setLatestByTopic(list.slice(0, 3).map(toApiCourse));
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(
+        err?.message ?? "최신 토픽별 세션 로딩 중 오류가 발생했어요."
+      );
+    } finally {
+      setLoadingLatest(false);
+    }
+  }, [active]);
 
-  // ✅ 인기 / 맞춤 / 새로운 코스는 첫 마운트에 한 번만 불러오기
+  // ✅ 인기 / 맞춤 / 새로운 코스 – 첫 마운트에 mock 데이터 한 번만 세팅
   useEffect(() => {
     setLoadingOthers(true);
     setErrorMsg(null);
 
-    Promise.all([
-      fetchCourses({ type: "popular", view: "preview" }),
-      fetchCourses({ type: "custom", view: "preview" }),
-      fetchCourses({ type: "new", view: "preview" }),
-    ])
-      .then(([popularData, customData, newData]) => {
-        setPopular(popularData);
-        setPersonalized(customData);
-        setNews(newData);
-      })
-      .catch((err: any) => {
-        console.error(err);
-        setErrorMsg(err.message ?? "코스 리스트 로딩 중 오류가 발생했어요.");
-        if (err.status === 401) {
-          navigate("/login");
-        }
-      })
-      .finally(() => setLoadingOthers(false));
-  }, [navigate]);
+    try {
+      const popularData = getCourses({ type: "popular", view: "preview" });
+      const customData = getCourses({ type: "custom", view: "preview" });
+      const newData = getCourses({ type: "new", view: "preview" });
+
+      setPopular(popularData.map(toApiCourse));
+      setPersonalized(customData.map(toApiCourse));
+      setNews(newData.map(toApiCourse));
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err?.message ?? "코스 리스트 로딩 중 오류가 발생했어요.");
+    } finally {
+      setLoadingOthers(false);
+    }
+  }, []);
 
   const latest3 = useMemo(() => latestByTopic.slice(0, 3), [latestByTopic]);
 
