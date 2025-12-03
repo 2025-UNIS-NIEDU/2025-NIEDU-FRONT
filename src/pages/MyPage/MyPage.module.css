@@ -4,7 +4,7 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
-  background: #615959;
+  background: #eef0f4;
   overflow-y: auto;          /* 🔹 전체 스크롤 가능 */
 }
 
