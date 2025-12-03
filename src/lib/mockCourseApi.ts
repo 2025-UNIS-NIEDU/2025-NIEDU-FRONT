@@ -14,7 +14,7 @@ type RawCourse = RawCourseBase & {
 };
 
 export type MockCourse = {
-  id: number;          // 프론트에서 쓰는 id
+  id: number;          // 프론트에서 쓰는 id (라우터 param 등)
   courseId: number;    // 백엔드 courseId랑 맞춰서 쓰고 싶으면 이걸 사용
   thumbnailUrl: string;
   title: string;
@@ -35,10 +35,17 @@ export type MockSession = {
 // JSON → 프론트용 코스 형태로 1번만 변환
 const RAW_COURSES: RawCourse[] = (economyPackage.courses ?? []) as RawCourse[];
 
+// 🔹 혹시 courses 자체가 비어 있어도 앱이 안 터지게 방어
+if (!RAW_COURSES.length) {
+  console.warn("[mockCourseApi] JSON 안에 courses가 비어있어요.", economyPackage);
+}
+
 const ALL_COURSES: MockCourse[] = RAW_COURSES.map((c, idx) => {
   const firstSessionThumb = c.sessions?.[0]?.thumbnailUrl ?? "";
 
   return {
+    // id / courseId 둘 다 courseId 기준으로 맞추고,
+    // 혹시 courseId가 없으면 idx+1 로라도 고정
     id: c.courseId ?? idx + 1,
     courseId: c.courseId ?? idx + 1,
     thumbnailUrl: c.thumbnailUrl ?? firstSessionThumb, // ✅ 없으면 세션 썸네일로 대체
@@ -85,10 +92,24 @@ export function getCourses(params?: GetCoursesParams): MockCourse[] {
 
 /**
  * 단일 코스 + 세션 리스트 조회 (ArticleDetail에서 사용)
+ *
+ * - courseId 매칭이 안 되면 첫 번째 코스로 fallback
+ * - dev/prod 어디서든 최소 1개는 뜨게 보장
  */
 export function getCourseDetail(courseId: number) {
-  const course = RAW_COURSES.find((c) => c.courseId === courseId);
-  if (!course) return null;
+  // 🔹 숫자/문자열 섞여도 매칭되게 String 비교
+  let course =
+    RAW_COURSES.find(
+      (c) => String(c.courseId) === String(courseId)
+    ) ?? RAW_COURSES[0];
+
+  if (!course) {
+    console.warn("[mockCourseApi] course를 찾지 못했고, fallback도 없어요.", {
+      requestedCourseId: courseId,
+      RAW_COURSES,
+    });
+    return null;
+  }
 
   const firstSessionThumb = course.sessions?.[0]?.thumbnailUrl ?? "";
 
