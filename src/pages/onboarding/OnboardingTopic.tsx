@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OnboardingTopic.module.css";
-//import { apiFetch } from "@/lib/apiClient";
 
 // 🔹 노출 키워드 (한글)
 const ALL_TOPICS = ["정치", "경제", "사회", "국제"];
@@ -21,7 +20,7 @@ export default function OnboardingTopic() {
   const [error, setError] = useState("");
 
   const toggle = (t: string) => {
-    setError(""); // 사용자가 조작하면 에러 초기화
+    setError("");
     setSelected((prev) =>
       prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
     );
@@ -33,8 +32,19 @@ export default function OnboardingTopic() {
       return;
     }
 
-    // ✅ 토픽 API 호출 (선택된 키워드 → 코드 배열로 변환)
-  }
+    // ✅ 선택한 토픽을 코드 배열로 변환
+    const topicCodes = selected.map((t) => TOPIC_CODE_MAP[t as keyof typeof TOPIC_CODE_MAP]);
+
+    // TODO: 나중에 여기서 실제 API 호출
+    console.log("[OnboardingTopic] selected topics:", topicCodes);
+
+    // ✅ 다음 화면으로 이동 (예: 홈 화면)
+    nav("/home", {
+      state: {
+        topics: topicCodes,
+      },
+    });
+  };
 
   return (
     <div className={styles.viewport}>
@@ -69,7 +79,6 @@ export default function OnboardingTopic() {
           })}
         </div>
 
-        {/* 🔻 에러가 있을 때만 표시 */}
         {error && (
           <div
             className={`${styles.noticeBox} ${styles.noticeError}`}
