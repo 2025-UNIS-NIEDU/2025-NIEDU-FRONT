@@ -1,3 +1,4 @@
+// src/pages/Home/Home.tsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Home.module.css";
@@ -5,10 +6,12 @@ import BottomNav from "../onboarding/components/BottomNav/BottomNav";
 import NewsCard from "../onboarding/components/NewsCard/NewsCard";
 import { useGoToDetail } from "@/hooks/useGoToDetail";
 
-import { apiFetch } from "@/lib/apiClient";
 import type { ApiResponse } from "@/types/api";
 import api from "@/api/axiosInstance";
 import { getCourses } from "@/lib/mockCourseApi";
+
+// 🔹 dev / prod 구분 (Vite)
+const IS_DEV = import.meta.env.DEV;
 
 // 🔹 /api/user/me 응답 타입
 type UserProfile = {
@@ -43,6 +46,22 @@ type HomeCourse = {
 // 공통 id 추출
 const getCourseId = (c: HomeCourse) => c.courseId ?? c.id;
 
+// ⭐ 배포용 오늘자 뉴스 더미
+const MOCK_TODAY_NEWS: TodayNewsItem[] = [
+  {
+    thumbnailUrl: "/sample-news.png",
+    title: "국민연금과 환율, 협력의 경제학",
+    publisher: "NIEdu Lab",
+    topic: "경제",
+  },
+  {
+    thumbnailUrl: "/sample-news.png",
+    title: "환율 변동 속, 국민연금 해외투자 이슈",
+    publisher: "NIEdu Lab",
+    topic: "경제",
+  },
+];
+
 export default function Home() {
   const navigate = useNavigate();
   const goToDetail = useGoToDetail();
@@ -53,8 +72,17 @@ export default function Home() {
   const [recentCourses, setRecentCourses] = useState<HomeCourse[] | null>(null);
   const [savedCourses, setSavedCourses] = useState<HomeCourse[] | null>(null);
 
-  // 🔹 회원 정보 조회 (/api/user/me)
+  // 🔹 회원 정보 조회
   const fetchUserProfile = async () => {
+    // ⭐ 배포(Vercel)에서는 더미로만 세팅
+    if (!IS_DEV) {
+      setUser({
+        nickname: "이화연",
+        profileImageUrl: "",
+      });
+      return;
+    }
+
     try {
       const res = await api.get<ApiResponse<UserProfile>>("/api/user/me");
       console.log("[HOME] user me:", res.data);
@@ -70,17 +98,22 @@ export default function Home() {
     }
   };
 
-  // 🔥 출석 스트릭 (/api/attendance/streak)
+  // 🔥 출석 스트릭
   const fetchStreak = async () => {
+    // ⭐ 배포에서는 네트워크 호출 없이 더미 값
+    if (!IS_DEV) {
+      setStreak(2);
+      return;
+    }
+
     try {
-      const res = (await apiFetch(
+      const res = await api.get<ApiResponse<StreakData>>(
         "/api/attendance/streak"
-      )) as ApiResponse<StreakData>;
+      );
+      console.log("[HOME] streak res:", res.data);
 
-      console.log("[HOME] streak res:", res);
-
-      if (res.success && res.data) {
-        setStreak(res.data.streak);
+      if (res.data.success && res.data.data) {
+        setStreak(res.data.data.streak);
       } else {
         setStreak(null);
       }
@@ -90,17 +123,22 @@ export default function Home() {
     }
   };
 
-  // 🔥 오늘자 뉴스 (/api/home/news)
+  // 🔥 오늘자 뉴스
   const fetchTodayNews = async () => {
+    // ⭐ 배포에서는 더미 뉴스 사용
+    if (!IS_DEV) {
+      setTodayNews(MOCK_TODAY_NEWS);
+      return;
+    }
+
     try {
-      const res = (await apiFetch("/api/home/news")) as ApiResponse<
-        TodayNewsItem[]
-      >;
+      const res = await api.get<ApiResponse<TodayNewsItem[]>>(
+        "/api/home/news"
+      );
+      console.log("[HOME] todayNews res:", res.data);
 
-      console.log("[HOME] todayNews res:", res);
-
-      if (res.success && Array.isArray(res.data)) {
-        setTodayNews(res.data);
+      if (res.data.success && Array.isArray(res.data.data)) {
+        setTodayNews(res.data.data);
       } else {
         setTodayNews([]);
       }
@@ -125,7 +163,7 @@ export default function Home() {
     }
   };
 
-  // 🔥 즐겨찾기 코스 (mock 사용 – 일단 custom 으로 구분)
+  // 🔥 즐겨찾기 코스 (mock 사용 – custom)
   const fetchSavedCourses = async () => {
     try {
       const data = (await getCourses({
@@ -140,7 +178,7 @@ export default function Home() {
     }
   };
 
-  // ✅ 마운트 시 API 호출
+  // ✅ 마운트 시 호출
   useEffect(() => {
     void fetchUserProfile();
     void fetchStreak();
@@ -179,8 +217,7 @@ export default function Home() {
               className={styles.bannerIcon}
             />
             <p className={styles.bannerText}>
-             
-              이화연 님, 오늘도 뉴스로 상식을 넓혀봐요!
+              {user?.nickname ?? "이화연"} 님, 오늘도 뉴스로 상식을 넓혀봐요!
             </p>
           </div>
         </div>
