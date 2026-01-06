@@ -2,10 +2,15 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import api from "@/api/axiosInstance";
+
+const isLocalHost = () =>
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
 
 export default function LoginSuccess() {
   const navigate = useNavigate();
-  const { setTokens } = useAuthStore();
+  const { setTokens, logout } = useAuthStore();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -13,22 +18,49 @@ export default function LoginSuccess() {
     const refreshToken = params.get("refreshToken");
     const withdrawPending = params.get("withdrawPending");
 
-    const isLocal =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
-
-    // 🔹 로컬 환경: 쿼리 파라미터에서 토큰 받아서 store에 저장
-    if (isLocal && accessToken) {
+    // ✅ 로컬 환경: 쿼리 파라미터에서 토큰 받아서 저장 (localStorage + zustand)
+    if (isLocalHost() && accessToken) {
       setTokens(accessToken, refreshToken ?? null);
     }
 
-    // 🔹 일단 withdrawPending은 지금은 무시하고 바로 홈으로 이동
-    //   (나중에 복구 팝업 필요하면 여기서 분기 추가하면 됨)
-    navigate("/home", { replace: true });
-  }, [navigate, setTokens]);
+    // ✅ 탈퇴 유예(복구) 분기
+    const run = async () => {
+      if (withdrawPending === "true") {
+        const ok = window.confirm("탈퇴 유예 계정입니다. 계정을 복구하시겠습니까?");
+        if (ok) {
+          try {
+            await api.post("/api/user/withdraw/cancel");
+            window.alert("계정이 복구되었습니다.");
+            navigate("/home", { replace: true });
+            return;
+          } catch (e) {
+            console.error("[LoginSuccess] withdraw cancel error:", e);
+            window.alert("계정 복구에 실패했습니다. 다시 로그인해주세요.");
+            logout();
+            try {
+              await api.post("/api/auth/logout");
+            } catch {}
+            navigate("/", { replace: true });
+            return;
+          }
+        } else {
+          // 사용자가 복구 거부 → 로그아웃 처리
+          logout();
+          try {
+            await api.post("/api/auth/logout");
+          } catch {}
+          navigate("/", { replace: true });
+          return;
+        }
+      }
 
-  // 🔥 이게 없어서 에러 났던 거!
-  // 컴포넌트는 반드시 JSX를 return 해야 함.
+      // 기본: 홈으로 이동
+      navigate("/home", { replace: true });
+    };
+
+    void run();
+  }, [navigate, setTokens, logout]);
+
   return (
     <div
       style={{

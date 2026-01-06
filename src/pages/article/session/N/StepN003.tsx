@@ -1,12 +1,9 @@
-// src/pages/article/session/N/StepN003.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { submitStepAnswer } from "@/lib/apiClient";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN003.module.css";
-
-// 🔹 mock JSON (economy 패키지)에서 시사학습 데이터 읽어오기
-import economyPackage from "@/data/economy_2025-11-24_package.json";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
 type Props = { articleId?: string; articleUrl?: string };
 
@@ -18,85 +15,118 @@ type IssueData = {
   effect: string;
 };
 
-// ⭐ StepN002 → 넘어오는 state 타입
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
+};
+
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
   startTime?: number;
-  courseId?: string;
-  sessionId?: string;
-  stepId?: number; // 백엔드 stepId (예: 3)
+  courseId?: number | string;
+  sessionId?: number | string;
   level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
 export default function StepN003({ articleId, articleUrl }: Props) {
   const nav = useNavigate();
   const location = useLocation();
+  const state = (location.state as RouteState) || {};
 
-  // ⭐ state에서 값 가져오기
-  const {
-    articleId: sArticleId,
-    articleUrl: sArticleUrl,
-    startTime,
-    courseId,
-    sessionId,
-    stepId,
-  } = (location.state as RouteState) || {};
+  const aId = state.articleId ?? articleId;
+  const aUrl = state.articleUrl ?? articleUrl;
+  const startTime = state.startTime;
 
-  const aId = sArticleId ?? articleId;
-  const aUrl = sArticleUrl ?? articleUrl;
+  const courseId = state.courseId;
+  const sessionId = state.sessionId;
+  const steps = state.steps ?? [];
+
+  const STEP_ORDER = 3;
+  const CONTENT_TYPE = "CURRENT_AFFAIRS";
+
+  // ✅ start 응답 steps에서 stepOrder=3 찾기
+  const currentStep = useMemo(() => {
+    return steps.find(
+      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+    );
+  }, [steps]);
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<IssueData | null>(null);
+  const [submitErr, setSubmitErr] = useState("");
 
-  // -------------------------------------------------------------------
-  // 🔹 mock JSON(economy_2025-11-24_package.json)에서 CURRENT_AFFAIRS 읽기
-  //    courses[0].sessions[0].quizzes[level="N"].steps[stepOrder=3].contents[0]
-  // -------------------------------------------------------------------
+  // ✅ currentStep.content에서 표 데이터 파싱
   useEffect(() => {
     setLoading(true);
+    setSubmitErr("");
 
     try {
-      const pkg: any = economyPackage;
+      const first = currentStep?.content?.contents?.[0];
 
-      // 일단 첫 번째 코스/세션 기준 (courseId/sessionId 로 세밀 매칭은 나중에)
-      const course =
-        pkg.courses?.find(
-          (c: any) =>
-            String(c.courseId) === String(courseId ?? aId ?? 1)
-        ) ?? pkg.courses?.[0];
-
-      const session =
-        course?.sessions?.find(
-          (s: any) => String(s.sessionId) === String(sessionId ?? 1)
-        ) ?? course?.sessions?.[0];
-
-      const quizN = session?.quizzes?.find((q: any) => q.level === "N");
-      const step3 = quizN?.steps?.find((s: any) => s.stepOrder === 3);
-      const content = step3?.contents?.[0];
-
-      if (content) {
+      if (currentStep && first) {
         setData({
-          issue: content.issue,
-          cause: content.cause,
-          circumstance: content.circumstance,
-          result: content.result,
-          effect: content.effect,
+          issue: String(first?.issue ?? ""),
+          cause: String(first?.cause ?? ""),
+          circumstance: String(first?.circumstance ?? ""),
+          result: String(first?.result ?? ""),
+          effect: String(first?.effect ?? ""),
         });
       } else {
-        console.warn("[StepN003] CURRENT_AFFAIRS content 를 찾지 못했어요.", {
-          course,
-          session,
-          quizN,
-          step3,
+        console.warn("[StepN003] CURRENT_AFFAIRS contents not found", {
+          currentStep,
+          stepsLen: steps.length,
         });
+        setData(null);
       }
     } catch (err) {
-      console.error("[StepN003] mock 데이터 파싱 실패", err);
+      console.error("[StepN003] parse failed", err);
+      setData(null);
     } finally {
       setLoading(false);
     }
-  }, [aId, courseId, sessionId]);
+  }, [currentStep, steps.length]);
+
+  // ✅ answer 저장 (StepN003는 “조회 완료” 성격이라 간단히 viewed만)
+  const submitViewed = async () => {
+    setSubmitErr("");
+
+    const cid = Number(courseId ?? aId);
+    const sid = Number(sessionId);
+    const stepId = Number(currentStep?.stepId);
+
+    if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
+      // 필수값 없으면 그냥 이동은 되게
+      console.warn("[StepN003] missing courseId/sessionId/stepId -> skip submit");
+      return true;
+    }
+
+    const userAnswer = {
+      viewed: true,
+      timeSpentMs: startTime ? Date.now() - startTime : undefined,
+    };
+
+    try {
+      await api.post<ApiResponse<null>>(
+        `/api/edu/courses/${cid}/sessions/${sid}/steps/${stepId}/answer`,
+        {
+          contentType: CONTENT_TYPE,
+          userAnswer,
+        }
+      );
+      return true;
+    } catch (e) {
+      console.error("[StepN003] submit failed:", e);
+      setSubmitErr("저장에 실패했어요. 네트워크/로그인 상태를 확인해주세요.");
+      // 저장 실패해도 UX상 다음으로 넘기고 싶으면 true로 바꿔도 됨
+      return false;
+    }
+  };
 
   // ==========================================
   // 이전 스텝 (N002)
@@ -109,7 +139,8 @@ export default function StepN003({ articleId, articleUrl }: Props) {
         startTime,
         courseId,
         sessionId,
-        level: "N", // ✅ level 함께 전달
+        level: "N",
+        steps,
       },
     });
   };
@@ -120,40 +151,8 @@ export default function StepN003({ articleId, articleUrl }: Props) {
   const goNext = async () => {
     if (loading) return;
 
-    // 필수 값 없으면 API 생략하고 이동만
-    if (!courseId || !sessionId || !stepId) {
-      console.warn(
-        "StepN003: courseId/sessionId/stepId 없음 → API 없이 이동만"
-      );
-      nav("/nie/session/N/step/004", {
-        state: {
-          articleId: aId,
-          articleUrl: aUrl,
-          startTime,
-          courseId,
-          sessionId,
-          level: "N",
-        },
-      });
-      return;
-    }
-
-    try {
-      const userAnswer = {
-        viewed: true,
-        timeSpentMs: startTime ? Date.now() - startTime : undefined,
-      };
-
-      await submitStepAnswer({
-        courseId: String(courseId),
-        sessionId: String(sessionId),
-        stepId,
-        contentType: "CURRENT_AFFAIRS", // ✅ JSON의 contentType 과 맞춤
-        userAnswer,
-      });
-    } catch (e) {
-      console.error("🔥 StepN003 답안 저장 실패:", e);
-    }
+    const ok = await submitViewed();
+    if (!ok) return; // 저장 실패 시 막고 싶으면 유지, 막기 싫으면 이 줄 삭제
 
     nav("/nie/session/N/step/004", {
       state: {
@@ -163,6 +162,7 @@ export default function StepN003({ articleId, articleUrl }: Props) {
         courseId,
         sessionId,
         level: "N",
+        steps,
       },
     });
   };
@@ -171,10 +171,14 @@ export default function StepN003({ articleId, articleUrl }: Props) {
     <div className={styles.viewport}>
       <div className={styles.container}>
         <div className={styles.progressWrap}>
+          {/* 기존 하드코딩 42% 대신 stepOrder 기반으로 계산하고 싶으면 바꿀 수 있음 */}
           <div className={styles.progress} style={{ width: "42%" }} />
         </div>
 
         <h2 className={styles.heading}>시사 학습</h2>
+
+        {/* 저장 실패 메시지 */}
+        {submitErr && <div className={styles.skel}>{submitErr}</div>}
 
         <section className={styles.tableSection} aria-busy={loading}>
           {loading || !data ? (
@@ -191,9 +195,7 @@ export default function StepN003({ articleId, articleUrl }: Props) {
               </div>
               <div className={styles.row}>
                 <div className={styles.cellLabel}>상황</div>
-                <div className={styles.cellContent}>
-                  {data.circumstance}
-                </div>
+                <div className={styles.cellContent}>{data.circumstance}</div>
               </div>
               <div className={styles.row}>
                 <div className={styles.cellLabel}>결과</div>

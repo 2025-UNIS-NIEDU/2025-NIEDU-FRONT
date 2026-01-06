@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
 import styles from "./ArticlePrepare.module.css";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
 type Level = { code: "N" | "I" | "E"; name: string };
 
@@ -64,29 +66,58 @@ export default function ArticlePrepare() {
   }, [open]);
 
   // ✅ 백엔드 없이 바로 StepRunner 로 보내기
-  const startSession = () => {
-    if (!level || !articleId) {
-      setErrorMsg("필수 정보가 부족해요.");
-      return;
-    }
+const startSession = async () => {
+  if (!level || !articleId || !sessionId) {
+    setErrorMsg("필수 정보가 부족해요. (courseId/sessionId/level)");
+    return;
+  }
 
-    const numericCourseId = Number(articleId);
-    const courseId = Number.isNaN(numericCourseId) ? null : numericCourseId;
+  const courseIdNum = Number(articleId);
+  if (Number.isNaN(courseIdNum)) {
+    setErrorMsg("courseId가 올바르지 않아요.");
+    return;
+  }
 
-    navigate(`/nie/session/${level.code}/step/1`, {
+  setErrorMsg("");
+
+  try {
+    const res = await api.post<ApiResponse<any>>(
+      `/api/edu/courses/${courseIdNum}/sessions/${sessionId}/start`,
+      { level: level.code }
+    );
+
+    const data = res.data.data;
+
+    // ✅ start 응답에서 stepOrder 기반으로 첫 화면 결정
+    // - 문서에는 entryStepId가 stepId (Long)로 옴
+    // - StepRunner는 지금 stepIdParam을 "1/2/3"처럼 쓰니까
+    //   우리 쪽에서 "entry stepOrder"를 찾아서 그 값으로 라우팅하는 게 안전함
+    const steps = Array.isArray(data?.steps) ? data.steps : [];
+    const entryStepId = Number(data?.entryStepId ?? 1);
+
+    const entry = steps.find((s: any) => Number(s.stepId) === entryStepId);
+    const entryOrder = Number(entry?.stepOrder ?? 1);
+
+    navigate(`/nie/session/${level.code}/step/${entryOrder}`, {
       state: {
         articleId,
         articleUrl,
         startTime: Date.now(),
-        courseId,
-        sessionId: sessionId ?? null,
+        courseId: courseIdNum,
+        sessionId,
         level: level.code,
-        steps: [] as StepMeta[], // 지금은 스텝 메타 없이 컴포넌트에서 JSON 직접 읽게
-        progress: 0,
+        steps,
+        progress: Number(data?.progress ?? 0),
+        entryStepId,
       },
       replace: true,
     });
-  };
+  } catch (e) {
+    console.error("[ArticlePrepare] start error:", e);
+    setErrorMsg("세션 시작에 실패했어요. (로그인/토큰 확인)");
+  }
+};
+
 
   return (
     <div className={styles.viewport}>

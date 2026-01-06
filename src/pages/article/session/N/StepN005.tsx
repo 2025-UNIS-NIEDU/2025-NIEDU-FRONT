@@ -1,103 +1,105 @@
-// src/pages/article/session/N/StepN005.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN005.module.css";
-
-// 🔹 mock JSON (economy 패키지)
-import economyPackage from "@/data/economy_2025-11-24_package.json";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
 type Props = { articleId?: string; articleUrl?: string };
+
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any; // 서버에서 내려오는 구조(스텝별로 다름)
+  userAnswer: any; // 이전에 푼 적 있으면 있을 수 있음
+};
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
-  startTime?: number; // StepN001에서 넘어온 전체 세션 시작 시간
-  courseId?: string;
-  sessionId?: string;
+  startTime?: number;
+  courseId?: number | string;
+  sessionId?: number | string;
   level?: "N" | "E" | "I";
+
+  // ✅ start API에서 받아서 StepRunner/Step들로 내려주는 값들
+  steps?: StepMeta[];
+  progress?: number;
+  entryStepId?: number;
 };
 
-// JSON에서 뽑아온 뒤 화면에서 쓸 타입
+// 화면에서 쓸 퀴즈 타입
 type QuizItem = {
   id: number;
   question: string;
-  options: string[];
-  answerIndex: number; // 0~3 (A~D)
+  options: string[]; // ["보기1","보기2","보기3","보기4"]
+  answerIndex: number; // 0~3
   explanation: string;
 };
 
 export default function StepN005({ articleId, articleUrl }: Props) {
   const nav = useNavigate();
   const location = useLocation();
-
-  // ⭐ 이전 스텝들에서 넘어온 값
   const state = (location.state as RouteState) || {};
+
   const aId = state.articleId ?? articleId;
   const aUrl = state.articleUrl ?? articleUrl;
   const startTime = state.startTime;
+
   const courseId = state.courseId;
   const sessionId = state.sessionId;
+  const steps = state.steps ?? [];
+
+  // ✅ StepN005는 "N 레벨의 stepOrder=5"에 해당 (객관식)
+  const STEP_ORDER = 5;
+  const CONTENT_TYPE = "MULTIPLE_CHOICE";
+
+  const currentStep = useMemo(() => {
+    // stepOrder로 찾는 방식 (StepRunner가 stepOrder 라우팅 쓰는 구조라 안전)
+    return steps.find(
+      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+    );
+  }, [steps]);
 
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [index, setIndex] = useState(0);
   const [choice, setChoice] = useState<number | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [submitErr, setSubmitErr] = useState("");
 
-  // 🔹 economy JSON → N단계, stepOrder 5, MULTIPLE_CHOICE 문제로 파싱
+  // ✅ start 응답의 step.content에서 퀴즈 contents를 뽑아서 렌더링
   useEffect(() => {
     setLoading(true);
+    setSubmitErr("");
 
     try {
-      const pkg: any = economyPackage;
+      // 보통 서버 구조: step.content 안에 contents가 있고 그 안에 contentId/question/options/correctAnswer/answerExplanation
+      const contents = currentStep?.content?.contents;
 
-      const course =
-        pkg.courses?.find(
-          (c: any) =>
-            String(c.courseId) === String(courseId ?? aId ?? 1)
-        ) ?? pkg.courses?.[0];
-
-      const session =
-        course?.sessions?.find(
-          (s: any) =>
-            String(s.sessionId) === String(sessionId ?? 1)
-        ) ?? course?.sessions?.[0];
-
-      const quizN = session?.quizzes?.find(
-        (q: any) => q.level === "N"
-      );
-
-      const step5 = quizN?.steps?.find(
-        (s: any) =>
-          s.stepOrder === 5 && s.contentType === "MULTIPLE_CHOICE"
-      );
-
-      if (step5 && Array.isArray(step5.contents)) {
-        const mapped: QuizItem[] = step5.contents.map((c: any) => ({
-          id: c.contentId,
-          question: c.question,
-          options: (c.options ?? []).map(
-            (o: any) => o.text as string
-          ),
-          // "A" → 0, "B" → 1 ...
-          answerIndex: Math.max(
-            0,
-            (c.correctAnswer?.charCodeAt(0) ?? 65) - 65
-          ),
-          explanation: c.answerExplanation,
+      if (currentStep && Array.isArray(contents)) {
+        const mapped: QuizItem[] = contents.map((c: any) => ({
+          id: Number(c?.contentId ?? c?.id ?? 0),
+          question: String(c?.question ?? ""),
+          options: Array.isArray(c?.options)
+            ? c.options.map((o: any) => String(o?.text ?? o))
+            : [],
+          answerIndex: Math.max(0, (c?.correctAnswer?.charCodeAt(0) ?? 65) - 65),
+          explanation: String(c?.answerExplanation ?? ""),
         }));
 
         setQuizzes(mapped);
       } else {
-        console.warn(
-          "[StepN005] mock JSON에서 MULTIPLE_CHOICE(stepOrder=5)를 찾지 못했어요.",
-          { course, session, quizN, step5 }
-        );
+        console.warn("[StepN005] currentStep/contents not found", {
+          currentStep,
+          stepsLen: steps.length,
+        });
         setQuizzes([]);
       }
     } catch (e) {
-      console.error("[StepN005] mock JSON 파싱 실패:", e);
+      console.error("[StepN005] parse step content failed:", e);
       setQuizzes([]);
     }
 
@@ -105,7 +107,7 @@ export default function StepN005({ articleId, articleUrl }: Props) {
     setChoice(null);
     setConfirmed(false);
     setLoading(false);
-  }, [aId, courseId, sessionId]);
+  }, [currentStep, steps.length]);
 
   const q = quizzes[index];
   const total = quizzes.length;
@@ -115,19 +117,56 @@ export default function StepN005({ articleId, articleUrl }: Props) {
     setChoice(i);
   };
 
-  const confirmAnswer = () => {
+  // ✅ 답 제출 API
+  const submitAnswer = async () => {
+    setSubmitErr("");
+
+    // 필수값 체크
+    const cid = Number(courseId ?? aId);
+    const sid = Number(sessionId);
+    const stepId = Number(currentStep?.stepId);
+
+    if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
+      setSubmitErr("세션 정보가 없어서 답안을 저장할 수 없어요. (courseId/sessionId/stepId)");
+      return false;
+    }
+    if (choice === null) return false;
+
+    // userAnswer 형식: 4지선다는 "A"/"B"/"C"/"D"
+    const userAnswer = String.fromCharCode(65 + choice);
+
+    try {
+      await api.post<ApiResponse<null>>(
+        `/api/edu/courses/${cid}/sessions/${sid}/steps/${stepId}/answer`,
+        {
+          contentType: CONTENT_TYPE,
+          userAnswer,
+        }
+      );
+      return true;
+    } catch (e) {
+      console.error("[StepN005] submit answer error:", e);
+      setSubmitErr("답안 저장에 실패했어요. 네트워크/로그인 상태를 확인해주세요.");
+      return false;
+    }
+  };
+
+  // ✅ 정답 확인 버튼: 확인 누를 때 서버에 저장까지 같이 처리
+  const confirmAnswer = async () => {
     if (choice === null) return;
+    const ok = await submitAnswer();
+    if (!ok) return; // 저장 실패하면 확인 상태로 못 넘어가게 (원하면 바꿀 수 있음)
     setConfirmed(true);
   };
 
-  // ✅ 마지막 문제에서 전체 학습 시간 계산 후 결과 페이지로 이동
+  // ✅ 마지막 문제에서 결과 페이지 이동 (일단 기존 로직 유지)
   const goNextProblem = () => {
     if (index < total - 1) {
       setIndex((prev) => prev + 1);
       setChoice(null);
       setConfirmed(false);
+      setSubmitErr("");
     } else {
-      // 세션 전체 소요 시간 계산
       let durationLabel = "0분 0초";
 
       if (startTime) {
@@ -137,10 +176,14 @@ export default function StepN005({ articleId, articleUrl }: Props) {
         durationLabel = `${minutes}분 ${seconds}초`;
       }
 
+      // ✅ TODO(다음 단계): 여기서 summary API 호출해서 streak/learningTime 실제값으로 교체 가능
       nav("/nie/session/N/result", {
         state: {
-          streak: 2, // 일단 더미 값 (나중에 진짜 연속일수로 교체)
+          streak: 2, // 임시
           durationLabel,
+          courseId,
+          sessionId,
+          level: "N",
         },
       });
     }
@@ -155,6 +198,7 @@ export default function StepN005({ articleId, articleUrl }: Props) {
         courseId,
         sessionId,
         level: "N",
+        steps, // ✅ steps 유지해서 이전/다음 스텝에서도 계속 사용 가능
       },
     });
   };
@@ -186,22 +230,17 @@ export default function StepN005({ articleId, articleUrl }: Props) {
         <div className={styles.options}>
           {q.options.map((opt, i) => {
             const isSelected = choice === i;
-
             let optionClass = styles.option;
 
             if (!confirmed && isSelected) {
-              optionClass += " " + styles.optionSelected; // 파랑
+              optionClass += " " + styles.optionSelected;
             }
-
             if (confirmed) {
-              if (i === q.answerIndex) {
-                optionClass += " " + styles.optionCorrect; // 정답(파랑)
-              } else if (isSelected && i !== q.answerIndex) {
-                optionClass += " " + styles.optionWrong; // 오답(빨강)
-              }
+              if (i === q.answerIndex) optionClass += " " + styles.optionCorrect;
+              else if (isSelected) optionClass += " " + styles.optionWrong;
             }
 
-            const label = String.fromCharCode(65 + i); // A B C D
+            const label = String.fromCharCode(65 + i);
 
             return (
               <button
@@ -216,18 +255,21 @@ export default function StepN005({ articleId, articleUrl }: Props) {
           })}
         </div>
 
+        {/* 저장 실패 메시지 */}
+        {submitErr && <div className={styles.loading}>{submitErr}</div>}
+
         {/* 정답 확인 버튼 */}
         {!confirmed && (
           <button
             className={styles.checkBtn}
             disabled={choice === null}
-            onClick={confirmAnswer}
+            onClick={() => void confirmAnswer()}
           >
             정답 확인하기
           </button>
         )}
 
-        {/* 정답/오답 해설 박스 */}
+        {/* 해설 박스 */}
         {confirmed && (
           <div
             className={`${styles.answerBox} ${
