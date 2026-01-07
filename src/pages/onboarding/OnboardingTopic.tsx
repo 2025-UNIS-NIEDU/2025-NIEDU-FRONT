@@ -2,22 +2,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OnboardingTopic.module.css";
+import api from "@/api/axiosInstance";
 
 // 🔹 노출 키워드 (한글)
 const ALL_TOPICS = ["정치", "경제", "사회", "국제"];
-
-// 🔹 백엔드로 보낼 코드 매핑
-const TOPIC_CODE_MAP = {
-  정치: "politics",
-  경제: "economy",
-  사회: "society",
-  국제: "world",
-} as const;
 
 export default function OnboardingTopic() {
   const nav = useNavigate();
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const toggle = (t: string) => {
     setError("");
@@ -26,24 +20,30 @@ export default function OnboardingTopic() {
     );
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (selected.length === 0) {
       setError("최소 1개는 선택해야 합니다");
       return;
     }
 
-    // ✅ 선택한 토픽을 코드 배열로 변환
-    const topicCodes = selected.map((t) => TOPIC_CODE_MAP[t as keyof typeof TOPIC_CODE_MAP]);
+    // ✅ 백엔드 스펙: Body는 String array (예: ["정치", "경제"])
+    const selectedTopics = selected;
 
-    // TODO: 나중에 여기서 실제 API 호출
-    console.log("[OnboardingTopic] selected topics:", topicCodes);
+    setSubmitting(true);
+    setError("");
 
-    // ✅ 다음 화면으로 이동 (예: 홈 화면)
-    nav("/onboarding/alarm", {
-      state: {
-        topics: topicCodes,
-      },
-    });
+    try {
+      await api.post("/api/onboard/topics", selectedTopics);
+
+      nav("/onboarding/alarm", {
+        state: { topics: selectedTopics },
+      });
+    } catch (e) {
+      console.error("[OnboardingTopic] post topics error:", e);
+      setError("토픽 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -75,7 +75,7 @@ export default function OnboardingTopic() {
               >
                 {t}
               </button>
-            );
+            );``
           })}
         </div>
 
@@ -95,8 +95,9 @@ export default function OnboardingTopic() {
         <button
           className={styles.nextButton}
           onClick={handleNext}
+          disabled={submitting}
         >
-          계속하기
+          {submitting ? "저장 중..." : "계속하기"}
         </button>
       </div>
     </div>

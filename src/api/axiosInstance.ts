@@ -1,62 +1,63 @@
 // src/api/axiosInstance.ts
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useAuthStore } from "../store/authStore";
 
+// 로컬 판별
+const isLocalHost = () =>
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
+/**
+ * ✅ baseURL 전략
+ * - 로컬: Vite proxy를 타야 하므로 baseURL을 "" (상대경로)로 둔다.
+ * - 운영: 실제 API 도메인 사용 (쿠키 포함)
+ */
 const api = axios.create({
-  baseURL: import.meta.env.VITaE_API_BASE_URL || "https://api.niedu-service.com",
-  withCredentials: true, // ✅ 쿠키 항상 포함
+  baseURL: isLocalHost()
+    ? "" // ⭐ 핵심: 로컬에서는 상대경로 -> /api 요청이 프록시를 탐
+    : (import.meta.env.VITE_API_BASE_URL || "https://api.niedu-service.com"),
+  withCredentials: true,
 });
 
-// 🔑 요청 인터셉터: 로컬 환경이면 accessToken을 헤더에 실어줌
+// 요청 인터셉터
 api.interceptors.request.use((config) => {
-  const isLocal =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
-
-  if (isLocal) {
+  if (isLocalHost()) {
     const { accessToken } = useAuthStore.getState();
-    if (accessToken && !config.headers["Authorization"]) {
-      config.headers["Authorization"] = `Bearer ${accessToken}`;
+    if (accessToken && !config.headers?.Authorization) {
+      config.headers = config.headers ?? {};
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
   }
-
   return config;
 });
 
-// 🔁 응답 인터셉터: 401 → 토큰 재발급 시도
-let isRefreshing = false;
-
+// 401 처리
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalConfig = error.config;
+  async (error: AxiosError<any>) => {
+    const originalConfig: any = error.config;
 
-    if (error.response?.status === 401 && !originalConfig._retry) {
+    if (error.response?.status === 401 && originalConfig && !originalConfig._retry) {
       originalConfig._retry = true;
 
       try {
-        // 토큰 재발급 요청
+        if (isLocalHost()) {
+          // ✅ 로컬: 리다이렉트 방식이면 XHR로 못함 -> 브라우저 이동
+          window.location.href = `/api/auth/reissue-access-token`;
+          return Promise.reject(error);
+        }
+
+        // ✅ 운영: refreshToken 쿠키로 accessToken 쿠키 재세팅
         await axios.post(
           `${api.defaults.baseURL}/api/auth/reissue-access-token`,
           {},
           { withCredentials: true }
         );
 
-        const isLocal =
-          window.location.hostname === "localhost" ||
-          window.location.hostname === "127.0.0.1";
-
-        // 로컬에서는 URL 쿼리로 새 accessToken이 돌아올 수도 있어 백엔드 설계에 따라 다름.
-        // 여기서는 운영 모드처럼 '쿠키로만 온다'고 가정하고 헤더만 비워서 다시 보냄.
-        if (isLocal) {
-          // 필요 시 여기서 useAuthStore 갱신 로직 추가 가능
-        }
-
         return api(originalConfig);
       } catch (reissueErr) {
-        console.error("토큰 재발급 실패", reissueErr);
+        console.error("[axiosInstance] 토큰 재발급 실패", reissueErr);
         useAuthStore.getState().logout();
-        // TODO: 로그인 페이지로 이동 등
       }
     }
 

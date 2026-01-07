@@ -1,28 +1,35 @@
-// src/pages/article/session/N/StepN002.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { submitStepAnswer } from "@/lib/apiClient";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN002.module.css";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
-// 🔹 로컬 JSON 데이터
-import economyPackage from "@/data/economy_2025-11-24_package.json";
+type Term = {
+  id: string; // termId
+  term: string; // name
+  definition: string;
+  example: string; // exampleSentence
+  extra: string; // additionalExplanation
+};
 
-type StepState = {
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
+};
+
+type RouteState = {
   articleId?: string;
   articleUrl?: string;
   startTime: number;
-  courseId?: string;
-  sessionId?: string | number;
-  stepId?: number;
-};
-
-type Term = {
-  id: string;        // termId → string
-  term: string;      // name
-  definition: string;
-  example: string;   // exampleSentence
-  extra: string;     // additionalExplanation
+  courseId?: number | string;
+  sessionId?: number | string;
+  level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
 export default function StepN002() {
@@ -30,123 +37,68 @@ export default function StepN002() {
   const location = useLocation();
 
   // StepRunner / StepN001 → 넘어온 값
-  const { articleId, articleUrl, startTime, courseId, sessionId, stepId } =
-    (location.state as StepState) || {};
+  const { articleId, articleUrl, startTime, courseId, sessionId, steps } =
+    (location.state as RouteState) || {};
+
+  const STEP_ORDER = 2;
+  const CONTENT_TYPE = "TERM_LEARNING";
+
+  const currentStep = useMemo(() => {
+    return (steps ?? []).find(
+      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+    );
+  }, [steps]);
 
   const [loading, setLoading] = useState(true);
   const [terms, setTerms] = useState<Term[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [opened, setOpened] = useState<string[]>([]);
   const [activeTerm, setActiveTerm] = useState<Term | null>(null);
+  const [submitErr, setSubmitErr] = useState("");
 
   // ------------------------------------------
-  // 🔸 로컬 JSON에서 TERM_LEARNING 용어 데이터 가져오기
+  // ✅ 백에서 내려온 step.content로 TERM_LEARNING 데이터 파싱
   // ------------------------------------------
   useEffect(() => {
-    let abort = false;
+    setLoading(true);
+    setSubmitErr("");
 
-    (async () => {
-      try {
-        setLoading(true);
+    try {
+      // 1) 보통: content.contents[0].terms
+      const rawTerms =
+        currentStep?.content?.contents?.[0]?.terms ??
+        // 2) 혹시: content.terms 로 오는 경우
+        currentStep?.content?.terms ??
+        null;
 
-        const pkg: any = economyPackage;
-
-        // courseId / articleId → 숫자로 (없으면 1번 코스)
-        const numericCourseId = Number(courseId ?? articleId ?? 1);
-        const numericSessionId = Number(sessionId ?? 1);
-
-        const course =
-          pkg.courses?.find((c: any) => c.courseId === numericCourseId) ??
-          pkg.courses?.[0];
-
-        if (!course) {
-          console.warn("[StepN002] 코스 데이터 없음");
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const session =
-          course.sessions?.find(
-            (s: any) => s.sessionId === numericSessionId
-          ) ?? course.sessions?.[0];
-
-        if (!session) {
-          console.warn("[StepN002] 세션 데이터 없음");
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // level === "N" 인 퀴즈 블럭
-        const quizN =
-          session.quizzes?.find((q: any) => q.level === "N") ??
-          session.quizzes?.[0];
-
-        if (!quizN) {
-          console.warn("[StepN002] N 레벨 퀴즈 없음");
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // stepOrder 2, contentType TERM_LEARNING
-        const step2 =
-          quizN.steps?.find(
-            (s: any) =>
-              s.stepOrder === 2 && s.contentType === "TERM_LEARNING"
-          ) ?? quizN.steps?.find((s: any) => s.contentType === "TERM_LEARNING");
-
-        if (!step2 || !Array.isArray(step2.contents) || !step2.contents[0]) {
-          console.warn("[StepN002] TERM_LEARNING 스텝/contents 없음", step2);
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const termBlocks = step2.contents[0].terms;
-        if (!Array.isArray(termBlocks)) {
-          console.warn("[StepN002] contents[0].terms 배열이 아님", step2.contents[0]);
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const mapped: Term[] = termBlocks.map((t: any) => ({
-          id: String(t.termId),
-          term: t.name,
-          definition: t.definition,
-          example: t.exampleSentence,
-          extra: t.additionalExplanation,
-        }));
-
-        if (!abort) {
-          setTerms(mapped);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error("[StepN002] 용어 데이터 로드 실패:", err);
-        if (!abort) {
-          setTerms([]);
-          setLoading(false);
-        }
+      if (!currentStep || !Array.isArray(rawTerms)) {
+        console.warn("[StepN002] TERM_LEARNING terms not found", {
+          currentStep,
+          rawTerms,
+        });
+        setTerms([]);
+        setLoading(false);
+        return;
       }
-    })();
 
-    return () => {
-      abort = true;
-    };
-  }, [articleId, courseId, sessionId]);
+      const mapped: Term[] = rawTerms
+        .map((t: any) => ({
+          id: String(t?.termId ?? t?.id ?? ""),
+          term: String(t?.name ?? t?.term ?? ""),
+          definition: String(t?.definition ?? ""),
+          example: String(t?.exampleSentence ?? t?.example ?? ""),
+          extra: String(t?.additionalExplanation ?? t?.extra ?? ""),
+        }))
+        .filter((x: Term) => x.id && x.term);
+
+      setTerms(mapped);
+    } catch (err) {
+      console.error("[StepN002] term parse failed:", err);
+      setTerms([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentStep]);
 
   // ------------------------------------------
   // 상태 변경 핸들러
@@ -159,56 +111,82 @@ export default function StepN002() {
 
   const openTerm = (term: Term) => {
     setActiveTerm(term);
-    setOpened((prev) =>
-      prev.includes(term.id) ? prev : [...prev, term.id]
-    );
+    setOpened((prev) => (prev.includes(term.id) ? prev : [...prev, term.id]));
   };
-
-  const closeModal = () => setActiveTerm(null);
 
   const canGoNext = opened.length > 0 && !loading;
 
-// 이전 단계로
-const goPrev = () => {
-  nav("/nie/session/N/step/001", {
-    state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
-  });
-};
+  // ------------------------------------------
+  // ✅ answer 저장
+  // ------------------------------------------
+  const submitAnswer = async () => {
+    setSubmitErr("");
 
-// 다음 단계로
-const goNext = async () => {
-  if (!canGoNext) return;
+    const cid = Number(courseId ?? articleId);
+    const sid = Number(sessionId);
+    const stepId = Number(currentStep?.stepId);
 
-  if (!courseId || !sessionId || !stepId) {
-    console.warn("필수 값 부족 → API는 건너뛰고 이동만 실행.");
-    nav("/nie/session/N/step/003", {
-      state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
-    });
-    return;
-  }
+    if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
+      console.warn("[StepN002] missing courseId/sessionId/stepId -> skip submit");
+      return true; // 없으면 그냥 이동은 되게
+    }
 
-  try {
+    // ✅ 너가 기존에 보내던 포맷 유지
     const userAnswer = {
       openedTermIds: opened,
       favoriteTermIds: favorites,
     };
 
-    await submitStepAnswer({
-      courseId,
-      sessionId: String(sessionId),
-      stepId,
-      contentType: "TERM_LEARNING",
-      userAnswer,
+    try {
+      await api.post<ApiResponse<null>>(
+        `/api/edu/courses/${cid}/sessions/${sid}/steps/${stepId}/answer`,
+        {
+          contentType: CONTENT_TYPE,
+          userAnswer,
+        }
+      );
+      return true;
+    } catch (err) {
+      console.error("[StepN002] answer submit failed:", err);
+      setSubmitErr("답안 저장에 실패했어요. 네트워크/로그인 상태를 확인해주세요.");
+      return false;
+    }
+  };
+
+  // 이전 단계로
+  const goPrev = () => {
+    nav("/nie/session/N/step/001", {
+      state: {
+        articleId,
+        articleUrl,
+        startTime,
+        courseId,
+        sessionId,
+        level: "N",
+        steps, // ✅ 유지
+      },
     });
+  };
+
+  // 다음 단계로
+  const goNext = async () => {
+    if (!canGoNext) return;
+
+    const ok = await submitAnswer();
+    if (!ok) return; // 저장 실패 시 막고 싶으면 유지, 싫으면 삭제
 
     nav("/nie/session/N/step/003", {
-      state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
+      state: {
+        articleId,
+        articleUrl,
+        startTime,
+        courseId,
+        sessionId,
+        level: "N",
+        steps, // ✅ 유지
+      },
     });
-  } catch (err) {
-    console.error("🔥 StepN002 답변 저장 실패:", err);
-  }
-};
-
+  };
 
   return (
     <div className={styles.viewport}>
@@ -223,6 +201,8 @@ const goNext = async () => {
           <br />
           용어 카드로 미리 학습해보세요.
         </p>
+
+        {submitErr && <div className={styles.skel}>{submitErr}</div>}
 
         <section className={styles.cardSection} aria-busy={loading}>
           {loading ? (
@@ -299,9 +279,7 @@ const goNext = async () => {
             </button>
 
             <h3 className={styles.modalTitle}>{activeTerm.term}</h3>
-            <p className={styles.modalDefinition}>
-              {activeTerm.definition}
-            </p>
+            <p className={styles.modalDefinition}>{activeTerm.definition}</p>
 
             <div className={styles.modalBlock}>
               <div className={styles.modalBlockTitle}>예시 문장</div>

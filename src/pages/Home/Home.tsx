@@ -8,59 +8,39 @@ import { useGoToDetail } from "@/hooks/useGoToDetail";
 
 import type { ApiResponse } from "@/types/api";
 import api from "@/api/axiosInstance";
-import { getCourses } from "@/lib/mockCourseApi";
 
-// 🔹 dev / prod 구분 (Vite)
-const IS_DEV = import.meta.env.DEV;
-
-// 🔹 /api/user/me 응답 타입
+// /api/user/me
 type UserProfile = {
   nickname: string;
   profileImageUrl: string;
 };
 
-// 🔹 /api/attendance/streak 응답 data
+// /api/attendance/streak
 type StreakData = {
   streak: number;
+  todayAttended: boolean;
 };
 
-// 🔹 /api/home/news 응답 data 아이템
-type TodayNewsItem = {
-  thumbnailUrl: string;
+// /api/home/news
+type HomeNewsItem = {
+  newsId: number;
   title: string;
-  publisher: string;
-  topic: string | null;
+  imageUrl?: string;
+  keywords: string[];
+  source: string;
+  publishedAt: string;
 };
 
-// 🔹 홈에서 쓰는 코스 타입 (mockCourseApi 기준)
+// /api/home/courses
 type HomeCourse = {
-  id?: number;
-  courseId?: number;
-  thumbnailUrl: string;
+  courseId: number;
   title: string;
-  description: string;
-  topic: string | null;
-  subTopic?: string | null;
+  thumbnailUrl?: string;
+  progressRate: number;
+  isSaved: boolean;
 };
 
-// 공통 id 추출
-const getCourseId = (c: HomeCourse) => c.courseId ?? c.id;
-
-// ⭐ 배포용 오늘자 뉴스 더미
-const MOCK_TODAY_NEWS: TodayNewsItem[] = [
-  {
-    thumbnailUrl: "/sample-news.png",
-    title: "국민연금과 환율, 협력의 경제학",
-    publisher: "NIEdu Lab",
-    topic: "경제",
-  },
-  {
-    thumbnailUrl: "/sample-news.png",
-    title: "환율 변동 속, 국민연금 해외투자 이슈",
-    publisher: "NIEdu Lab",
-    topic: "경제",
-  },
-];
+const FALLBACK_USER: UserProfile = { nickname: "사용자", profileImageUrl: "" };
 
 export default function Home() {
   const navigate = useNavigate();
@@ -68,128 +48,68 @@ export default function Home() {
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
-  const [todayNews, setTodayNews] = useState<TodayNewsItem[] | null>(null);
-  const [recentCourses, setRecentCourses] = useState<HomeCourse[] | null>(null);
-  const [savedCourses, setSavedCourses] = useState<HomeCourse[] | null>(null);
 
-  // 🔹 회원 정보 조회
+  const [todayNews, setTodayNews] = useState<HomeNewsItem[]>([]);
+  const [recentCourses, setRecentCourses] = useState<HomeCourse[]>([]);
+  const [savedCourses, setSavedCourses] = useState<HomeCourse[]>([]);
+
   const fetchUserProfile = async () => {
-    // ⭐ 배포(Vercel)에서는 더미로만 세팅
-    if (!IS_DEV) {
-      setUser({
-        nickname: "이화연",
-        profileImageUrl: "",
-      });
-      return;
-    }
-
     try {
       const res = await api.get<ApiResponse<UserProfile>>("/api/user/me");
-      console.log("[HOME] user me:", res.data);
-
-      if (res.data.success) {
-        setUser(res.data.data);
-      } else {
-        setUser(null);
-      }
+      if (res.data.success) setUser(res.data.data);
+      else setUser(FALLBACK_USER);
     } catch (e) {
       console.error("[HOME] fetchUserProfile error:", e);
-      setUser(null);
+      setUser(FALLBACK_USER);
     }
   };
 
-  // 🔥 출석 스트릭
   const fetchStreak = async () => {
-    // ⭐ 배포에서는 네트워크 호출 없이 더미 값
-    if (!IS_DEV) {
-      setStreak(2);
-      return;
-    }
-
     try {
-      const res = await api.get<ApiResponse<StreakData>>(
-        "/api/attendance/streak"
-      );
-      console.log("[HOME] streak res:", res.data);
-
-      if (res.data.success && res.data.data) {
-        setStreak(res.data.data.streak);
-      } else {
-        setStreak(null);
-      }
+      const res = await api.get<ApiResponse<StreakData>>("/api/attendance/streak");
+      if (res.data.success && res.data.data) setStreak(res.data.data.streak);
+      else setStreak(null);
     } catch (e) {
       console.error("[HOME] fetchStreak error:", e);
       setStreak(null);
     }
   };
 
-  // 🔥 오늘자 뉴스
   const fetchTodayNews = async () => {
-    // ⭐ 배포에서는 더미 뉴스 사용
-    if (!IS_DEV) {
-      setTodayNews(MOCK_TODAY_NEWS);
-      return;
-    }
-
     try {
-      const res = await api.get<ApiResponse<TodayNewsItem[]>>(
-        "/api/home/news"
-      );
-      console.log("[HOME] todayNews res:", res.data);
-
-      if (res.data.success && Array.isArray(res.data.data)) {
-        setTodayNews(res.data.data);
-      } else {
-        setTodayNews([]);
-      }
+      const res = await api.get<ApiResponse<HomeNewsItem[]>>("/api/home/news");
+      if (res.data.success && Array.isArray(res.data.data)) setTodayNews(res.data.data);
+      else setTodayNews([]);
     } catch (e) {
       console.error("[HOME] fetchTodayNews error:", e);
       setTodayNews([]);
     }
   };
 
-  // 🔥 최근 코스 (mock 사용)
-  const fetchRecentCourses = async () => {
+  const fetchHomeCourses = async () => {
     try {
-      const data = (await getCourses({
-        type: "recent",
-        view: "preview",
-      })) as HomeCourse[];
-      console.log("[HOME] recentCourses (mock) res:", data);
-      setRecentCourses(data);
-    } catch (e) {
-      console.error("[HOME] fetchRecentCourses (mock) error:", e);
-      setRecentCourses([]);
-    }
-  };
+      const recentRes = await api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
+        params: { type: "recent", view: "preview" },
+      });
+      setRecentCourses(Array.isArray(recentRes.data.data) ? recentRes.data.data : []);
 
-  // 🔥 즐겨찾기 코스 (mock 사용 – custom)
-  const fetchSavedCourses = async () => {
-    try {
-      const data = (await getCourses({
-        type: "custom",
-        view: "preview",
-      })) as HomeCourse[];
-      console.log("[HOME] savedCourses (mock) res:", data);
-      setSavedCourses(data);
+      const savedRes = await api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
+        params: { type: "saved", view: "preview" },
+      });
+      setSavedCourses(Array.isArray(savedRes.data.data) ? savedRes.data.data : []);
     } catch (e) {
-      console.error("[HOME] fetchSavedCourses (mock) error:", e);
+      console.error("[HOME] fetchHomeCourses error:", e);
+      setRecentCourses([]);
       setSavedCourses([]);
     }
   };
 
-  // ✅ 마운트 시 호출
   useEffect(() => {
     void fetchUserProfile();
     void fetchStreak();
     void fetchTodayNews();
-    void fetchRecentCourses();
-    void fetchSavedCourses();
+    void fetchHomeCourses();
   }, []);
-
-  const todayNewsList = Array.isArray(todayNews) ? todayNews : [];
-  const recentCourseList = Array.isArray(recentCourses) ? recentCourses : [];
-  const savedCourseList = Array.isArray(savedCourses) ? savedCourses : [];
 
   return (
     <div className={styles.viewport}>
@@ -199,10 +119,7 @@ export default function Home() {
           <h1 className={styles.title}>홈</h1>
           <div className={styles.firebox}>
             <div className={styles.fireIcon}>
-              <img
-                src="/icons/solar_fire-bold-duotone11.svg"
-                alt="streak"
-              />
+              <img src="/icons/solar_fire-bold-duotone11.svg" alt="streak" />
               <span>{streak ?? "-"}</span>
             </div>
           </div>
@@ -217,7 +134,7 @@ export default function Home() {
               className={styles.bannerIcon}
             />
             <p className={styles.bannerText}>
-              {user?.nickname ?? "이화연"} 님, 오늘도 뉴스로 상식을 넓혀봐요!
+              {user?.nickname ?? "사용자"} 님, 오늘도 뉴스로 상식을 넓혀봐요!
             </p>
           </div>
         </div>
@@ -225,18 +142,16 @@ export default function Home() {
         {/* 오늘자 뉴스 학습하기 */}
         <section className={styles.section}>
           <h2>오늘자 뉴스 학습하기</h2>
-          <p className={styles.date}>25.12.03. 8시 업데이트</p>
+          <p className={styles.date}>오전 8시 업데이트</p>
 
           <div className={styles.newsScroll}>
-            {todayNewsList.map((news, idx) => (
+            {todayNews.map((news) => (
               <button
-                key={news.title + idx}
+                key={news.newsId}
                 className={`${styles.newsItem} ${styles.clickable}`}
-                onClick={() =>
-                  goToDetail(news.title, { from: "home-today" })
-                }
+                onClick={() => goToDetail(news.newsId, { from: "home-today" })}
               >
-                <NewsCard title={news.title} source={news.publisher} />
+                <NewsCard title={news.title} source={news.source} />
               </button>
             ))}
           </div>
@@ -254,37 +169,26 @@ export default function Home() {
             />
           </div>
 
-          {recentCourseList.map((course) => {
-            const id = getCourseId(course);
-            return (
-              <div
-                key={id ?? course.title}
-                className={`${styles.courseCard} ${styles.clickable}`}
-                onClick={() => {
-                  if (id == null) {
-                    console.warn("[HOME] recent course id 없음", course);
-                    return;
-                  }
-                  goToDetail(String(id), { from: "home-recent" });
-                }}
-              >
-                <img
-                  className={styles.courseThumb}
-                  src={course.thumbnailUrl ?? "/sample-news.png"}
-                  alt=""
-                />
-                <div className={styles.courseBody}>
-                  <h3 className={styles.courseTitle}>{course.title}</h3>
-                  <p className={styles.courseDesc}>{course.description}</p>
-                  <div className={styles.tagRow}>
-                    {course.topic && (
-                      <span className={styles.tag}>{course.topic}</span>
-                    )}
-                  </div>
+          {recentCourses.map((course) => (
+            <div
+              key={course.courseId}
+              className={`${styles.courseCard} ${styles.clickable}`}
+              onClick={() => goToDetail(course.courseId, { from: "home-recent" })}
+            >
+              <img
+                className={styles.courseThumb}
+                src={course.thumbnailUrl ?? "/sample-news.png"}
+                alt=""
+              />
+              <div className={styles.courseBody}>
+                <h3 className={styles.courseTitle}>{course.title}</h3>
+                <p className={styles.courseDesc}>진행률 {course.progressRate}%</p>
+                <div className={styles.tagRow}>
+                  {course.isSaved && <span className={styles.tag}>저장됨</span>}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </section>
 
         {/* 즐겨찾기 코스 */}
@@ -299,37 +203,26 @@ export default function Home() {
             />
           </div>
 
-          {savedCourseList.map((course) => {
-            const id = getCourseId(course);
-            return (
-              <div
-                key={id ?? course.title}
-                className={`${styles.courseCard} ${styles.clickable}`}
-                onClick={() => {
-                  if (id == null) {
-                    console.warn("[HOME] saved course id 없음", course);
-                    return;
-                  }
-                  goToDetail(String(id), { from: "home-saved" });
-                }}
-              >
-                <img
-                  className={styles.courseThumb}
-                  src={course.thumbnailUrl ?? "/sample-news.png"}
-                  alt=""
-                />
-                <div className={styles.courseBody}>
-                  <h3 className={styles.courseTitle}>{course.title}</h3>
-                  <p className={styles.courseDesc}>{course.description}</p>
-                  <div className={styles.tagRow}>
-                    {course.topic && (
-                      <span className={styles.tag}>{course.topic}</span>
-                    )}
-                  </div>
+          {savedCourses.map((course) => (
+            <div
+              key={course.courseId}
+              className={`${styles.courseCard} ${styles.clickable}`}
+              onClick={() => goToDetail(course.courseId, { from: "home-saved" })}
+            >
+              <img
+                className={styles.courseThumb}
+                src={course.thumbnailUrl ?? "/sample-news.png"}
+                alt=""
+              />
+              <div className={styles.courseBody}>
+                <h3 className={styles.courseTitle}>{course.title}</h3>
+                <p className={styles.courseDesc}>진행률 {course.progressRate}%</p>
+                <div className={styles.tagRow}>
+                  {course.isSaved && <span className={styles.tag}>저장됨</span>}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </section>
 
         <div className={styles.bottomSpace} />

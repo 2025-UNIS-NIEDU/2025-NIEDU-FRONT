@@ -1,23 +1,26 @@
-// src/pages/ArticleDetail/ArticleDetail.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./ArticleDetail.module.css";
 import { useGoToPrepare } from "@/hooks/useGoToPrepare";
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
-import {
-  getCourseDetail,
-  type MockSession,
-} from "@/lib/mockCourseApi";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
 type CourseDetailData = {
   thumbnailUrl: string;
   title: string;
   topic: string | null;
   progress: number;
-  longDescription: string;
+  description: string;
 };
 
-type SessionData = MockSession;
+type SessionData = {
+  id: number;
+  thumbnailUrl: string;
+  headline: string;
+  publisher: string;
+  publishedAt: string; // "yyyy-MM-dd"
+};
 
 const KEYWORDS = ["#미래", "#전환", "#협력"];
 
@@ -32,16 +35,11 @@ export default function ArticleDetail() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ✅ mock 데이터에서 상세 + 세션 가져오기
   useEffect(() => {
     if (!articleId) return;
 
-    setLoadingDetail(true);
-    setLoadingSessions(true);
-    setErrorMsg(null);
-
-    const idNum = Number(articleId);
-    if (Number.isNaN(idNum)) {
+    const courseId = Number(articleId);
+    if (Number.isNaN(courseId)) {
       setErrorMsg("잘못된 코스 ID 입니다.");
       setDetail(null);
       setSessions([]);
@@ -50,27 +48,61 @@ export default function ArticleDetail() {
       return;
     }
 
-    const data = getCourseDetail(idNum);
+    const run = async () => {
+      setErrorMsg(null);
+      setLoadingDetail(true);
+      setLoadingSessions(true);
 
-    if (!data) {
-      setDetail(null);
-      setSessions([]);
-      setLoadingDetail(false);
-      setLoadingSessions(false);
-      return;
-    }
+      try {
+        // ✅ 코스 상세 (주의: couses 오타 경로)
+        const detailRes = await api.get<ApiResponse<any>>(
+          `/api/edu/couses/${courseId}`
+        );
 
-    setDetail({
-      thumbnailUrl: data.thumbnailUrl,
-      title: data.title,
-      topic: data.topic,
-      progress: data.progress,
-      longDescription: data.longDescription,
-    });
-    setSessions(data.sessions);
+        const d = detailRes.data.data;
+        setDetail({
+          thumbnailUrl: String(d?.thumbnailUrl ?? ""),
+          title: String(d?.title ?? ""),
+          topic: d?.topic ?? null,
+          progress: Number(d?.progress ?? 0),
+          description: String(d?.description ?? ""),
+        });
+      } catch (e) {
+        console.error("[ArticleDetail] detail error:", e);
+        setErrorMsg("코스 상세를 불러오지 못했어요.");
+        setDetail(null);
+      } finally {
+        setLoadingDetail(false);
+      }
 
-    setLoadingDetail(false);
-    setLoadingSessions(false);
+      try {
+        // ✅ 세션 리스트
+        const sesRes = await api.get<ApiResponse<any[]>>(
+          `/api/edu/courses/${courseId}/sessions`
+        );
+        const raw = Array.isArray(sesRes.data.data) ? sesRes.data.data : [];
+
+        const mapped: SessionData[] = raw
+          .map((x: any) => ({
+            id: Number(x?.id ?? 0),
+            thumbnailUrl: String(x?.thumbnailUrl ?? ""),
+            headline: String(x?.headline ?? ""),
+            publisher: String(x?.publisher ?? ""),
+            publishedAt: String(x?.publishedAt ?? ""),
+          }))
+          .filter((x: SessionData) => x.id && x.headline);
+
+        setSessions(mapped);
+      } catch (e) {
+        console.error("[ArticleDetail] sessions error:", e);
+        setErrorMsg("세션 리스트를 불러오지 못했어요.");
+        setSessions([]);
+      } finally {
+        setLoadingSessions(false);
+      }
+    };
+
+    void run();
   }, [articleId]);
 
   if (loadingDetail && !detail) {
@@ -88,7 +120,6 @@ export default function ArticleDetail() {
       <div className={styles.container}>
         {errorMsg && <p className={styles.errorMsg}>{errorMsg}</p>}
 
-        {/* 🔥 HERO */}
         <div className={styles.hero}>
           <img
             src={detail.thumbnailUrl || "/sample-news.png"}
@@ -121,11 +152,10 @@ export default function ArticleDetail() {
               ))}
             </div>
 
-            <p className={styles.heroDesc}>{detail.longDescription}</p>
+            <p className={styles.heroDesc}>{detail.description}</p>
           </div>
         </div>
 
-        {/* 🔵 진행률 + 바로 학습하기 버튼 영역 */}
         <section className={styles.progressSection}>
           <p className={styles.progressText}>현재 진행률 {progress}%</p>
           <button
@@ -135,18 +165,17 @@ export default function ArticleDetail() {
               const first = sessions[0];
               if (!articleId || !first) return;
 
-              // useGoToPrepare 안에서 state.articleTitle 로 변환해줄 거라고 가정
               goToPrepare(articleId, {
-                sessionId: first.sessionId,
+                sessionId: first.id,
                 title: detail.title,
               });
             }}
+            disabled={sessions.length === 0}
           >
             바로 학습하기
           </button>
         </section>
 
-        {/* 📚 학습 세션 리스트 */}
         <section className={styles.section}>
           <h3 className={styles.sectionTitle}>학습 세션</h3>
 
@@ -156,13 +185,13 @@ export default function ArticleDetail() {
             ) : (
               sessions.map((s) => (
                 <button
-                  key={s.sessionId}
+                  key={s.id}
                   type="button"
                   className={styles.sessionItem}
                   onClick={() =>
                     articleId &&
                     goToPrepare(articleId, {
-                      sessionId: s.sessionId,
+                      sessionId: s.id,
                       title: s.headline,
                     })
                   }

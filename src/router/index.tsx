@@ -9,6 +9,7 @@ import Home from "@/pages/Home/Home";
 import RecentCourses from "@/pages/Home/RecentCourses";
 import SavedCourses from "@/pages/Home/SavedCourses";
 import Learn from "@/pages/Learn/Learn";
+import LearnSearch from "@/pages/Learn/LearnSearch";
 import ArticlePrepare from "@/pages/article/ArticlePrepare";
 import LoginSuccess from "@/pages/LoginSuccess";
 import StepRunner from "@/pages/article/session/StepRunner";
@@ -28,6 +29,7 @@ export default function AppRouter() {
       <Route path="/recent-courses" element={<RecentCourses />} />
       <Route path="/saved-courses" element={<SavedCourses />} />
      <Route path="/learn" element={<Learn />} />
+     <Route path="/learn/search" element={<LearnSearch />} />
      <Route path="/article/:articleId/prepare" element={<ArticlePrepare />} />
      <Route path="/login/success" element={<LoginSuccess />} />
        <Route path="/nie/session/:sessionId/step/:stepId" element={<StepRunner />}  />
