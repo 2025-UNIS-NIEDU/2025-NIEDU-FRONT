@@ -8,6 +8,14 @@ const isLocalHost = () =>
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
 
+type MeResponse = {
+  onboardingCompleted?: boolean;
+  hasOnboarded?: boolean;
+  isOnboarded?: boolean;
+  onboardingStep?: number;
+  [key: string]: any;
+};
+
 export default function LoginSuccess() {
   const navigate = useNavigate();
   const { setTokens, logout } = useAuthStore();
@@ -18,21 +26,43 @@ export default function LoginSuccess() {
     const refreshToken = params.get("refreshToken");
     const withdrawPending = params.get("withdrawPending");
 
-    // ✅ 로컬 환경: 쿼리 파라미터에서 토큰 받아서 저장 (localStorage + zustand)
+    // ✅ 로컬: 쿼리로 받은 토큰 저장
     if (isLocalHost() && accessToken) {
       setTokens(accessToken, refreshToken ?? null);
     }
 
-    // ✅ 탈퇴 유예(복구) 분기
+    const safeGo = (path: string) => navigate(path, { replace: true });
+
+    const getOnboardingDone = (me: MeResponse) => {
+      if (typeof me.onboardingCompleted === "boolean") return me.onboardingCompleted;
+      if (typeof me.hasOnboarded === "boolean") return me.hasOnboarded;
+      if (typeof me.isOnboarded === "boolean") return me.isOnboarded;
+      if (typeof me.onboardingStep === "number") return me.onboardingStep >= 4;
+      return false;
+    };
+
+    const fetchMe = async (): Promise<MeResponse | null> => {
+      const candidates = ["/api/user/me", "/api/users/me", "/api/user"];
+      for (const url of candidates) {
+        try {
+          const res = await api.get(url);
+          const me = (res.data?.data ?? res.data) as MeResponse;
+          if (me) return me;
+        } catch {
+          // next
+        }
+      }
+      return null;
+    };
+
     const run = async () => {
+      // ✅ 탈퇴 유예(복구) 처리
       if (withdrawPending === "true") {
         const ok = window.confirm("탈퇴 유예 계정입니다. 계정을 복구하시겠습니까?");
         if (ok) {
           try {
             await api.post("/api/user/withdraw/cancel");
             window.alert("계정이 복구되었습니다.");
-            navigate("/home", { replace: true });
-            return;
           } catch (e) {
             console.error("[LoginSuccess] withdraw cancel error:", e);
             window.alert("계정 복구에 실패했습니다. 다시 로그인해주세요.");
@@ -40,22 +70,29 @@ export default function LoginSuccess() {
             try {
               await api.post("/api/auth/logout");
             } catch {}
-            navigate("/", { replace: true });
+            safeGo("/");
             return;
           }
         } else {
-          // 사용자가 복구 거부 → 로그아웃 처리
+          // 복구 거부 → 로그아웃
           logout();
           try {
             await api.post("/api/auth/logout");
           } catch {}
-          navigate("/", { replace: true });
+          safeGo("/");
           return;
         }
       }
 
-      // 기본: 홈으로 이동
-      navigate("/home", { replace: true });
+      // ✅ 온보딩 여부 체크 후 라우팅
+      const me = await fetchMe();
+      if (!me) {
+        safeGo("/onboarding/4");
+        return;
+      }
+
+      const done = getOnboardingDone(me);
+      safeGo(done ? "/home" : "/onboarding/4");
     };
 
     void run();

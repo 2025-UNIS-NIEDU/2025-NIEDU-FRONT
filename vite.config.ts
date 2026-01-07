@@ -64,18 +64,18 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
-
-  server: {
-    port: 5173,
-
-    
-    // ⭐⭐⭐ API 프록시 추가!!!
-    proxy: {
-      "/api": {
-        target: "https://api.niedu-service.com",   // ← 백엔드 URL 넣으면 됨
-        changeOrigin: true,
-        secure: false,
-      },
+server: {
+  proxy: {
+    "/api": {
+      target: "https://api.niedu-service.com",
+      changeOrigin: true,
+      secure: true,
+    },
+    "/oauth2": { // ⭐ 추가
+      target: "https://api.niedu-service.com",
+      changeOrigin: true,
+      secure: true,
     },
   },
+},
 });
