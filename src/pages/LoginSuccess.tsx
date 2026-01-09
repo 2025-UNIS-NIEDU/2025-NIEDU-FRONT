@@ -4,10 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import api from "@/api/axiosInstance";
 
-const isLocalHost = () =>
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1";
-
 type MeResponse = {
   onboardingCompleted?: boolean;
   hasOnboarded?: boolean;
@@ -26,8 +22,8 @@ export default function LoginSuccess() {
     const refreshToken = params.get("refreshToken");
     const withdrawPending = params.get("withdrawPending");
 
-    // ✅ 로컬: 쿼리로 받은 토큰 저장
-    if (isLocalHost() && accessToken) {
+    // ✅ 핵심: 로컬이든 배포든 accessToken이 쿼리로 오면 저장
+    if (accessToken) {
       setTokens(accessToken, refreshToken ?? null);
     }
 
@@ -49,14 +45,14 @@ export default function LoginSuccess() {
           const me = (res.data?.data ?? res.data) as MeResponse;
           if (me) return me;
         } catch {
-          // next
+          // 다음 후보
         }
       }
       return null;
     };
 
     const run = async () => {
-      // ✅ 탈퇴 유예(복구) 처리
+      // ✅ 탈퇴 유예 처리(있으면)
       if (withdrawPending === "true") {
         const ok = window.confirm("탈퇴 유예 계정입니다. 계정을 복구하시겠습니까?");
         if (ok) {
@@ -67,32 +63,29 @@ export default function LoginSuccess() {
             console.error("[LoginSuccess] withdraw cancel error:", e);
             window.alert("계정 복구에 실패했습니다. 다시 로그인해주세요.");
             logout();
-            try {
-              await api.post("/api/auth/logout");
-            } catch {}
             safeGo("/");
             return;
           }
         } else {
-          // 복구 거부 → 로그아웃
           logout();
-          try {
-            await api.post("/api/auth/logout");
-          } catch {}
           safeGo("/");
           return;
         }
       }
 
-      // ✅ 온보딩 여부 체크 후 라우팅
       const me = await fetchMe();
+
+      // ✅ 중요: me를 못 받아오더라도, 지금은 플로우 테스트를 위해 홈으로 보내고 싶으면 여기 바꾸면 됨
+      // - 원래 로직: 온보딩으로 보내기(안전)
+      // - 지금 목표: 홈 API 확인 -> 홈으로 보내기
       if (!me) {
-        safeGo("/onboarding/4");
+        // safeGo("/onboarding/topic"); // 안전한 선택
+        safeGo("/home"); // ✅ 지금은 홈 확인 목적이면 이게 편함
         return;
       }
 
       const done = getOnboardingDone(me);
-      safeGo(done ? "/home" : "/onboarding/4");
+      safeGo(done ? "/home" : "/onboarding/topic");
     };
 
     void run();

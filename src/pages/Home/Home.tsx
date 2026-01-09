@@ -42,6 +42,9 @@ type HomeCourse = {
 
 const FALLBACK_USER: UserProfile = { nickname: "사용자", profileImageUrl: "" };
 
+// ✅ 배포에서 /sample-news.png 404 나는 것 방지용 (public에 없으면 이걸로 대체)
+const FALLBACK_THUMB = "/icons/vite.svg"; // 프로젝트에 있는 걸로 바꿔도 됨
+
 export default function Home() {
   const navigate = useNavigate();
   const goToDetail = useGoToDetail();
@@ -53,63 +56,97 @@ export default function Home() {
   const [recentCourses, setRecentCourses] = useState<HomeCourse[]>([]);
   const [savedCourses, setSavedCourses] = useState<HomeCourse[]>([]);
 
+  // ✅ 로딩/에러 (mock처럼 보이는 상태 방지용)
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const fetchUserProfile = async () => {
-    try {
-      const res = await api.get<ApiResponse<UserProfile>>("/api/user/me");
-      if (res.data.success) setUser(res.data.data);
-      else setUser(FALLBACK_USER);
-    } catch (e) {
-      console.error("[HOME] fetchUserProfile error:", e);
-      setUser(FALLBACK_USER);
-    }
+    const res = await api.get<ApiResponse<UserProfile>>("/api/user/me");
+    if (res.data?.success) setUser(res.data.data);
+    else setUser(FALLBACK_USER);
   };
 
   const fetchStreak = async () => {
-    try {
-      const res = await api.get<ApiResponse<StreakData>>("/api/attendance/streak");
-      if (res.data.success && res.data.data) setStreak(res.data.data.streak);
-      else setStreak(null);
-    } catch (e) {
-      console.error("[HOME] fetchStreak error:", e);
-      setStreak(null);
-    }
+    const res = await api.get<ApiResponse<StreakData>>("/api/attendance/streak");
+    if (res.data?.success && res.data?.data) setStreak(res.data.data.streak);
+    else setStreak(null);
   };
 
   const fetchTodayNews = async () => {
-    try {
-      const res = await api.get<ApiResponse<HomeNewsItem[]>>("/api/home/news");
-      if (res.data.success && Array.isArray(res.data.data)) setTodayNews(res.data.data);
-      else setTodayNews([]);
-    } catch (e) {
-      console.error("[HOME] fetchTodayNews error:", e);
-      setTodayNews([]);
-    }
+    const res = await api.get<ApiResponse<HomeNewsItem[]>>("/api/home/news");
+    if (res.data?.success && Array.isArray(res.data.data)) setTodayNews(res.data.data);
+    else setTodayNews([]);
   };
 
   const fetchHomeCourses = async () => {
-    try {
-      const recentRes = await api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
+    const [recentRes, savedRes] = await Promise.all([
+      api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
         params: { type: "recent", view: "preview" },
-      });
-      setRecentCourses(Array.isArray(recentRes.data.data) ? recentRes.data.data : []);
-
-      const savedRes = await api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
+      }),
+      api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
         params: { type: "saved", view: "preview" },
-      });
-      setSavedCourses(Array.isArray(savedRes.data.data) ? savedRes.data.data : []);
-    } catch (e) {
-      console.error("[HOME] fetchHomeCourses error:", e);
-      setRecentCourses([]);
-      setSavedCourses([]);
-    }
+      }),
+    ]);
+
+    setRecentCourses(Array.isArray(recentRes.data?.data) ? recentRes.data.data : []);
+    setSavedCourses(Array.isArray(savedRes.data?.data) ? savedRes.data.data : []);
   };
 
   useEffect(() => {
-    void fetchUserProfile();
-    void fetchStreak();
-    void fetchTodayNews();
-    void fetchHomeCourses();
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setErrorMsg(null);
+
+        // ✅ 여기서 API를 실제로 “반드시” 탄다
+        await Promise.all([
+          fetchUserProfile(),
+          fetchStreak(),
+          fetchTodayNews(),
+          fetchHomeCourses(),
+        ]);
+
+        if (!alive) return;
+
+        // ✅ 디버그 로그 (원하면 나중에 지워)
+        console.log("[HOME] loaded", {
+          user,
+          streak,
+          todayNewsCount: todayNews.length,
+          recentCoursesCount: recentCourses.length,
+          savedCoursesCount: savedCourses.length,
+        });
+      } catch (e) {
+        console.error("[HOME] load error:", e);
+        if (!alive) return;
+
+        // ❗️여기서 mock으로 fallback 하지 않고 “빈 화면”으로 둬서
+        // 실제 API가 안 붙으면 티 나게 만들었음
+        setUser(FALLBACK_USER);
+        setStreak(null);
+        setTodayNews([]);
+        setRecentCourses([]);
+        setSavedCourses([]);
+        setErrorMsg("홈 데이터를 불러오지 못했어요. (로그인/쿠키/서버 상태 확인)");
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.src.endsWith(FALLBACK_THUMB)) return;
+    img.src = FALLBACK_THUMB;
+  };
 
   return (
     <div className={styles.viewport}>
@@ -134,10 +171,22 @@ export default function Home() {
               className={styles.bannerIcon}
             />
             <p className={styles.bannerText}>
-              {user?.nickname ?? "사용자"} 님, 오늘도 뉴스로 상식을 넓혀봐요!
+              {user?.nickname ?? "사용자"} 님, 오늘도 뉴스로 을 넓혀봐요!
             </p>
           </div>
         </div>
+
+        {/* ✅ 상태 표시: 지금처럼 mock으로 “그럴듯하게” 보이는 걸 막기 */}
+        {loading && (
+          <div style={{ padding: "12px 0", fontSize: 12, opacity: 0.7 }}>
+            홈 데이터 불러오는 중…
+          </div>
+        )}
+        {!loading && errorMsg && (
+          <div style={{ padding: "12px 0", fontSize: 12, color: "#d33" }}>
+            {errorMsg}
+          </div>
+        )}
 
         {/* 오늘자 뉴스 학습하기 */}
         <section className={styles.section}>
@@ -145,15 +194,21 @@ export default function Home() {
           <p className={styles.date}>오전 8시 업데이트</p>
 
           <div className={styles.newsScroll}>
-            {todayNews.map((news) => (
-              <button
-                key={news.newsId}
-                className={`${styles.newsItem} ${styles.clickable}`}
-                onClick={() => goToDetail(news.newsId, { from: "home-today" })}
-              >
-                <NewsCard title={news.title} source={news.source} />
-              </button>
-            ))}
+            {todayNews.length === 0 && !loading ? (
+              <div style={{ fontSize: 12, opacity: 0.7, padding: "8px 0" }}>
+                오늘자 뉴스가 없어요.
+              </div>
+            ) : (
+              todayNews.map((news) => (
+                <button
+                  key={news.newsId}
+                  className={`${styles.newsItem} ${styles.clickable}`}
+                  onClick={() => goToDetail(news.newsId, { from: "home-today" })}
+                >
+                  <NewsCard title={news.title} source={news.source} />
+                </button>
+              ))
+            )}
           </div>
         </section>
 
@@ -169,26 +224,33 @@ export default function Home() {
             />
           </div>
 
-          {recentCourses.map((course) => (
-            <div
-              key={course.courseId}
-              className={`${styles.courseCard} ${styles.clickable}`}
-              onClick={() => goToDetail(course.courseId, { from: "home-recent" })}
-            >
-              <img
-                className={styles.courseThumb}
-                src={course.thumbnailUrl ?? "/sample-news.png"}
-                alt=""
-              />
-              <div className={styles.courseBody}>
-                <h3 className={styles.courseTitle}>{course.title}</h3>
-                <p className={styles.courseDesc}>진행률 {course.progressRate}%</p>
-                <div className={styles.tagRow}>
-                  {course.isSaved && <span className={styles.tag}>저장됨</span>}
+          {recentCourses.length === 0 && !loading ? (
+            <div style={{ fontSize: 12, opacity: 0.7, padding: "8px 0" }}>
+              최근 학습한 코스가 없어요.
+            </div>
+          ) : (
+            recentCourses.map((course) => (
+              <div
+                key={course.courseId}
+                className={`${styles.courseCard} ${styles.clickable}`}
+                onClick={() => goToDetail(course.courseId, { from: "home-recent" })}
+              >
+                <img
+                  className={styles.courseThumb}
+                  src={course.thumbnailUrl || FALLBACK_THUMB}
+                  onError={handleImgError}
+                  alt=""
+                />
+                <div className={styles.courseBody}>
+                  <h3 className={styles.courseTitle}>{course.title}</h3>
+                  <p className={styles.courseDesc}>진행률 {course.progressRate ?? 0}%</p>
+                  <div className={styles.tagRow}>
+                    {course.isSaved && <span className={styles.tag}>저장됨</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </section>
 
         {/* 즐겨찾기 코스 */}
@@ -203,26 +265,33 @@ export default function Home() {
             />
           </div>
 
-          {savedCourses.map((course) => (
-            <div
-              key={course.courseId}
-              className={`${styles.courseCard} ${styles.clickable}`}
-              onClick={() => goToDetail(course.courseId, { from: "home-saved" })}
-            >
-              <img
-                className={styles.courseThumb}
-                src={course.thumbnailUrl ?? "/sample-news.png"}
-                alt=""
-              />
-              <div className={styles.courseBody}>
-                <h3 className={styles.courseTitle}>{course.title}</h3>
-                <p className={styles.courseDesc}>진행률 {course.progressRate}%</p>
-                <div className={styles.tagRow}>
-                  {course.isSaved && <span className={styles.tag}>저장됨</span>}
+          {savedCourses.length === 0 && !loading ? (
+            <div style={{ fontSize: 12, opacity: 0.7, padding: "8px 0" }}>
+              즐겨찾기한 코스가 없어요.
+            </div>
+          ) : (
+            savedCourses.map((course) => (
+              <div
+                key={course.courseId}
+                className={`${styles.courseCard} ${styles.clickable}`}
+                onClick={() => goToDetail(course.courseId, { from: "home-saved" })}
+              >
+                <img
+                  className={styles.courseThumb}
+                  src={course.thumbnailUrl || FALLBACK_THUMB}
+                  onError={handleImgError}
+                  alt=""
+                />
+                <div className={styles.courseBody}>
+                  <h3 className={styles.courseTitle}>{course.title}</h3>
+                  <p className={styles.courseDesc}>진행률 {course.progressRate ?? 0}%</p>
+                  <div className={styles.tagRow}>
+                    {course.isSaved && <span className={styles.tag}>저장됨</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </section>
 
         <div className={styles.bottomSpace} />

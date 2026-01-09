@@ -2,36 +2,35 @@
 import axios, { AxiosError } from "axios";
 import { useAuthStore } from "../store/authStore";
 
-// 로컬 판별
 const isLocalHost = () =>
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
 
 /**
  * ✅ baseURL 전략
- * - 로컬: Vite proxy를 타야 하므로 baseURL을 "" (상대경로)로 둔다.
- * - 운영: 실제 API 도메인 사용 (쿠키 포함)
+ * - 로컬: Vite proxy 사용 -> baseURL ""
+ * - 운영/배포: api 도메인 사용
  */
 const api = axios.create({
   baseURL: isLocalHost()
-    ? "" // ⭐ 핵심: 로컬에서는 상대경로 -> /api 요청이 프록시를 탐
+    ? ""
     : (import.meta.env.VITE_API_BASE_URL || "https://api.niedu-service.com"),
   withCredentials: true,
 });
 
-// 요청 인터셉터
+// ✅ 요청 인터셉터: "호스트 상관없이" store에 accessToken 있으면 Bearer 붙임
 api.interceptors.request.use((config) => {
-  if (isLocalHost()) {
-    const { accessToken } = useAuthStore.getState();
-    if (accessToken && !config.headers?.Authorization) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
+  const { accessToken } = useAuthStore.getState();
+
+  if (accessToken && !config.headers?.Authorization) {
+    config.headers = config.headers ?? {};
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
+
   return config;
 });
 
-// 401 처리
+// 401 처리 (선택: 지금은 우선 유지)
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
@@ -41,13 +40,7 @@ api.interceptors.response.use(
       originalConfig._retry = true;
 
       try {
-        if (isLocalHost()) {
-          // ✅ 로컬: 리다이렉트 방식이면 XHR로 못함 -> 브라우저 이동
-          window.location.href = `/api/auth/reissue-access-token`;
-          return Promise.reject(error);
-        }
-
-        // ✅ 운영: refreshToken 쿠키로 accessToken 쿠키 재세팅
+        // 로컬/배포 모두 일단 재요청(백엔드 정책에 맞게 추후 조정 가능)
         await axios.post(
           `${api.defaults.baseURL}/api/auth/reissue-access-token`,
           {},

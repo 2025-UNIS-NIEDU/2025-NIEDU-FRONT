@@ -4,8 +4,10 @@ import { useNavigate } from "react-router-dom";
 import styles from "./OnboardingTopic.module.css";
 import api from "@/api/axiosInstance";
 
-// 🔹 노출 키워드 (한글)
 const ALL_TOPICS = ["정치", "경제", "사회", "국제"];
+
+// ✅ 임시 우회 토글
+const SKIP_API = true;
 
 export default function OnboardingTopic() {
   const nav = useNavigate();
@@ -20,27 +22,34 @@ export default function OnboardingTopic() {
     );
   };
 
+  const goNext = (topics: string[]) => {
+    nav("/onboarding/alarm", { state: { topics } });
+  };
+
   const handleNext = async () => {
     if (selected.length === 0) {
       setError("최소 1개는 선택해야 합니다");
       return;
     }
 
-    // ✅ 백엔드 스펙: Body는 String array (예: ["정치", "경제"])
     const selectedTopics = selected;
+
+    // ✅ 완전 우회
+    if (SKIP_API) {
+      goNext(selectedTopics);
+      return;
+    }
 
     setSubmitting(true);
     setError("");
 
     try {
       await api.post("/api/onboard/topics", selectedTopics);
-
-      nav("/onboarding/alarm", {
-        state: { topics: selectedTopics },
-      });
+      goNext(selectedTopics);
     } catch (e) {
       console.error("[OnboardingTopic] post topics error:", e);
-      setError("토픽 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+      // ✅ 실패해도 다음으로 이동
+      goNext(selectedTopics);
     } finally {
       setSubmitting(false);
     }
@@ -75,7 +84,7 @@ export default function OnboardingTopic() {
               >
                 {t}
               </button>
-            );``
+            );
           })}
         </div>
 
@@ -92,11 +101,7 @@ export default function OnboardingTopic() {
           </div>
         )}
 
-        <button
-          className={styles.nextButton}
-          onClick={handleNext}
-          disabled={submitting}
-        >
+        <button className={styles.nextButton} onClick={handleNext} disabled={submitting}>
           {submitting ? "저장 중..." : "계속하기"}
         </button>
       </div>
