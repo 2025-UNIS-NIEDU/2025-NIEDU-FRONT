@@ -6,11 +6,6 @@ const isLocalHost = () =>
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
 
-/**
- * ✅ baseURL 전략
- * - 로컬: Vite proxy 사용 -> baseURL ""
- * - 운영/배포: api 도메인 사용
- */
 const api = axios.create({
   baseURL: isLocalHost()
     ? ""
@@ -18,7 +13,7 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// ✅ 요청 인터셉터: "호스트 상관없이" store에 accessToken 있으면 Bearer 붙임
+// ✅ 요청 인터셉터: 로컬/운영 상관없이 store에 accessToken 있으면 Bearer 붙이기
 api.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
 
@@ -30,7 +25,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 처리 (선택: 지금은 우선 유지)
+// 401 처리 (그대로)
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
@@ -40,7 +35,11 @@ api.interceptors.response.use(
       originalConfig._retry = true;
 
       try {
-        // 로컬/배포 모두 일단 재요청(백엔드 정책에 맞게 추후 조정 가능)
+        if (isLocalHost()) {
+          window.location.href = `/api/auth/reissue-access-token`;
+          return Promise.reject(error);
+        }
+
         await axios.post(
           `${api.defaults.baseURL}/api/auth/reissue-access-token`,
           {},
