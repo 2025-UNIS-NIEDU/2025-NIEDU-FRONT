@@ -1,5 +1,5 @@
 // src/pages/article/session/StepRunner.tsx
-import { useLocation, useParams, Navigate } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 
 import StepN001 from "./N/StepN001";
 import StepN002 from "./N/StepN002";
@@ -51,34 +51,24 @@ export default function StepRunner() {
 
   const lev = rawLevel as Level;
 
-  const stepIdStr = (stepIdParam ?? "").toString(); // "001" | "1"
+  const stepIdStr = (stepIdParam ?? "").toString(); // "1" | "001"
   const stepOrder = Number(stepIdStr); // 1~5
 
   const steps = state.steps ?? [];
-  const currentStep =
-    steps.length && !Number.isNaN(stepOrder)
-      ? steps.find((s) => Number(s.stepOrder) === stepOrder)
-      : undefined;
 
-  // 디버그 (필요 없으면 지워도 됨)
   console.log("[StepRunner]", {
     pathname: location.pathname,
     lev,
     stepIdStr,
     stepOrder,
     hasSteps: steps.length,
-    currentStep,
     state,
   });
 
-  // ✅ 핵심: steps가 없으면 Step들이 content를 못 그리니까 안내
-  // (사용자가 직접 /nie/session/N/step/001 URL로 들어왔을 때 흔함)
   if (!steps.length) {
     return (
       <div style={{ padding: 16 }}>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>
-          세션 데이터가 없어요.
-        </div>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>세션 데이터가 없어요.</div>
         <div style={{ opacity: 0.8, lineHeight: 1.5 }}>
           이 화면은 ArticlePrepare에서 start API 호출 후 전달되는 <code>steps</code>가
           필요합니다.
@@ -89,7 +79,15 @@ export default function StepRunner() {
     );
   }
 
-  // -------------------- N 단계 --------------------
+  if (!stepIdStr || Number.isNaN(stepOrder) || stepOrder <= 0) {
+    return (
+      <div style={{ padding: 16 }}>
+        잘못된 step 경로입니다. (step: {stepIdStr || "?"})
+      </div>
+    );
+  }
+
+  // N
   if (lev === "N") {
     if (stepOrder === 1) return <StepN001 />;
     if (stepOrder === 2) return <StepN002 />;
@@ -98,7 +96,7 @@ export default function StepRunner() {
     if (stepOrder === 5) return <StepN005 />;
   }
 
-  // -------------------- I 단계 --------------------
+  // I
   if (lev === "I") {
     if (stepOrder === 1) return <StepI001 />;
     if (stepOrder === 2) return <StepI002 />;
@@ -106,7 +104,7 @@ export default function StepRunner() {
     if (stepOrder === 4) return <StepI004 />;
   }
 
-  // -------------------- E 단계 --------------------
+  // E
   if (lev === "E") {
     if (stepOrder === 1) return <StepE001 />;
     if (stepOrder === 2) return <StepE002 />;
@@ -114,7 +112,6 @@ export default function StepRunner() {
     if (stepOrder === 4) return <StepE004 />;
   }
 
-  // -------------------- fallback --------------------
   return (
     <div style={{ padding: 16 }}>
       준비 중인 단계입니다. (level: {rawLevel || "?"}, stepId: {stepIdStr})

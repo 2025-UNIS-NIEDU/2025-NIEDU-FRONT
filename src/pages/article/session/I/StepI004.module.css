@@ -1,154 +1,81 @@
-/* 화면 전체 래퍼 */
+/* src/pages/article/session/I/StepI004.module.css */
+
 .viewport {
-  position: fixed;
-  inset: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overflow-x: hidden;
-
+  width: 100%;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: stretch;
-  background: #eef0f4;
-
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.viewport::-webkit-scrollbar {
-  display: none;
 }
 
-/* 실제 콘텐츠 컨테이너 */
 .container {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-
-  width: 100%;
-  max-width: 700px;
-  min-height: 100%;
-  margin: 0 auto;
-  background: #ffffff;
+  width: 390px;
+  min-height: 100vh;
+  padding: 16px;
   box-sizing: border-box;
-
-  padding: 16px 20px 220px; /* EduBottomBar 높이 고려 */
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* 진행바 */
-.progressWrap {
-  width: 100%;
-  height: 6px;
-  background: #f2f3f7;
-  border-radius: 20px;
-  margin-bottom: 24px;
-}
-
-.progress {
-  height: 100%;
-  width: 100%;
-  background: #5b75f9;
-  border-radius: 999px;
-}
-
-/* 점수 영역 */
-.scoreBox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 28px;
-}
-
-.mascot {
-  width: 72px;
-  height: auto;
-}
-
-.scoreTexts {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.score {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-
-.scoreComment {
+.loading {
+  padding: 24px;
   font-size: 14px;
-  color: #555;
 }
 
-/* 섹션 타이틀 */
-.sectionTitle {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 12px;
+.heading {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 14px;
 }
 
-/* 피드백 카드 */
-.feedbackCard {
-  border-radius: 20px;
-  border: 1px solid rgba(191, 195, 201, 0.6);
-  background: #ffffff;
-  box-shadow: 0 0 2px rgba(114, 114, 114, 0.25);
-  padding: 16px 18px 18px;
-
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.card {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
 }
 
-.feedbackBlock {
-  text-align: left;
+.qNum {
+  font-size: 12px;
+  color: #777;
+  margin: 0 0 10px;
 }
 
-.feedbackHeading {
+.question {
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 100px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 14px;
+  resize: none;
+}
+
+.explainBox {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #fff9e6;
+  border: 1px solid #ffe3a3;
+}
+
+.explainTitle {
   font-size: 13px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin: 0 0 6px;
 }
 
-.feedbackText {
+.answerLine {
   font-size: 13px;
-  line-height: 1.6;
-  color: #111;
-  white-space: pre-line;
+  margin: 0 0 6px;
 }
 
-.feedbackDivider {
-  height: 1px;
-  background: #e2e5ec;
-  margin: 4px 0;
-}
-
-/* 하단 점수 구간 + userAnswer */
-.metaBox {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-
-.scoreBand {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #5b75f9;
-  color: #ffffff;
-  font-size: 12px;
-}
-
-.userAnswerLabel {
-  font-size: 11px;
-  color: #555;
-  word-break: break-all;
-}
-
-/* EduBottomBar와의 간격 */
-.bottomSpace {
-  height: 40px;
+.explainText {
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.45;
 }

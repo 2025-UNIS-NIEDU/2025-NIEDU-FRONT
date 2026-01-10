@@ -1,230 +1,172 @@
 // src/pages/article/session/I/StepI004.tsx
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
+import { submitStepAnswer, getSessionSummary } from "@/lib/apiClient";
 import styles from "./StepI004.module.css";
 
-// 🔹 I 단계 패키지 JSON 전체 import
-import iPackageJson from "@/data/economy_2025-11-24_package.json";
-
-type Props = { articleId?: string; articleUrl?: string };
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
+};
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
+  startTime?: number;
+  courseId?: number | string;
+  sessionId?: number | string | null;
+  level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
-type QuizItem = {
-  id: number;
+type ShortAnswerItem = {
+  contentId: number;
   question: string;
-  answer: string;      // 정답 텍스트
-  explanation: string; // 해설
+  correctAnswer: string;
+  answerExplanation: string;
 };
 
-type ShortAnswerContent = {
-  sourceUrl: string;
-  items: QuizItem[];
-};
-
-// 🔍 JSON 어디에 있든 SHORT_ANSWER 블록 찾아오기
-function findShortAnswer(node: any): ShortAnswerContent | undefined {
-  if (!node) return undefined;
-
-  // 배열이면 요소들 순회
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      const found = findShortAnswer(item);
-      if (found) return found;
-    }
-    return undefined;
-  }
-
-  // 객체면 자기 자신 먼저 검사
-  if (typeof node === "object") {
-    if (
-      node.contentType === "SHORT_ANSWER" &&
-      Array.isArray(node.contents) &&
-      node.contents.length > 0
-    ) {
-      const contents = node.contents.map((c: any) => ({
-        id: c.contentId,
-        question: c.question,
-        answer: c.correctAnswer,
-        explanation: c.answerExplanation,
-      })) as QuizItem[];
-
-      const sourceUrl =
-        node.sourceUrl ??
-        node.contents[0]?.sourceUrl ??
-        "";
-
-      return { sourceUrl, items: contents };
-    }
-
-    // 프로퍼티들 안으로 재귀
-    for (const key of Object.keys(node)) {
-      const value = (node as any)[key];
-      const found = findShortAnswer(value);
-      if (found) return found;
-    }
-  }
-
-  return undefined;
-}
-
-// JSON 전체에서 한 번만 찾아서 캐싱
-const SHORT_FROM_PACKAGE: ShortAnswerContent | undefined = findShortAnswer(
-  iPackageJson as any
-);
-
-export default function StepI004({ articleId, articleUrl }: Props) {
+export default function StepI004() {
   const nav = useNavigate();
   const location = useLocation();
+  const state = (location.state as RouteState | undefined) ?? {};
 
-  const state = (location.state as RouteState) || {};
-  const aId = state.articleId ?? articleId;
-  const aUrl = state.articleUrl ?? articleUrl;
+  const steps = state.steps ?? [];
+  const STEP_ORDER = 4;
+  const CONTENT_TYPE = "SHORT_ANSWER";
 
-  const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const currentStep = useMemo(() => {
+    return (
+      steps.find((s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE) ??
+      steps.find((s) => Number(s.stepOrder) === STEP_ORDER)
+    );
+  }, [steps]);
 
+  const [items, setItems] = useState<ShortAnswerItem[]>([]);
   const [index, setIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
-  const [startTime] = useState(() => Date.now());
+  const cid = Number(state.courseId ?? state.articleId);
+  const sid = Number(state.sessionId);
+  const stepId = Number(currentStep?.stepId);
 
-  // 🔹 JSON에서 SHORT_ANSWER 가져오기
   useEffect(() => {
-    if (SHORT_FROM_PACKAGE) {
-      setQuizzes(SHORT_FROM_PACKAGE.items);
-      setSourceUrl(SHORT_FROM_PACKAGE.sourceUrl);
-    } else {
-      console.warn("[StepI004] SHORT_ANSWER 데이터를 찾을 수 없음", {
-        SHORT_FROM_PACKAGE,
-        rawPkg: iPackageJson,
-      });
+    const contents = currentStep?.content?.contents;
+    if (!Array.isArray(contents) || contents.length === 0) {
+      setItems([]);
+      return;
     }
-  }, []);
-
-  const q = quizzes[index];
-  const total = quizzes.length;
-
-  const normalize = (str: string) =>
-    str.trim().replace(/\s+/g, "").toLowerCase();
-
-  const handleConfirm = () => {
-    if (!q) return;
-    if (!userAnswer.trim()) return;
-
-    const correct = normalize(userAnswer) === normalize(q.answer);
-    setIsCorrect(correct);
-    setConfirmed(true);
-  };
-
-const goNextProblem = () => {
-  if (index < total - 1) {
-    setIndex((prev) => prev + 1);
+    const mapped = contents.map((c: any) => ({
+      contentId: Number(c?.contentId ?? 0),
+      question: String(c?.question ?? ""),
+      correctAnswer: String(c?.correctAnswer ?? ""),
+      answerExplanation: String(c?.answerExplanation ?? ""),
+    }));
+    setItems(mapped);
+    setIndex(0);
     setUserAnswer("");
     setConfirmed(false);
-    setIsCorrect(null);
-  } else {
-    const diffSec = Math.floor((Date.now() - startTime) / 1000);
-    const minutes = Math.floor(diffSec / 60);
-    const seconds = diffSec % 60;
-    const durationLabel = `${minutes}분 ${seconds}초`;
+  }, [currentStep]);
 
-    nav("/nie/session/N/result", {
-      state: {
-        streak: 2,       // ✅ N005와 똑같이
-        durationLabel,   // ✅ 결과 페이지가 쓰는 값
-      },
+  const q = items[index];
+  const total = items.length;
+
+  const handlePrev = () => nav("/nie/session/I/step/003", { state: { ...state }, replace: true });
+
+  const saveAnswer = async () => {
+    if (!cid || !sid || !stepId || !q) return;
+    await submitStepAnswer({
+      courseId: cid,
+      sessionId: sid,
+      stepId,
+      contentType: CONTENT_TYPE,
+      userAnswer: [{ contentId: q.contentId, value: userAnswer }],
     });
-  }
-};
-
-
-  const goPrev = () => {
-    nav(-1);
   };
 
-  if (!q) {
-    return <div className={styles.loading}>불러오는 중…</div>;
-  }
+  const handleNext = async () => {
+    if (!confirmed) {
+      try {
+        await saveAnswer();
+      } catch (e) {
+        console.error("[StepI004] submit error:", e);
+      }
+      setConfirmed(true);
+      return;
+    }
+
+    if (index < total - 1) {
+      setIndex((p) => p + 1);
+      setUserAnswer("");
+      setConfirmed(false);
+      return;
+    }
+
+    // ✅ 끝나면 summary로 streak 가져와서 result
+    try {
+      const summary = await getSessionSummary({ courseId: cid, sessionId: sid });
+      nav("/article/result", {
+        state: {
+          level: "I",
+          streak: summary?.data?.streak ?? 0,
+          learningTime: summary?.data?.learningTime,
+        },
+        replace: true,
+      });
+    } catch (e) {
+      console.error("[StepI004] summary error:", e);
+      nav("/article/result", { state: { level: "I", streak: 0 }, replace: true });
+    }
+  };
+
+  if (!q) return <div className={styles.loading}>문제가 없습니다.</div>;
+
+  const isCorrect =
+    confirmed && userAnswer.trim().length > 0 && userAnswer.trim() === q.correctAnswer.trim();
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행바: 문제 수 기준 */}
-        <div className={styles.progressWrap}>
-          <div
-            className={styles.progress}
-            style={{ width: `${((index + 1) / total) * 100}%` }}
-          />
-        </div>
+        <h2 className={styles.heading}>주관식</h2>
 
-        <h2 className={styles.question}>{q.question}</h2>
+        <div className={styles.card}>
+          <p className={styles.qNum}>
+            {index + 1} / {total}
+          </p>
+          <p className={styles.question}>{q.question}</p>
 
-        {/* 입력창 */}
-        <div className={styles.inputWrapper}>
-          <input
-            type="text"
-            className={styles.input}
-            placeholder="답안을 작성하세요."
+          <textarea
+            className={styles.textarea}
+            placeholder="정답을 입력해주세요"
             value={userAnswer}
             onChange={(e) => setUserAnswer(e.target.value)}
+            disabled={confirmed}
           />
+
+          {confirmed && (
+            <div className={styles.explainBox}>
+              <p className={styles.explainTitle}>
+                {isCorrect ? "정답이에요!" : "정답을 확인해볼까요?"}
+              </p>
+              <p className={styles.answerLine}>정답: {q.correctAnswer}</p>
+              <p className={styles.explainText}>{q.answerExplanation}</p>
+            </div>
+          )}
         </div>
 
-        {/* 정답 확인 버튼 */}
-        {!confirmed && (
-          <button
-            type="button"
-            className={styles.checkBtn}
-            disabled={!userAnswer.trim()}
-            onClick={handleConfirm}
-          >
-            정답 확인하기
-          </button>
-        )}
-
-        {/* 정답/오답 해설 박스 */}
-        {confirmed && (
-          <div
-            className={`${styles.answerBox} ${
-              isCorrect ? styles.answerBoxCorrect : styles.answerBoxWrong
-            }`}
-          >
-            <div className={styles.answerHeader}>
-              <span className={styles.answerLabel}>정답: {q.answer}</span>
-
-              <button
-                className={styles.sourceBtn}
-                type="button"
-                disabled={!sourceUrl && !aUrl}
-                onClick={() => {
-                  const url = sourceUrl ?? aUrl;
-                  if (url) window.open(url, "_blank");
-                }}
-              >
-                뉴스 원문 보기
-              </button>
-            </div>
-            <p className={styles.answerText}>{q.explanation}</p>
-          </div>
-        )}
-
-        <div className={styles.bottomSpace} />
+        <EduBottomBar
+          onPrev={handlePrev}
+          onNext={handleNext}
+          disableNext={!confirmed && userAnswer.trim().length === 0}
+        />
       </div>
-
-      <EduBottomBar
-        onPrev={goPrev}
-        onQuit={() => nav("/learn")}
-        onNext={confirmed ? goNextProblem : undefined}
-        disablePrev={false}
-        disableNext={!confirmed}
-      />
     </div>
   );
 }

@@ -1,69 +1,70 @@
 // src/lib/apiClient.ts
+// 공용 API 헬퍼 (mock 제거)
 
-const USE_MOCK_API = true;  // 🔹 지금은 백엔드 안 쓸 거니까 true 로 고정
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
-// 타입은 기존 파일 그대로 사용
+export type LevelCode = "N" | "E" | "I";
+
 export type StartSessionPayload = {
-  courseId: string;
-  sessionId: string;
-  level: "N" | "E" | "I";
+  courseId: number;
+  sessionId: number;
+  level: LevelCode;
 };
 
-export type StartSessionResponse = {
-  success: boolean;
-  status: number;
-  message: string;
-  data: {
-    entryStepId: number;
-    steps: any[];   // 실제로는 StepMeta[]
-  };
-};
+export type StartSessionResponse = ApiResponse<{
+  entryStepId: number;
+  steps: any[];
+  progress?: number;
+}>;
 
-// ✅ 세션 시작: 지금은 그냥 mock 데이터 리턴만 하고, 네트워크 호출 안 함
-export async function startSession(
-  payload: StartSessionPayload
-): Promise<StartSessionResponse> {
-  if (USE_MOCK_API) {
-    console.info("[startSession] MOCK MODE, 실제 API 호출하지 않음", payload);
-
-    // StepRunner가 최소한으로 필요한 값만 줘도 됨
-    return {
-      success: true,
-      status: 200,
-      message: "mock",
-      data: {
-        entryStepId: 1,
-        steps: [],      // 이미 N/E/I 스텝에서 JSON을 직접 읽고 있으니 비워둬도 됨
-      },
-    };
-  }
-
-  // 🔻 나중에 진짜 백엔드 쓸 때 다시 살릴 부분
-  const res = await fetch(
-    `${import.meta.env.VITE_API_BASE_URL}/api/edu/courses/${payload.courseId}/sessions/${payload.sessionId}/start`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ level: payload.level }),
-    }
+export async function startSession(payload: StartSessionPayload) {
+  const res = await api.post<StartSessionResponse>(
+    `/api/edu/courses/${payload.courseId}/sessions/${payload.sessionId}/start`,
+    { level: payload.level }
   );
-  const json = await res.json();
-  return json;
+  return res.data;
 }
 
-// ✅ 답안 전송도 지금은 no-op
-export async function submitStepAnswer(_: {
-  courseId: string;
-  sessionId: string;
+export async function submitStepAnswer(args: {
+  courseId: number;
+  sessionId: number;
   stepId: number;
   contentType: string;
   userAnswer: unknown;
 }) {
-  if (USE_MOCK_API) {
-    console.info("[submitStepAnswer] MOCK MODE, 실제 API 호출하지 않음");
-    return;
-  }
+  // 서버가 기대하는 포맷은 StepN 계열과 동일하게 통일
+  return api.post<ApiResponse<null>>(
+    `/api/edu/courses/${args.courseId}/sessions/${args.sessionId}/steps/${args.stepId}/answer`,
+    {
+      contentType: args.contentType,
+      userAnswer: args.userAnswer,
+    }
+  );
+}
 
-  // 나중용 실제 API 코드 ...
+export async function submitForFeedback(args: {
+  courseId: number;
+  sessionId: number;
+  stepId: number;
+  contentId: number;
+  userAnswer: string;
+}) {
+  const res = await api.post<
+    ApiResponse<{ contentId: number; AIScore: number; AIFeedback: string }>
+  >(
+    `/api/edu/courses/${args.courseId}/sessions/${args.sessionId}/steps/${args.stepId}/submit-for-feedback`,
+    { contentId: args.contentId, userAnswer: args.userAnswer }
+  );
+  return res.data;
+}
+
+export async function getSessionSummary(args: {
+  courseId: number;
+  sessionId: number;
+}) {
+  const res = await api.get<ApiResponse<{ streak: number; learningTime: any }>>(
+    `/api/edu/courses/${args.courseId}/sessions/${args.sessionId}/summary`
+  );
+  return res.data;
 }

@@ -24,7 +24,6 @@ type StreakData = {
 // /api/home/news
 type HomeNewsItem = {
   newsId: number;
-  // 백엔드가 courseId를 주면 그걸로 상세 진입 가능
   courseId?: number;
   title: string;
   imageUrl?: string;
@@ -43,8 +42,6 @@ type HomeCourse = {
 };
 
 const FALLBACK_USER: UserProfile = { nickname: "사용자", profileImageUrl: "" };
-
-// ✅ 배포에서 /sample-news.png 404 나는 것 방지용
 const FALLBACK_THUMB = "/icons/vite.svg";
 
 /** ✅ 어떤 형태로 오든 courseId를 확보하기 위한 정규화 */
@@ -112,7 +109,6 @@ export default function Home() {
     const rawRecent = Array.isArray(recentRes.data?.data) ? recentRes.data.data : [];
     const rawSaved = Array.isArray(savedRes.data?.data) ? savedRes.data.data : [];
 
-    // ✅ 여기서 “courseId 확보” + 이상값 제거
     setRecentCourses(rawRecent.map(normalizeCourse).filter((c) => c.courseId > 0));
     setSavedCourses(rawSaved.map(normalizeCourse).filter((c) => c.courseId > 0));
   };
@@ -126,7 +122,6 @@ export default function Home() {
         setErrorMsg(null);
 
         await Promise.all([fetchUserProfile(), fetchStreak(), fetchTodayNews(), fetchHomeCourses()]);
-
         if (!alive) return;
       } catch (e) {
         console.error("[HOME] load error:", e);
@@ -211,6 +206,7 @@ export default function Home() {
                   <button
                     key={news.newsId}
                     className={`${styles.newsItem} ${styles.clickable}`}
+                    type="button"
                     onClick={() => {
                       if (!courseId) {
                         alert("이 뉴스는 연결된 코스 ID가 없어 상세로 이동할 수 없어요.");
@@ -218,7 +214,6 @@ export default function Home() {
                       }
                       goToDetail(courseId, { from: "home-today" });
                     }}
-                    type="button"
                   >
                     <NewsCard title={news.title} source={news.source} />
                   </button>
@@ -246,8 +241,9 @@ export default function Home() {
             </div>
           ) : (
             recentCourses.map((course) => (
-              <div
+              <button
                 key={course.courseId}
+                type="button"
                 className={`${styles.courseCard} ${styles.clickable}`}
                 onClick={() => goToDetail(course.courseId, { from: "home-recent" })}
               >
@@ -264,7 +260,7 @@ export default function Home() {
                     {course.isSaved && <span className={styles.tag}>저장됨</span>}
                   </div>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </section>
@@ -287,8 +283,9 @@ export default function Home() {
             </div>
           ) : (
             savedCourses.map((course) => (
-              <div
+              <button
                 key={course.courseId}
+                type="button"
                 className={`${styles.courseCard} ${styles.clickable}`}
                 onClick={() => goToDetail(course.courseId, { from: "home-saved" })}
               >
@@ -305,12 +302,11 @@ export default function Home() {
                     {course.isSaved && <span className={styles.tag}>저장됨</span>}
                   </div>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </section>
 
-        <div className={styles.bottomSpace} />
         <BottomNav />
       </div>
     </div>

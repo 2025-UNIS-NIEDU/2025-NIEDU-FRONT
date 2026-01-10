@@ -1,233 +1,104 @@
+/* src/pages/article/session/E/StepE004.module.css */
+
 .viewport {
-  position: fixed;
-  inset: 0;
+  width: 100%;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: stretch;
-  background: #615959;
-  overflow-y: auto;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.viewport::-webkit-scrollbar {
-  display: none;
 }
 
 .container {
-  position: relative;
-  width: 100%;
-  max-width: 700px;
-  min-height: 100%;
-  margin: 0 auto;
-  padding: 24px 20px 120px;
+  width: 390px;
+  min-height: 100vh;
+  padding: 16px;
   box-sizing: border-box;
-  background: #f5f5f7;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+  position: relative;
 }
 
-/* 진행바 */
+.loading {
+  padding: 24px;
+  font-size: 14px;
+}
+
 .progressWrap {
   width: 100%;
   height: 6px;
+  background: #f1f1f1;
   border-radius: 999px;
-  background: #e5e5ea;
   overflow: hidden;
-  margin-bottom: 24px;
+  margin: 8px 0 16px;
 }
+
 .progress {
   height: 100%;
-  background: #6088f8;
-  border-radius: inherit;
-  transition: width 0.3s ease;
+  background: #ffd54a;
 }
 
-/* 로딩 */
-.loading {
-  margin-top: 40px;
-  text-align: center;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-/* 문제(질문) */
-.question {
-  font-size: 20px;
+.heading {
+  font-size: 18px;
   font-weight: 700;
-  color: #111827;
-  margin: 8px 0 24px;
+  margin: 0 0 6px;
 }
 
-/* 점수 카드 */
-.scoreCard {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-  margin-bottom: 28px;
+.desc {
+  font-size: 12px;
+  color: #666;
+  margin: 0 0 14px;
 }
 
-.emojiWrapper {
-  flex-shrink: 0;
-}
-.emoji {
-  width: 72px;
-  height: 72px;
+.promptCard {
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
 }
 
-.scoreText {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.qNum {
+  font-size: 12px;
+  color: #777;
+  margin: 0 0 10px;
 }
-.scoreNumber {
-  font-size: 28px;
-  font-weight: 800;
-  color: #111827;
-  margin: 0;
-}
-.scoreMessage {
+
+.promptText {
   font-size: 14px;
-  color: #4b5563;
-  margin: 0;
+  line-height: 1.45;
+  margin: 0 0 10px;
+  color: #111;
 }
 
-/* AI 피드백 섹션 */
-.feedbackSection {
-  margin-top: 8px;
+.referenceText {
+  font-size: 12px;
+  color: #888;
+  margin: 0 0 10px;
+}
+
+.promptInput {
+  width: 100%;
+  min-height: 100px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 10px;
+  box-sizing: border-box;
+  font-size: 14px;
+  resize: none;
+}
+
+.feedbackBox {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #fff9e6;
+  border: 1px solid #ffe3a3;
 }
 
 .feedbackTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 12px;
-}
-
-.feedbackCard {
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 16px 18px 20px;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
-}
-
-.errorText {
-  font-size: 12px;
-  color: #ef4444;
-  margin-bottom: 8px;
-}
-
-.feedbackBlock + .feedbackBlock {
-  margin-top: 12px;
-}
-.feedbackBlockTitle {
-  font-size: 14px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 4px;
-}
-.feedbackBlockBody {
   font-size: 13px;
-  color: #4b5563;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.feedbackText {
+  font-size: 13px;
   margin: 0;
-  line-height: 1.5;
-}
-
-/* 원문 보기 버튼 (선택) */
-.sourceLink {
-  margin-top: 14px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  font-size: 12px;
-  color: #4b5563;
-  cursor: pointer;
-}
-
-/* 오류 제보하기 버튼 */
-.reportWrapper {
-  margin-top: 24px;
-  display: flex;
-  justify-content: center;
-}
-.reportButton {
-  min-width: 160px;
-  padding: 10px 18px;
-  border-radius: 999px;
-  border: none;
-  background: #e5e5ea;
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-  cursor: pointer;
-}
-
-/* 하단 GNB와 간격용 */
-.bottomSpace {
-  height: 80px;
-}
-
-/* 오류 제보 모달 */
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 50;
-}
-
-.modal {
-  width: 80%;
-  max-width: 340px;
-  border-radius: 18px;
-  background: #ffffff;
-  padding: 18px 20px 14px;
-  box-shadow: 0 20px 30px rgba(15, 23, 42, 0.3);
-}
-
-.modalTitle {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0 0 8px;
-}
-
-.modalDesc {
-  font-size: 13px;
-  color: #4b5563;
-  margin: 0 0 16px;
-  line-height: 1.5;
-}
-
-.modalButtons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.modalButtonSecondary,
-.modalButtonPrimary {
-  min-width: 72px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.modalButtonSecondary {
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #111827;
-}
-
-.modalButtonPrimary {
-  border: none;
-  background: #6088f8;
-  color: #ffffff;
-  font-weight: 600;
+  line-height: 1.45;
 }

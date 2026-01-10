@@ -16,11 +16,12 @@ type CourseDetailData = {
 };
 
 type SessionData = {
-  id: number; // ✅ 내부에서 통일해서 쓰려고 id로 들고감 (sessionId든 id든 여기로)
+  id: number;
   thumbnailUrl: string;
   headline: string;
   publisher: string;
-  publishedAt: string; // "yyyy-MM-dd"
+  publishedAt: string;
+  sourceUrl?: string; // ✅ 추가 (있으면 넘김)
 };
 
 const KEYWORDS = ["#미래", "#전환", "#협력"];
@@ -54,13 +55,9 @@ export default function ArticleDetail() {
       setLoadingDetail(true);
       setLoadingSessions(true);
 
-      // ---------------- 코스 상세 ----------------
+      // 코스 상세
       try {
-        // ✅ FIX 1) courses 오타 수정
-        const detailRes = await api.get<ApiResponse<any>>(
-          `/api/edu/courses/${courseId}`
-        );
-
+        const detailRes = await api.get<ApiResponse<any>>(`/api/edu/courses/${courseId}`);
         const d = detailRes.data?.data ?? {};
         setDetail({
           thumbnailUrl: String(d.thumbnailUrl ?? ""),
@@ -77,24 +74,21 @@ export default function ArticleDetail() {
         setLoadingDetail(false);
       }
 
-      // ---------------- 세션 리스트 ----------------
+      // 세션 리스트
       try {
-        const sesRes = await api.get<ApiResponse<any[]>>(
-          `/api/edu/courses/${courseId}/sessions`
-        );
+        const sesRes = await api.get<ApiResponse<any[]>>(`/api/edu/courses/${courseId}/sessions`);
         const raw = Array.isArray(sesRes.data?.data) ? sesRes.data.data : [];
 
         const mapped: SessionData[] = raw
           .map((x: any) => {
-            // ✅ FIX 2) sessionId / id 둘 다 대응
             const sid = Number(x?.sessionId ?? x?.id ?? 0);
-
             return {
               id: sid,
               thumbnailUrl: String(x?.thumbnailUrl ?? ""),
               headline: String(x?.headline ?? x?.title ?? ""),
               publisher: String(x?.publisher ?? ""),
               publishedAt: String(x?.publishedAt ?? x?.date ?? ""),
+              sourceUrl: x?.sourceUrl ? String(x.sourceUrl) : undefined, // ✅ 있으면 저장
             };
           })
           .filter((x: SessionData) => x.id > 0 && !!x.headline);
@@ -112,15 +106,21 @@ export default function ArticleDetail() {
     void run();
   }, [articleId]);
 
-  if (loadingDetail && !detail) {
-    return <div className={styles.viewport}>로딩 중...</div>;
-  }
-
-  if (!detail) {
-    return <div className={styles.viewport}>코스를 찾을 수 없습니다.</div>;
-  }
+  if (loadingDetail && !detail) return <div className={styles.viewport}>로딩 중...</div>;
+  if (!detail) return <div className={styles.viewport}>코스를 찾을 수 없습니다.</div>;
 
   const progress = detail.progress ?? 0;
+
+  const goFirstSession = () => {
+    const first = sessions[0];
+    if (!articleId || !first) return;
+
+    goToPrepare(articleId, {
+      sessionId: first.id,
+      title: detail.title, // ✅ 코스 타이틀
+      articleUrl: first.sourceUrl, // ✅ 있으면 넘김 (없어도 start 응답에 들어옴)
+    });
+  };
 
   return (
     <div className={styles.viewport}>
@@ -169,15 +169,7 @@ export default function ArticleDetail() {
           <button
             type="button"
             className={styles.startButton}
-            onClick={() => {
-              const first = sessions[0];
-              if (!articleId || !first) return;
-
-              goToPrepare(articleId, {
-                sessionId: first.id,
-                title: detail.title,
-              });
-            }}
+            onClick={goFirstSession}
             disabled={sessions.length === 0}
           >
             바로 학습하기
@@ -200,7 +192,8 @@ export default function ArticleDetail() {
                     articleId &&
                     goToPrepare(articleId, {
                       sessionId: s.id,
-                      title: s.headline,
+                      title: s.headline, // ✅ 세션 제목
+                      articleUrl: s.sourceUrl, // ✅ 있으면 넘김
                     })
                   }
                 >

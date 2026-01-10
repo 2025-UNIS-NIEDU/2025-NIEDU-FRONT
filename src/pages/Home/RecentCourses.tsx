@@ -50,8 +50,9 @@ export default function RecentCourses() {
 
         <main className={styles.list}>
           {courses.map((c) => (
-            <article
+            <button
               key={c.courseId}
+              type="button"
               className={styles.item}
               onClick={() => goToDetail(c.courseId, { from: "recent-list" })}
             >
@@ -67,7 +68,7 @@ export default function RecentCourses() {
                   {c.isSaved && <span className={styles.tag}>저장됨</span>}
                 </div>
               </div>
-            </article>
+            </button>
           ))}
         </main>
 
