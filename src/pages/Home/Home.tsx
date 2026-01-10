@@ -24,12 +24,14 @@ type StreakData = {
 // /api/home/news
 type HomeNewsItem = {
   newsId: number;
+  courseId?: number; // ✅ 추가
   title: string;
   imageUrl?: string;
   keywords: string[];
   source: string;
   publishedAt: string;
 };
+
 
 // /api/home/courses
 type HomeCourse = {
@@ -203,7 +205,8 @@ export default function Home() {
                 <button
                   key={news.newsId}
                   className={`${styles.newsItem} ${styles.clickable}`}
-                  onClick={() => goToDetail(news.newsId, { from: "home-today" })}
+                  onClick={() => goToDetail(news.courseId ?? news.newsId, { from: "home-today" })}
+
                 >
                   <NewsCard title={news.title} source={news.source} />
                 </button>

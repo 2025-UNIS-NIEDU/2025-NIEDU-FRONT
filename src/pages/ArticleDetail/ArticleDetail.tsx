@@ -19,7 +19,7 @@ type SessionData = {
   thumbnailUrl: string;
   headline: string;
   publisher: string;
-  publishedAt: string; // "yyyy-MM-dd"
+  publishedAt: string;
 };
 
 const KEYWORDS = ["#미래", "#전환", "#협력"];
@@ -53,19 +53,20 @@ export default function ArticleDetail() {
       setLoadingDetail(true);
       setLoadingSessions(true);
 
+      // ---------------- 코스 상세 ----------------
       try {
-        // ✅ 코스 상세 (주의: couses 오타 경로)
+        // ✅ 오타 수정: couses -> courses
         const detailRes = await api.get<ApiResponse<any>>(
-          `/api/edu/couses/${courseId}`
+          `/api/edu/courses/${courseId}`
         );
 
         const d = detailRes.data.data;
         setDetail({
-          thumbnailUrl: String(d?.thumbnailUrl ?? ""),
-          title: String(d?.title ?? ""),
+          thumbnailUrl: String(d?.thumbnailUrl ?? d?.thumbnail ?? ""),
+          title: String(d?.title ?? d?.courseTitle ?? ""),
           topic: d?.topic ?? null,
-          progress: Number(d?.progress ?? 0),
-          description: String(d?.description ?? ""),
+          progress: Number(d?.progress ?? d?.progressRate ?? 0),
+          description: String(d?.description ?? d?.summary ?? ""),
         });
       } catch (e) {
         console.error("[ArticleDetail] detail error:", e);
@@ -75,21 +76,26 @@ export default function ArticleDetail() {
         setLoadingDetail(false);
       }
 
+      // ---------------- 세션 리스트 ----------------
       try {
-        // ✅ 세션 리스트
         const sesRes = await api.get<ApiResponse<any[]>>(
           `/api/edu/courses/${courseId}/sessions`
         );
+
         const raw = Array.isArray(sesRes.data.data) ? sesRes.data.data : [];
 
         const mapped: SessionData[] = raw
-          .map((x: any) => ({
-            id: Number(x?.id ?? 0),
-            thumbnailUrl: String(x?.thumbnailUrl ?? ""),
-            headline: String(x?.headline ?? ""),
-            publisher: String(x?.publisher ?? ""),
-            publishedAt: String(x?.publishedAt ?? ""),
-          }))
+          .map((x: any) => {
+            const id = Number(x?.id ?? x?.sessionId ?? 0);
+            const headline = String(x?.headline ?? x?.title ?? x?.name ?? "");
+            return {
+              id,
+              thumbnailUrl: String(x?.thumbnailUrl ?? x?.thumbnail ?? ""),
+              headline,
+              publisher: String(x?.publisher ?? x?.source ?? ""),
+              publishedAt: String(x?.publishedAt ?? x?.date ?? ""),
+            };
+          })
           .filter((x: SessionData) => x.id && x.headline);
 
         setSessions(mapped);
