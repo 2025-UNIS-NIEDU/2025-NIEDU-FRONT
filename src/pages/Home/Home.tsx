@@ -24,14 +24,14 @@ type StreakData = {
 // /api/home/news
 type HomeNewsItem = {
   newsId: number;
-  courseId?: number; // ✅ 추가
+  // 백엔드가 courseId를 주면 그걸로 상세 진입 가능
+  courseId?: number;
   title: string;
   imageUrl?: string;
   keywords: string[];
   source: string;
   publishedAt: string;
 };
-
 
 // /api/home/courses
 type HomeCourse = {
@@ -44,8 +44,28 @@ type HomeCourse = {
 
 const FALLBACK_USER: UserProfile = { nickname: "사용자", profileImageUrl: "" };
 
-// ✅ 배포에서 /sample-news.png 404 나는 것 방지용 (public에 없으면 이걸로 대체)
-const FALLBACK_THUMB = "/icons/vite.svg"; // 프로젝트에 있는 걸로 바꿔도 됨
+// ✅ 배포에서 /sample-news.png 404 나는 것 방지용
+const FALLBACK_THUMB = "/icons/vite.svg";
+
+/** ✅ 어떤 형태로 오든 courseId를 확보하기 위한 정규화 */
+const normalizeCourse = (x: any): HomeCourse => {
+  const courseId = Number(x?.courseId ?? x?.id ?? x?.courseID ?? x?.course_id ?? 0);
+
+  return {
+    courseId,
+    title: String(x?.title ?? x?.name ?? ""),
+    thumbnailUrl: x?.thumbnailUrl ?? x?.thumbnail ?? x?.imageUrl ?? "",
+    progressRate: Number(x?.progressRate ?? x?.progress ?? x?.completionRate ?? 0),
+    isSaved: Boolean(x?.isSaved ?? x?.saved ?? false),
+  };
+};
+
+/** ✅ 뉴스 클릭 시 코스 상세로 가려면 courseId가 필요함 */
+const getNewsCourseId = (news: HomeNewsItem): number | null => {
+  const cid = Number(news?.courseId ?? 0);
+  if (!cid || Number.isNaN(cid)) return null;
+  return cid;
+};
 
 export default function Home() {
   const navigate = useNavigate();
@@ -58,7 +78,6 @@ export default function Home() {
   const [recentCourses, setRecentCourses] = useState<HomeCourse[]>([]);
   const [savedCourses, setSavedCourses] = useState<HomeCourse[]>([]);
 
-  // ✅ 로딩/에러 (mock처럼 보이는 상태 방지용)
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -82,16 +101,20 @@ export default function Home() {
 
   const fetchHomeCourses = async () => {
     const [recentRes, savedRes] = await Promise.all([
-      api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
+      api.get<ApiResponse<any[]>>("/api/home/courses", {
         params: { type: "recent", view: "preview" },
       }),
-      api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
+      api.get<ApiResponse<any[]>>("/api/home/courses", {
         params: { type: "saved", view: "preview" },
       }),
     ]);
 
-    setRecentCourses(Array.isArray(recentRes.data?.data) ? recentRes.data.data : []);
-    setSavedCourses(Array.isArray(savedRes.data?.data) ? savedRes.data.data : []);
+    const rawRecent = Array.isArray(recentRes.data?.data) ? recentRes.data.data : [];
+    const rawSaved = Array.isArray(savedRes.data?.data) ? savedRes.data.data : [];
+
+    // ✅ 여기서 “courseId 확보” + 이상값 제거
+    setRecentCourses(rawRecent.map(normalizeCourse).filter((c) => c.courseId > 0));
+    setSavedCourses(rawSaved.map(normalizeCourse).filter((c) => c.courseId > 0));
   };
 
   useEffect(() => {
@@ -102,30 +125,13 @@ export default function Home() {
         setLoading(true);
         setErrorMsg(null);
 
-        // ✅ 여기서 API를 실제로 “반드시” 탄다
-        await Promise.all([
-          fetchUserProfile(),
-          fetchStreak(),
-          fetchTodayNews(),
-          fetchHomeCourses(),
-        ]);
+        await Promise.all([fetchUserProfile(), fetchStreak(), fetchTodayNews(), fetchHomeCourses()]);
 
         if (!alive) return;
-
-        // ✅ 디버그 로그 (원하면 나중에 지워)
-        console.log("[HOME] loaded", {
-          user,
-          streak,
-          todayNewsCount: todayNews.length,
-          recentCoursesCount: recentCourses.length,
-          savedCoursesCount: savedCourses.length,
-        });
       } catch (e) {
         console.error("[HOME] load error:", e);
         if (!alive) return;
 
-        // ❗️여기서 mock으로 fallback 하지 않고 “빈 화면”으로 둬서
-        // 실제 API가 안 붙으면 티 나게 만들었음
         setUser(FALLBACK_USER);
         setStreak(null);
         setTodayNews([]);
@@ -141,7 +147,6 @@ export default function Home() {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -173,21 +178,19 @@ export default function Home() {
               className={styles.bannerIcon}
             />
             <p className={styles.bannerText}>
-              {user?.nickname ?? "사용자"} 님, 오늘도 뉴스로 을 넓혀봐요!
+              {user?.nickname ?? "사용자"} 님, 오늘도 뉴스로 시야를 넓혀봐요!
             </p>
           </div>
         </div>
 
-        {/* ✅ 상태 표시: 지금처럼 mock으로 “그럴듯하게” 보이는 걸 막기 */}
+        {/* 상태 표시 */}
         {loading && (
           <div style={{ padding: "12px 0", fontSize: 12, opacity: 0.7 }}>
             홈 데이터 불러오는 중…
           </div>
         )}
         {!loading && errorMsg && (
-          <div style={{ padding: "12px 0", fontSize: 12, color: "#d33" }}>
-            {errorMsg}
-          </div>
+          <div style={{ padding: "12px 0", fontSize: 12, color: "#d33" }}>{errorMsg}</div>
         )}
 
         {/* 오늘자 뉴스 학습하기 */}
@@ -201,16 +204,26 @@ export default function Home() {
                 오늘자 뉴스가 없어요.
               </div>
             ) : (
-              todayNews.map((news) => (
-                <button
-                  key={news.newsId}
-                  className={`${styles.newsItem} ${styles.clickable}`}
-                  onClick={() => goToDetail(news.courseId ?? news.newsId, { from: "home-today" })}
+              todayNews.map((news) => {
+                const courseId = getNewsCourseId(news);
 
-                >
-                  <NewsCard title={news.title} source={news.source} />
-                </button>
-              ))
+                return (
+                  <button
+                    key={news.newsId}
+                    className={`${styles.newsItem} ${styles.clickable}`}
+                    onClick={() => {
+                      if (!courseId) {
+                        alert("이 뉴스는 연결된 코스 ID가 없어 상세로 이동할 수 없어요.");
+                        return;
+                      }
+                      goToDetail(courseId, { from: "home-today" });
+                    }}
+                    type="button"
+                  >
+                    <NewsCard title={news.title} source={news.source} />
+                  </button>
+                );
+              })
             )}
           </div>
         </section>
