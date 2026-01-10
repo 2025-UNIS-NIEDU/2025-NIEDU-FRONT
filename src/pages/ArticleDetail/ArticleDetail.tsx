@@ -1,3 +1,4 @@
+// src/pages/ArticleDetail/ArticleDetail.tsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./ArticleDetail.module.css";
@@ -15,11 +16,11 @@ type CourseDetailData = {
 };
 
 type SessionData = {
-  id: number;
+  id: number; // ✅ 내부에서 통일해서 쓰려고 id로 들고감 (sessionId든 id든 여기로)
   thumbnailUrl: string;
   headline: string;
   publisher: string;
-  publishedAt: string;
+  publishedAt: string; // "yyyy-MM-dd"
 };
 
 const KEYWORDS = ["#미래", "#전환", "#협력"];
@@ -55,18 +56,18 @@ export default function ArticleDetail() {
 
       // ---------------- 코스 상세 ----------------
       try {
-        // ✅ 오타 수정: couses -> courses
+        // ✅ FIX 1) courses 오타 수정
         const detailRes = await api.get<ApiResponse<any>>(
           `/api/edu/courses/${courseId}`
         );
 
-        const d = detailRes.data.data;
+        const d = detailRes.data?.data ?? {};
         setDetail({
-          thumbnailUrl: String(d?.thumbnailUrl ?? d?.thumbnail ?? ""),
-          title: String(d?.title ?? d?.courseTitle ?? ""),
-          topic: d?.topic ?? null,
-          progress: Number(d?.progress ?? d?.progressRate ?? 0),
-          description: String(d?.description ?? d?.summary ?? ""),
+          thumbnailUrl: String(d.thumbnailUrl ?? ""),
+          title: String(d.title ?? ""),
+          topic: d.topic ?? null,
+          progress: Number(d.progress ?? 0),
+          description: String(d.description ?? ""),
         });
       } catch (e) {
         console.error("[ArticleDetail] detail error:", e);
@@ -81,22 +82,22 @@ export default function ArticleDetail() {
         const sesRes = await api.get<ApiResponse<any[]>>(
           `/api/edu/courses/${courseId}/sessions`
         );
-
-        const raw = Array.isArray(sesRes.data.data) ? sesRes.data.data : [];
+        const raw = Array.isArray(sesRes.data?.data) ? sesRes.data.data : [];
 
         const mapped: SessionData[] = raw
           .map((x: any) => {
-            const id = Number(x?.id ?? x?.sessionId ?? 0);
-            const headline = String(x?.headline ?? x?.title ?? x?.name ?? "");
+            // ✅ FIX 2) sessionId / id 둘 다 대응
+            const sid = Number(x?.sessionId ?? x?.id ?? 0);
+
             return {
-              id,
-              thumbnailUrl: String(x?.thumbnailUrl ?? x?.thumbnail ?? ""),
-              headline,
-              publisher: String(x?.publisher ?? x?.source ?? ""),
+              id: sid,
+              thumbnailUrl: String(x?.thumbnailUrl ?? ""),
+              headline: String(x?.headline ?? x?.title ?? ""),
+              publisher: String(x?.publisher ?? ""),
               publishedAt: String(x?.publishedAt ?? x?.date ?? ""),
             };
           })
-          .filter((x: SessionData) => x.id && x.headline);
+          .filter((x: SessionData) => x.id > 0 && !!x.headline);
 
         setSessions(mapped);
       } catch (e) {
@@ -164,6 +165,7 @@ export default function ArticleDetail() {
 
         <section className={styles.progressSection}>
           <p className={styles.progressText}>현재 진행률 {progress}%</p>
+
           <button
             type="button"
             className={styles.startButton}
@@ -211,12 +213,14 @@ export default function ArticleDetail() {
                       />
                     )}
                   </div>
+
                   <div className={styles.sessionText}>
                     <p className={styles.sessionName}>{s.headline}</p>
                     <p className={styles.sessionDesc}>
                       {s.publisher} · {s.publishedAt}
                     </p>
                   </div>
+
                   <img
                     src="/icons/icon-chevron-right.svg"
                     alt=""
