@@ -1,0 +1,62 @@
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background: var(--bg-desktop);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--app-max-width);
+  min-height: 100%;
+  background: #fff;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 24px;
+}
+
+/* 하단 버튼 */
+.bottomBtn {
+  height: 56px;
+  border: none;
+  border-radius: 28px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 회색(비활성 느낌) */
+.grayBtn {
+  background: linear-gradient(
+    180deg,
+    var(--btn-gray-top) 0%,
+    var(--btn-gray-bottom) 100%
+  );
+  color: #8b8b8b;
+}
+
+/* 기본(회색이지만 텍스트 진하게 쓰고 싶으면) */
+.grayBtnStrong {
+  background: linear-gradient(
+    180deg,
+    var(--btn-gray-top) 0%,
+    var(--btn-gray-bottom) 100%
+  );
+  color: #000;
+}
+
+/* 카카오 */
+.kakaoBtn {
+  background: var(--kakao);
+  color: #111;
+  font-weight: 800;
+}

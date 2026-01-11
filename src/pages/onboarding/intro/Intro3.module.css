@@ -1,0 +1,27 @@
+.illWrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 52px;
+}
+
+.ill {
+  width: 170px;
+  height: auto;
+}
+
+.textArea {
+  margin-top: 26px;
+  padding: 0 4px;
+}
+
+.p {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.p b {
+  font-weight: 800;
+}

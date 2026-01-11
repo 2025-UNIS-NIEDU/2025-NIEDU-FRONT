@@ -1,20 +1,11 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import OnboardingIntro1 from "./pages/onboarding/OnboardingIntro1";
-import OnboardingIntro2 from "./pages/onboarding/OnboardingIntro2";
-import OnboardingIntro3 from "@/pages/onboarding/OnboardingIntro3";
-import OnboardingIntro4 from "@/pages/onboarding/OnboardingIntro4";
-import Home from "@/pages/Home/Home";
+import { BrowserRouter } from "react-router-dom";
+import AppRouter from "@/router"; // 또는 "@/router/index" 너 프로젝트 경로에 맞게
+import "./styles/global.css";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<OnboardingIntro1 />} />
-        <Route path="/onboarding/2" element={<OnboardingIntro2 />} />
-        <Route path="/onboarding/3" element={<OnboardingIntro3 />} />
-        <Route path="/onboarding/4" element={<OnboardingIntro4 />} />
-        <Route path="/home" element={<Home />} />   {/* ✅ 추가 */}
-      </Routes>
+      <AppRouter />
     </BrowserRouter>
   );
 }
