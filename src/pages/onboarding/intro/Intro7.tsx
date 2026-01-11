@@ -1,22 +1,33 @@
+import { useState } from "react";
 import base from "./IntroBase.module.css";
 import styles from "./Intro7.module.css";
 import IntroHeader from "../components/IntroHeader";
 
 export default function Intro7() {
-  const handleKakaoStart = () => {
-    // ✅ 문서 기준: 로그인 시작은 무조건 BE /oauth2/authorization/kakao
-    const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  const [loading, setLoading] = useState(false);
 
-    // env 없을 때 안전 fallback
+  const handleKakaoStart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // ✅ 혹시 form 안에 있어도 submit 안 되게
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (loading) return;
+    setLoading(true);
+
+    const envBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
+
     const fallback =
-      window.location.hostname === "localhost"
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
         ? "http://localhost:8080"
         : "https://api.niedu-service.com";
 
     const apiBase = envBase || fallback;
 
-    // cache 방지용으로 timestamp 붙여도 됨(선택)
-    window.location.href = `${apiBase}/oauth2/authorization/kakao`;
+    // ✅ 절대 XHR 금지: 문서 네비게이션으로 이동
+    const url = `${apiBase}/oauth2/authorization/kakao`;
+
+    // assign이 가장 명확하게 "페이지 이동"임
+    window.location.assign(encodeURI(url));
   };
 
   return (
@@ -37,8 +48,14 @@ export default function Intro7() {
             </p>
           </div>
 
-          <button className={`${base.bottomBtn} ${base.kakaoBtn}`} onClick={handleKakaoStart}>
-            카카오로 시작하기
+          <button
+            type="button"
+            className={`${base.bottomBtn} ${base.kakaoBtn}`}
+            onClick={handleKakaoStart}
+            disabled={loading}
+            aria-busy={loading}
+          >
+            {loading ? "이동 중..." : "카카오로 시작하기"}
           </button>
         </div>
       </div>
