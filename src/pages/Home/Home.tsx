@@ -44,16 +44,38 @@ type HomeCourse = {
 const FALLBACK_USER: UserProfile = { nickname: "사용자", profileImageUrl: "" };
 const FALLBACK_THUMB = "/icons/vite.svg";
 
+/** ✅ data가 배열이든, data.courses/items/content/list 형태든 다 뽑아오기 */
+const pickArray = (d: any): any[] => {
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.courses)) return d.courses;
+  if (Array.isArray(d?.items)) return d.items;
+  if (Array.isArray(d?.content)) return d.content;
+  if (Array.isArray(d?.list)) return d.list;
+  if (Array.isArray(d?.result)) return d.result;
+  if (Array.isArray(d?.data)) return d.data; // 혹시 중첩된 케이스
+  return [];
+};
+
 /** ✅ 어떤 형태로 오든 courseId를 확보하기 위한 정규화 */
 const normalizeCourse = (x: any): HomeCourse => {
-  const courseId = Number(x?.courseId ?? x?.id ?? x?.courseID ?? x?.course_id ?? 0);
+  const courseId = Number(
+    x?.courseId ??
+      x?.id ??
+      x?.courseID ??
+      x?.course_id ??
+      x?.coursePk ??
+      x?.courseNo ??
+      0
+  );
 
   return {
     courseId,
-    title: String(x?.title ?? x?.name ?? ""),
-    thumbnailUrl: x?.thumbnailUrl ?? x?.thumbnail ?? x?.imageUrl ?? "",
-    progressRate: Number(x?.progressRate ?? x?.progress ?? x?.completionRate ?? 0),
-    isSaved: Boolean(x?.isSaved ?? x?.saved ?? false),
+    title: String(x?.title ?? x?.name ?? x?.headline ?? ""),
+    thumbnailUrl: String(x?.thumbnailUrl ?? x?.thumbnail ?? x?.imageUrl ?? ""),
+    progressRate: Number(
+      x?.progressRate ?? x?.progress ?? x?.completionRate ?? x?.progressPercent ?? 0
+    ),
+    isSaved: Boolean(x?.isSaved ?? x?.saved ?? x?.bookmarked ?? false),
   };
 };
 
@@ -80,7 +102,7 @@ export default function Home() {
 
   const fetchUserProfile = async () => {
     const res = await api.get<ApiResponse<UserProfile>>("/api/user/me");
-    if (res.data?.success) setUser(res.data.data);
+    if (res.data?.success && res.data?.data) setUser(res.data.data);
     else setUser(FALLBACK_USER);
   };
 
@@ -91,23 +113,33 @@ export default function Home() {
   };
 
   const fetchTodayNews = async () => {
-    const res = await api.get<ApiResponse<HomeNewsItem[]>>("/api/home/news");
-    if (res.data?.success && Array.isArray(res.data.data)) setTodayNews(res.data.data);
-    else setTodayNews([]);
+    const res = await api.get<ApiResponse<any>>("/api/home/news");
+    const raw = pickArray(res.data?.data);
+
+    console.log("[home news] raw:", raw);
+
+    if (res.data?.success && Array.isArray(raw)) {
+      setTodayNews(raw as HomeNewsItem[]);
+    } else {
+      setTodayNews([]);
+    }
   };
 
   const fetchHomeCourses = async () => {
     const [recentRes, savedRes] = await Promise.all([
-      api.get<ApiResponse<any[]>>("/api/home/courses", {
+      api.get<ApiResponse<any>>("/api/home/courses", {
         params: { type: "recent", view: "preview" },
       }),
-      api.get<ApiResponse<any[]>>("/api/home/courses", {
+      api.get<ApiResponse<any>>("/api/home/courses", {
         params: { type: "saved", view: "preview" },
       }),
     ]);
 
-    const rawRecent = Array.isArray(recentRes.data?.data) ? recentRes.data.data : [];
-    const rawSaved = Array.isArray(savedRes.data?.data) ? savedRes.data.data : [];
+    const rawRecent = pickArray(recentRes.data?.data);
+    const rawSaved = pickArray(savedRes.data?.data);
+
+    console.log("[home courses] recent raw:", rawRecent);
+    console.log("[home courses] saved raw:", rawSaved);
 
     setRecentCourses(rawRecent.map(normalizeCourse).filter((c) => c.courseId > 0));
     setSavedCourses(rawSaved.map(normalizeCourse).filter((c) => c.courseId > 0));

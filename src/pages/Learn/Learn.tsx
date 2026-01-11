@@ -1,5 +1,5 @@
 // src/pages/Learn/Learn.tsx
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./Learn.module.css";
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
@@ -18,7 +18,7 @@ const TOPIC_QUERY_MAP: Record<Category, string | undefined> = {
 };
 
 export type ApiCourse = {
-  courseId: number; // ✅ Learn에서 상세 진입에 필요
+  courseId: number;
   thumbnailUrl?: string;
   title: string;
   longDescription?: string | null;
@@ -28,17 +28,42 @@ export type ApiCourse = {
 
 export const CATEGORIES: Category[] = ["정치", "경제", "사회", "문화"];
 
-// ✅ 응답이 뭐로 오든 courseId 확보 (백이 courseId를 안 줄 가능성도 대비)
+const FALLBACK_THUMB = "/sample-news.png";
+
+/** ✅ data가 배열이든, data.courses/items/content/list 형태든 다 뽑아오기 */
+const pickArray = (d: any): any[] => {
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.courses)) return d.courses;
+  if (Array.isArray(d?.items)) return d.items;
+  if (Array.isArray(d?.content)) return d.content;
+  if (Array.isArray(d?.list)) return d.list;
+  if (Array.isArray(d?.result)) return d.result;
+  if (Array.isArray(d?.data)) return d.data; // 혹시 중첩
+  return [];
+};
+
+// ✅ 응답이 뭐로 오든 courseId 확보 + title 확보
 const normalizeCourse = (x: any): ApiCourse | null => {
-  const courseId = Number(x?.courseId ?? x?.id ?? x?.courseID ?? 0);
-  const title = String(x?.title ?? "");
+  const courseId = Number(
+    x?.courseId ??
+      x?.id ??
+      x?.courseID ??
+      x?.course_id ??
+      x?.coursePk ??
+      x?.courseNo ??
+      0
+  );
+
+  const title = String(x?.title ?? x?.name ?? x?.headline ?? "");
 
   if (!courseId || !title) return null;
+
+  const thumb = x?.thumbnailUrl ?? x?.thumbnail ?? x?.imageUrl ?? x?.thumbUrl;
 
   return {
     courseId,
     title,
-    thumbnailUrl: x?.thumbnailUrl ? String(x.thumbnailUrl) : undefined,
+    thumbnailUrl: thumb ? String(thumb) : undefined,
     longDescription:
       x?.longDescription === null || x?.longDescription === undefined
         ? null
@@ -67,12 +92,13 @@ export default function Learn() {
   useEffect(() => {
     const topicParam = TOPIC_QUERY_MAP[active];
 
+    let alive = true;
     setLoadingLatest(true);
     setErrorMsg(null);
 
     (async () => {
       try {
-        const res = await api.get<ApiResponse<any[]>>("/api/edu/courses", {
+        const res = await api.get<ApiResponse<any>>("/api/edu/courses", {
           params: {
             type: "RECENT",
             view: "PREVIEW",
@@ -80,63 +106,88 @@ export default function Learn() {
           },
         });
 
-        const raw = Array.isArray(res.data?.data) ? res.data.data : [];
-        const mapped = raw
-          .map(normalizeCourse)
-          .filter(Boolean) as ApiCourse[];
+        const raw = pickArray(res.data?.data);
+        console.log("[Learn] latest raw:", raw);
 
+        const mapped = raw.map(normalizeCourse).filter(Boolean) as ApiCourse[];
+        if (!alive) return;
         setLatestByTopic(mapped);
       } catch (e) {
         console.error("[Learn] latestByTopic error:", e);
+        if (!alive) return;
         setErrorMsg("최신 토픽별 세션을 불러오지 못했어요.");
         setLatestByTopic([]);
       } finally {
+        if (!alive) return;
         setLoadingLatest(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, [active]);
 
   // ✅ 인기/맞춤/새로운 (type=POPULAR/CUSTOM/NEW, view=PREVIEW)
   useEffect(() => {
+    let alive = true;
+
     setLoadingOthers(true);
     setErrorMsg(null);
 
     (async () => {
       try {
         const [popRes, cusRes, newRes] = await Promise.all([
-          api.get<ApiResponse<any[]>>("/api/edu/courses", {
+          api.get<ApiResponse<any>>("/api/edu/courses", {
             params: { type: "POPULAR", view: "PREVIEW" },
           }),
-          api.get<ApiResponse<any[]>>("/api/edu/courses", {
+          api.get<ApiResponse<any>>("/api/edu/courses", {
             params: { type: "CUSTOM", view: "PREVIEW" },
           }),
-          api.get<ApiResponse<any[]>>("/api/edu/courses", {
+          api.get<ApiResponse<any>>("/api/edu/courses", {
             params: { type: "NEW", view: "PREVIEW" },
           }),
         ]);
 
-        const popRaw = Array.isArray(popRes.data?.data) ? popRes.data.data : [];
-        const cusRaw = Array.isArray(cusRes.data?.data) ? cusRes.data.data : [];
-        const newRaw = Array.isArray(newRes.data?.data) ? newRes.data.data : [];
+        const popRaw = pickArray(popRes.data?.data);
+        const cusRaw = pickArray(cusRes.data?.data);
+        const newRaw = pickArray(newRes.data?.data);
+
+        console.log("[Learn] popular raw:", popRaw);
+        console.log("[Learn] custom raw:", cusRaw);
+        console.log("[Learn] new raw:", newRaw);
+
+        if (!alive) return;
 
         setPopular(popRaw.map(normalizeCourse).filter(Boolean) as ApiCourse[]);
-        setPersonalized(
-          cusRaw.map(normalizeCourse).filter(Boolean) as ApiCourse[]
-        );
+        setPersonalized(cusRaw.map(normalizeCourse).filter(Boolean) as ApiCourse[]);
         setNews(newRaw.map(normalizeCourse).filter(Boolean) as ApiCourse[]);
       } catch (e) {
         console.error("[Learn] others error:", e);
+        if (!alive) return;
+
         setErrorMsg("코스 리스트를 불러오지 못했어요.");
         setPopular([]);
         setPersonalized([]);
         setNews([]);
       } finally {
+        if (!alive) return;
         setLoadingOthers(false);
       }
     })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const latest3 = useMemo(() => latestByTopic.slice(0, 3), [latestByTopic]);
+
+  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.src.endsWith(FALLBACK_THUMB)) return;
+    img.src = FALLBACK_THUMB;
+  };
 
   return (
     <div className={styles.viewport}>
@@ -179,9 +230,8 @@ export default function Learn() {
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
-                className={`${styles.chip} ${
-                  active === cat ? styles.chipActive : ""
-                }`}
+                type="button"
+                className={`${styles.chip} ${active === cat ? styles.chipActive : ""}`}
                 onClick={() => setActive(cat)}
               >
                 {cat}
@@ -192,17 +242,20 @@ export default function Learn() {
           <div className={styles.verticalList}>
             {loadingLatest && latest3.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
+            ) : latest3.length === 0 ? (
+              <p className={styles.loading} style={{ opacity: 0.7 }}>
+                표시할 코스가 없어요.
+              </p>
             ) : (
               latest3.map((c) => (
                 <div
                   key={c.courseId}
                   className={styles.courseRow}
-                  onClick={() =>
-                    goToDetail(String(c.courseId), { from: "learn-latest" })
-                  }
+                  onClick={() => goToDetail(String(c.courseId), { from: "learn-latest" })}
                 >
                   <img
-                    src={c.thumbnailUrl ?? "/sample-news.png"}
+                    src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                    onError={handleImgError}
                     alt=""
                     className={styles.rowThumb}
                   />
@@ -229,21 +282,25 @@ export default function Learn() {
               onClick={() => navigate("/learn/popular")}
             />
           </div>
+
           <div className={styles.hScroll}>
             {loadingOthers && popular.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
+            ) : popular.length === 0 ? (
+              <p className={styles.loading} style={{ opacity: 0.7 }}>
+                표시할 코스가 없어요.
+              </p>
             ) : (
               popular.map((c) => (
                 <div
                   key={c.courseId}
                   className={styles.hCard}
-                  onClick={() =>
-                    goToDetail(String(c.courseId), { from: "learn-popular" })
-                  }
+                  onClick={() => goToDetail(String(c.courseId), { from: "learn-popular" })}
                 >
                   <div className={styles.hThumbWrap}>
                     <img
-                      src={c.thumbnailUrl ?? "/sample-news.png"}
+                      src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                      onError={handleImgError}
                       alt=""
                       className={styles.hThumb}
                     />
@@ -267,23 +324,27 @@ export default function Learn() {
               onClick={() => navigate("/learn/personalized")}
             />
           </div>
+
           <div className={styles.hScroll}>
             {loadingOthers && personalized.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
+            ) : personalized.length === 0 ? (
+              <p className={styles.loading} style={{ opacity: 0.7 }}>
+                표시할 코스가 없어요.
+              </p>
             ) : (
               personalized.map((c) => (
                 <div
                   key={c.courseId}
                   className={styles.hCard}
                   onClick={() =>
-                    goToDetail(String(c.courseId), {
-                      from: "learn-personalized",
-                    })
+                    goToDetail(String(c.courseId), { from: "learn-personalized" })
                   }
                 >
                   <div className={styles.hThumbWrap}>
                     <img
-                      src={c.thumbnailUrl ?? "/sample-news.png"}
+                      src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                      onError={handleImgError}
                       alt=""
                       className={styles.hThumb}
                     />
@@ -307,21 +368,25 @@ export default function Learn() {
               onClick={() => navigate("/learn/new")}
             />
           </div>
+
           <div className={styles.hScroll}>
             {loadingOthers && news.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
+            ) : news.length === 0 ? (
+              <p className={styles.loading} style={{ opacity: 0.7 }}>
+                표시할 코스가 없어요.
+              </p>
             ) : (
               news.map((c) => (
                 <div
                   key={c.courseId}
                   className={styles.hCard}
-                  onClick={() =>
-                    goToDetail(String(c.courseId), { from: "learn-new" })
-                  }
+                  onClick={() => goToDetail(String(c.courseId), { from: "learn-new" })}
                 >
                   <div className={styles.hThumbWrap}>
                     <img
-                      src={c.thumbnailUrl ?? "/sample-news.png"}
+                      src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                      onError={handleImgError}
                       alt=""
                       className={styles.hThumb}
                     />
