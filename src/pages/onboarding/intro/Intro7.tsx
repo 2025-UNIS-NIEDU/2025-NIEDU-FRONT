@@ -1,15 +1,22 @@
-import { useNavigate } from "react-router-dom";
 import base from "./IntroBase.module.css";
 import styles from "./Intro7.module.css";
 import IntroHeader from "../components/IntroHeader";
 
 export default function Intro7() {
-  const nav = useNavigate();
-
   const handleKakaoStart = () => {
-    // TODO: 카카오 로그인 시작 로직 연결
-    // 예: window.location.href = `${import.meta.env.VITE_API_BASE_URL}/oauth2/authorization/kakao`
-    nav("/onboarding/topic"); // 임시: 다음 단계로
+    // ✅ 문서 기준: 로그인 시작은 무조건 BE /oauth2/authorization/kakao
+    const envBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
+
+    // env 없을 때 안전 fallback
+    const fallback =
+      window.location.hostname === "localhost"
+        ? "http://localhost:8080"
+        : "https://api.niedu-service.com";
+
+    const apiBase = envBase || fallback;
+
+    // cache 방지용으로 timestamp 붙여도 됨(선택)
+    window.location.href = `${apiBase}/oauth2/authorization/kakao`;
   };
 
   return (

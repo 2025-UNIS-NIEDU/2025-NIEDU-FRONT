@@ -1,4 +1,3 @@
-// src/api/axiosInstance.ts
 import axios, { AxiosError } from "axios";
 import { useAuthStore } from "../store/authStore";
 
@@ -6,14 +5,16 @@ const isLocalHost = () =>
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
 
+const apiBase =
+  import.meta.env.VITE_API_BASE_URL ||
+  (isLocalHost() ? "http://localhost:8080" : "https://api.niedu-service.com");
+
 const api = axios.create({
-  baseURL: isLocalHost()
-    ? ""
-    : (import.meta.env.VITE_API_BASE_URL || "https://api.niedu-service.com"),
+  baseURL: apiBase,
   withCredentials: true,
 });
 
-// ✅ 요청 인터셉터: 로컬/운영 상관없이 store에 accessToken 있으면 Bearer 붙이기
+// ✅ 요청 인터셉터: store에 accessToken 있으면 Bearer 붙이기
 api.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
 
@@ -25,7 +26,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 처리 (그대로)
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
@@ -36,15 +36,13 @@ api.interceptors.response.use(
 
       try {
         if (isLocalHost()) {
-          window.location.href = `/api/auth/reissue-access-token`;
+          // ✅ 문서 기준: 로컬 재발급은 리다이렉트 방식
+          window.location.href = `${apiBase}/api/auth/reissue-access-token`;
           return Promise.reject(error);
         }
 
-        await axios.post(
-          `${api.defaults.baseURL}/api/auth/reissue-access-token`,
-          {},
-          { withCredentials: true }
-        );
+        // ✅ 운영: 쿠키 기반 재발급 (리다이렉트 없음)
+        await api.post("/api/auth/reissue-access-token");
 
         return api(originalConfig);
       } catch (reissueErr) {
