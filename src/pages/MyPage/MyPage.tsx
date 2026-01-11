@@ -1,8 +1,11 @@
 // src/pages/MyPage/MyPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
+import { useNavigate } from "react-router-dom";
+
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
 import styles from "./MyPage.module.css";
+
 import api from "@/api/axiosInstance";
 import type { ApiResponse } from "@/types/api";
 
@@ -17,7 +20,7 @@ type DateNavigatorData = {
 type CalendarCourse = {
   topic?: string; // 한글
   subTopic?: string; // 한글
-  extra?: number; // { extra: 2 } 이런 식으로 올 수 있음
+  extra?: number; // { extra: 2 }
 };
 
 type CalendarDay = {
@@ -31,29 +34,84 @@ type CalendarData = {
   days: CalendarDay[];
 };
 
+type MeData = {
+  nickname?: string;
+  profileImageUrl?: string;
+};
+
+type StreakData = {
+  streak?: number;
+};
+
+const toISODate = (y: number, m0: number, d: number) => {
+  const mm = String(m0 + 1).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  return `${y}-${mm}-${dd}`;
+};
+
 export default function MyPage() {
+  const nav = useNavigate();
+
   // ---------- today ----------
   const today = useMemo(() => new Date(), []);
   const todayYear = today.getFullYear();
-  const todayMonth0 = today.getMonth(); // 0~11 (UI용)
+  const todayMonth0 = today.getMonth(); // 0~11
   const todayDate = today.getDate();
 
   // ---------- profile (local upload preview) ----------
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
-  // ---------- calendar state (UI는 0~11로 유지) ----------
+  // ---------- user ----------
+  const [nickname, setNickname] = useState("사용자 님");
+  const [streak, setStreak] = useState<number | null>(null);
+  const [serverProfileUrl, setServerProfileUrl] = useState<string | null>(null);
+
+  // ---------- calendar state ----------
   const [year, setYear] = useState(todayYear);
-  const [month0, setMonth0] = useState(todayMonth0); // 0=1월
+  const [month0, setMonth0] = useState(todayMonth0);
 
   // ---------- API states ----------
   const [navData, setNavData] = useState<DateNavigatorData | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
+
   const [loadingNav, setLoadingNav] = useState(true);
   const [loadingCal, setLoadingCal] = useState(true);
+
+  // 사용자/출석은 캘린더와 별도 로딩으로 관리
+  const [loadingUser, setLoadingUser] = useState(true);
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // ---------- helpers ----------
+  // helpers
   const monthForApi = month0 + 1; // 1~12
+
+  // ✅ (0) 유저 프로필 + 출석 streak
+  useEffect(() => {
+    const run = async () => {
+      setLoadingUser(true);
+      try {
+        const [meRes, streakRes] = await Promise.all([
+          api.get<ApiResponse<MeData>>("/api/user/me"),
+          api.get<ApiResponse<StreakData>>("/api/attendance/streak"),
+        ]);
+
+        const me = meRes.data?.data;
+        const st = streakRes.data?.data;
+
+        if (me?.nickname) setNickname(`${me.nickname} 님`);
+        if (me?.profileImageUrl) setServerProfileUrl(me.profileImageUrl);
+
+        if (typeof st?.streak === "number") setStreak(st.streak);
+      } catch (e) {
+        console.error("[MyPage] user/streak error:", e);
+        // 여기 실패는 치명적이지 않아서 에러메시지 강제 표출 안 함
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    void run();
+  }, []);
 
   // ✅ (1) 날짜 내비게이터: 최초 진입 시 현재 년/월 세팅
   useEffect(() => {
@@ -65,9 +123,9 @@ export default function MyPage() {
           "/api/my/date-navigator"
         );
         const d = res.data?.data;
+
         if (d?.currentYear && d?.currentMonth) {
           setNavData(d);
-          // API 기준으로 UI year/month 동기화
           setYear(d.currentYear);
           setMonth0(Math.max(0, Math.min(11, d.currentMonth - 1)));
         }
@@ -112,16 +170,16 @@ export default function MyPage() {
   for (let i = 0; i < firstDay; i++) daysArray.push(null);
   for (let d = 1; d <= lastDate; d++) daysArray.push(d);
 
-  // ---------- calendar day -> tags map ----------
+  // ---------- calendar day -> courses map ----------
   const dayToCourses = useMemo(() => {
     const map = new Map<number, CalendarCourse[]>();
     const days = calendarData?.days ?? [];
 
     for (const item of days) {
       const dt = new Date(item.date);
-      // 혹시 date 파싱이 깨질 때 대비 (문자열 형태가 다를 수 있음)
+
       const dayNum = Number.isNaN(dt.getTime())
-        ? Number(String(item.date).slice(8, 10)) // "YYYY-MM-DD..." 케이스 fallback
+        ? Number(String(item.date).slice(8, 10)) // fallback
         : dt.getDate();
 
       if (!Number.isNaN(dayNum)) {
@@ -164,13 +222,16 @@ export default function MyPage() {
     reader.readAsDataURL(file);
   };
 
-  // ---------- UI ----------
+  // ---------- UI helpers ----------
   const isThisMonthToday = month0 === todayMonth0 && year === todayYear;
+
+  // 로컬 업로드가 우선, 없으면 서버 URL
+  const shownProfileImg = profileImage ?? serverProfileUrl;
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 상단 타이틀 + 설정 버튼 */}
+        {/* 상단 */}
         <div className={styles.topBar}>
           <h1 className={styles.title}>마이페이지</h1>
           <button type="button" className={styles.settingsButton}>
@@ -194,9 +255,9 @@ export default function MyPage() {
               className={styles.profileFrame}
             />
 
-            {profileImage && (
+            {shownProfileImg && (
               <img
-                src={profileImage}
+                src={shownProfileImg}
                 alt="프로필"
                 className={styles.profilePhoto}
               />
@@ -214,16 +275,25 @@ export default function MyPage() {
           </div>
 
           <div>
-            {/* TODO: 프로필/출석 streak API 문서가 없어서 일단 유지 */}
-            <p className={styles.name}>이화연 님</p>
+            <p className={styles.name}>
+              {loadingUser ? "불러오는 중..." : nickname}
+            </p>
             <p className={styles.streak}>
-              {loadingNav ? "출석 정보를 불러오는 중..." : "2일 연속 출석하셨어요!"}
+              {streak === null ? "출석 정보를 불러오는 중..." : `${streak}일 연속 출석하셨어요!`}
             </p>
           </div>
         </div>
 
-        {/* 용어 사전 섹션 타이틀 */}
-        <div className={styles.sectionTitle}>
+        {/* 용어 사전 섹션 (클릭 이동) */}
+        <div
+          className={styles.sectionTitle}
+          role="button"
+          tabIndex={0}
+          onClick={() => nav("/mypage/terms")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") nav("/mypage/terms");
+          }}
+        >
           <img
             src="/icons/majesticons_book.svg"
             alt=""
@@ -232,7 +302,7 @@ export default function MyPage() {
           <span>용어 사전</span>
         </div>
 
-        {/* 달력 전체 박스 */}
+        {/* 달력 */}
         <div className={styles.calendarBox}>
           <div className={styles.monthHeader}>
             <button
@@ -269,25 +339,37 @@ export default function MyPage() {
           ) : (
             <div className={styles.grid}>
               {daysArray.map((day, idx) => {
-                if (day === null)
+                if (day === null) {
                   return <div key={idx} className={styles.emptyCell} />;
+                }
 
                 const isToday = isThisMonthToday && day === todayDate;
 
                 const courses = dayToCourses.get(day) ?? [];
-                // topic/subTopic 최대 2개 + extra(추가 n개) 문서 규칙 반영
+                const hasData = courses.length > 0;
+
+                // topic/subTopic 최대 2개 + extra(추가 n개)
                 const topicPairs = courses
                   .filter((c) => c?.topic || c?.subTopic)
                   .slice(0, 2);
 
-                const extraObj = courses.find(
-                  (c) => typeof c?.extra === "number"
-                );
+                const extraObj = courses.find((c) => typeof c?.extra === "number");
                 const extraCount =
                   typeof extraObj?.extra === "number" ? extraObj.extra : 0;
 
+                const iso = toISODate(year, month0, day);
+
                 return (
-                  <div key={idx} className={styles.dayCell}>
+                  <div
+                    key={idx}
+                    className={styles.dayCell}
+                    onClick={() => {
+                      if (!hasData) return;
+                      nav(`/mypage/review-notes?date=${encodeURIComponent(iso)}`);
+                    }}
+                    style={{ cursor: hasData ? "pointer" : "default" }}
+                    aria-disabled={!hasData}
+                  >
                     <div
                       className={`${styles.dayNumber} ${
                         isToday ? styles.today : ""
@@ -301,14 +383,10 @@ export default function MyPage() {
                         {topicPairs.map((c, i) => (
                           <div key={i}>
                             {c.topic && (
-                              <span className={styles.tagStrong}>
-                                {c.topic}
-                              </span>
+                              <span className={styles.tagStrong}>{c.topic}</span>
                             )}
                             {c.subTopic && (
-                              <span className={styles.tagWeak}>
-                                #{c.subTopic}
-                              </span>
+                              <span className={styles.tagWeak}>#{c.subTopic}</span>
                             )}
                           </div>
                         ))}
@@ -327,7 +405,7 @@ export default function MyPage() {
           )}
         </div>
 
-        {/* (선택) 디버그로 range 확인하고 싶으면 켜도 됨 */}
+        {/* (선택) 디버그 */}
         {/* {navData && (
           <pre style={{ fontSize: 10, opacity: 0.6 }}>
             {JSON.stringify(navData, null, 2)}

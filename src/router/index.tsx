@@ -16,6 +16,8 @@ import StepRunner from "@/pages/article/session/StepRunner";
 import EduResult from "@/components/edu/EduResult";
 import ArticleDetail from "@/pages/ArticleDetail/ArticleDetail";
 import MyPage from "@/pages/MyPage/MyPage";
+import ReviewNotesPage from "@/pages/MyPage/ReviewNotes/ReviewNotesPage";
+import TermsDictionaryPage from "@/pages/MyPage/TermsDictionary/TermsDictionaryPage";
 export default function AppRouter() {
   return (
     <Routes>
@@ -37,6 +39,8 @@ export default function AppRouter() {
        <Route path="/nie/session/I/result" element={<EduResult />} />
        <Route path="/article/:articleId" element={<ArticleDetail />} />
        <Route path="/mypage" element={<MyPage />} />
+       <Route path="/mypage/review-notes" element={<ReviewNotesPage />} />
+<Route path="/mypage/terms" element={<TermsDictionaryPage />} />
     </Routes>
   );
 }
