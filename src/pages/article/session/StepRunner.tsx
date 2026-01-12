@@ -1,4 +1,6 @@
+// src/pages/article/session/StepRunner.tsx
 import { useLocation, useParams } from "react-router-dom";
+import { useMemo } from "react";
 
 import StepN001 from "./N/StepN001";
 import StepN002 from "./N/StepN002";
@@ -27,10 +29,11 @@ type LocState = {
   steps?: StepMeta[];
   progress?: number;
   startTime?: number;
-  entryStepId?: number;
 };
 
 type Level = "N" | "E" | "I";
+
+const STORAGE_KEY = "NIEDU_STEP_RUNNER_STATE_V1";
 
 export default function StepRunner() {
   const { level: levelParam, stepId: stepIdParam } = useParams<{
@@ -41,35 +44,32 @@ export default function StepRunner() {
   const location = useLocation();
   const state = (location.state as LocState | undefined) ?? {};
 
-  // level 결정
-  const rawLevel = (state.level ?? levelParam ?? "")
+  // ✅ state가 비는 경우(새로고침/직접 URL 진입 등) sessionStorage에서 복구
+  const restored = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as LocState;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const steps: StepMeta[] = (state.steps?.length ? state.steps : restored?.steps) ?? [];
+  const restoredLevel = restored?.level;
+
+  // URL에서 level fallback
+  const segments = location.pathname.split("/");
+  const levelFromPath = segments[3];
+
+  const rawLevel = (state.level ?? levelParam ?? restoredLevel ?? levelFromPath ?? "")
     .toString()
     .toUpperCase();
 
   const lev = rawLevel as Level;
 
-  // step
-  const stepIdStr = (stepIdParam ?? "").toString(); // "1"
+  const stepIdStr = (stepIdParam ?? "").toString(); // "1" | "001"
   const stepOrder = Number(stepIdStr); // 1~5
-
-  // ✅ steps 복구: state -> sessionStorage
-  let steps: StepMeta[] = Array.isArray(state.steps) ? state.steps : [];
-
-  const courseIdNum = Number(state.courseId ?? 0);
-  const sessionIdNum = Number(state.sessionId ?? 0);
-
-  if (!steps.length && courseIdNum && sessionIdNum && (lev === "N" || lev === "I" || lev === "E")) {
-    const storageKey = `niedu_session_${courseIdNum}_${sessionIdNum}_${lev}`;
-    const cached = sessionStorage.getItem(storageKey);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed?.steps)) steps = parsed.steps;
-      } catch (e) {
-        console.warn("[StepRunner] failed to parse cached session:", e);
-      }
-    }
-  }
 
   console.log("[StepRunner]", {
     pathname: location.pathname,
@@ -78,6 +78,7 @@ export default function StepRunner() {
     stepOrder,
     hasSteps: steps.length,
     state,
+    restored,
   });
 
   if (!steps.length) {
@@ -87,18 +88,18 @@ export default function StepRunner() {
         <div style={{ opacity: 0.8, lineHeight: 1.5 }}>
           이 화면은 ArticlePrepare에서 start API 호출 후 전달되는 <code>steps</code>가 필요합니다.
           <br />
-          학습 시작 버튼을 통해 진입해주세요. (또는 courseId/sessionId/state 유실 여부 확인)
+          <b>학습 시작</b> 버튼을 통해 진입해주세요.
+          <br />
+          <span style={{ fontSize: 12, opacity: 0.75 }}>
+            (새로고침/직접 URL 진입 시 state가 날아갈 수 있어요)
+          </span>
         </div>
       </div>
     );
   }
 
   if (!stepIdStr || Number.isNaN(stepOrder) || stepOrder <= 0) {
-    return (
-      <div style={{ padding: 16 }}>
-        잘못된 step 경로입니다. (step: {stepIdStr || "?"})
-      </div>
-    );
+    return <div style={{ padding: 16 }}>잘못된 step 경로입니다. (step: {stepIdStr || "?"})</div>;
   }
 
   // N

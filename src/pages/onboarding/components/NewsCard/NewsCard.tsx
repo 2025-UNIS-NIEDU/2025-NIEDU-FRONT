@@ -7,19 +7,24 @@ interface NewsCardProps {
   imageUrl?: string;
 }
 
-const FALLBACK_IMG = "/sample-news.png";
+const FALLBACK = "/icons/bunnywithlogo.png";
+
+const resolveUrl = (url?: string) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  // 백엔드가 "/images/..." 같은 절대경로를 줄 때
+  if (url.startsWith("/")) return url;
+  return url;
+};
 
 export default function NewsCard({ title, source, imageUrl }: NewsCardProps) {
   return (
     <div className={styles.card}>
       <img
-        src={imageUrl || FALLBACK_IMG}
+        src={resolveUrl(imageUrl) || FALLBACK}
         alt="news"
         onError={(e) => {
-          const img = e.currentTarget;
-          if (!img.src.endsWith(FALLBACK_IMG)) {
-            img.src = FALLBACK_IMG;
-          }
+          e.currentTarget.src = FALLBACK;
         }}
       />
       <div className={styles.overlay}>
