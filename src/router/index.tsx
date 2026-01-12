@@ -22,11 +22,13 @@ import LearnSearch from "@/pages/Learn/LearnSearch";
 import ArticlePrepare from "@/pages/article/ArticlePrepare";
 import LoginSuccess from "@/pages/LoginSuccess";
 import StepRunner from "@/pages/article/session/StepRunner";
-import EduResult from "@/components/edu/EduResult";
+import EduResult from "@/pages/quiz/EduResult";
+
 import ArticleDetail from "@/pages/ArticleDetail/ArticleDetail";
 import MyPage from "@/pages/MyPage/MyPage";
 import ReviewNotesPage from "@/pages/MyPage/ReviewNotes/ReviewNotesPage";
 import TermsDictionaryPage from "@/pages/MyPage/TermsDictionary/TermsDictionaryPage";
+
 
 export default function AppRouter() {
   return (
@@ -41,7 +43,7 @@ export default function AppRouter() {
       <Route path="/onboarding/intro/6" element={<Intro6 />} />
       <Route path="/onboarding/intro/7" element={<Intro7 />} />
 
-      {/* ✅ 기존 경로 유지용 리다이렉트 (지금 바로 파일 삭제하지 말라는 이유) */}
+      {/* ✅ 기존 경로 유지용 리다이렉트 */}
       <Route path="/onboarding/2" element={<Navigate to="/onboarding/intro/2" replace />} />
       <Route path="/onboarding/3" element={<Navigate to="/onboarding/intro/3" replace />} />
       <Route path="/onboarding/4" element={<Navigate to="/onboarding/intro/4" replace />} />
@@ -60,6 +62,8 @@ export default function AppRouter() {
       <Route path="/login/success" element={<LoginSuccess />} />
       <Route path="/nie/session/:level/step/:stepId" element={<StepRunner />} />
       <Route path="/nie/session/I/result" element={<EduResult />} />
+      {/* N(E) 공통 결과 화면 */}
+      <Route path="/article/result" element={<EduResult />} />
       <Route path="/article/:articleId" element={<ArticleDetail />} />
       <Route path="/mypage" element={<MyPage />} />
       <Route path="/mypage/review-notes" element={<ReviewNotesPage />} />

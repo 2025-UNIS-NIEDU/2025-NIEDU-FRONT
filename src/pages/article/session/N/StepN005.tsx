@@ -53,6 +53,8 @@ export default function StepN005() {
   const [selected, setSelected] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
+  const startTime = state.startTime;
+
   const cid = Number(state.courseId ?? state.articleId);
   const sid = Number(state.sessionId);
   const stepId = Number(currentStep?.stepId);
@@ -82,6 +84,14 @@ export default function StepN005() {
   const total = items.length;
 
   const handlePrev = () => nav(-1);
+
+  const formatDuration = (ms: number) => {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    if (min <= 0) return `${sec}초`;
+    return `${min}분 ${sec}초`;
+  };
 
   const saveAnswer = async () => {
     if (!cid || !sid || !stepId || !q || !selected) return;
@@ -115,64 +125,102 @@ export default function StepN005() {
     // ✅ 마지막이면 summary로 streak 가져오기
     try {
       const summary = await getSessionSummary({ courseId: cid, sessionId: sid });
+      const learningMs =
+        Number(summary?.data?.learningTime ?? 0) ||
+        (startTime ? Date.now() - startTime : 0);
+
       nav("/article/result", {
         state: {
           level: "N",
           streak: summary?.data?.streak ?? 0,
-          learningTime: summary?.data?.learningTime,
+          durationLabel: formatDuration(learningMs),
         },
         replace: true,
       });
     } catch (e) {
       console.error("[StepN005] summary error:", e);
-      nav("/article/result", { state: { level: "N", streak: 0 }, replace: true });
+      const learningMs = startTime ? Date.now() - startTime : 0;
+      nav(
+        "/article/result",
+        {
+          state: { level: "N", streak: 0, durationLabel: formatDuration(learningMs) },
+          replace: true,
+        }
+      );
     }
   };
 
   if (!q) return <div className={styles.loading}>문제가 없습니다.</div>;
 
+  const totalSteps = Math.max(1, total);
+  const progressPct = `${((index + 1) / totalSteps) * 100}%`;
+  const isCorrectPick = confirmed && selected === q.correctAnswer;
+
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        <h2 className={styles.heading}>퀴즈</h2>
-
-        <div className={styles.card}>
-          <p className={styles.qNum}>
-            {index + 1} / {total}
-          </p>
-          <p className={styles.question}>{q.question}</p>
-
-          <div className={styles.options}>
-            {q.options.map((o) => {
-              const isSel = selected === o.label;
-              const isCorrect = confirmed && o.label === q.correctAnswer;
-              const isWrong = confirmed && isSel && o.label !== q.correctAnswer;
-
-              return (
-                <button
-                  key={o.label}
-                  type="button"
-                  className={`${styles.option} ${
-                    isCorrect ? styles.correct : isWrong ? styles.wrong : isSel ? styles.active : ""
-                  }`}
-                  onClick={() => !confirmed && setSelected(o.label)}
-                >
-                  <span className={styles.optionLabel}>{o.label}</span>
-                  <span className={styles.optionText}>{o.text}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {confirmed && (
-            <div className={styles.explainBox}>
-              <p className={styles.answerLine}>정답: {q.correctAnswer}</p>
-              <p className={styles.explainText}>{q.answerExplanation}</p>
-            </div>
-          )}
+        {/* 상단 진행 바 (1/5 텍스트 대신) */}
+        <div className={styles.progressWrap}>
+          <div className={styles.progress} style={{ width: progressPct }} />
         </div>
 
-        <EduBottomBar onPrev={handlePrev} onNext={handleNext} disableNext={!selected && !confirmed} />
+        <p className={styles.question}>{q.question}</p>
+
+        <div className={styles.options}>
+          {q.options.map((o) => {
+            const isSel = selected === o.label;
+            const isCorrect = confirmed && o.label === q.correctAnswer;
+            const isWrong = confirmed && isSel && o.label !== q.correctAnswer;
+
+            return (
+              <button
+                key={o.label}
+                type="button"
+                className={`${styles.option} ${
+                  isCorrect
+                    ? styles.optionCorrect
+                    : isWrong
+                      ? styles.optionWrong
+                      : isSel
+                        ? styles.optionSelected
+                        : ""
+                }`}
+                onClick={() => !confirmed && setSelected(o.label)}
+              >
+                <span className={styles.optionLabel}>{o.label}</span>
+                <span className={styles.optionText}>{o.text}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {confirmed && (
+          <div
+            className={`${styles.answerBox} ${
+              isCorrectPick ? styles.answerBoxCorrect : styles.answerBoxWrong
+            }`}
+          >
+            <div className={styles.answerHeader}>
+              <span className={styles.answerLabel}>정답: {q.correctAnswer}</span>
+              {state.articleUrl ? (
+                <button
+                  type="button"
+                  className={styles.sourceBtn}
+                  onClick={() => window.open(state.articleUrl!, "_blank", "noopener,noreferrer")}
+                >
+                  뉴스 원문 보기
+                </button>
+              ) : null}
+            </div>
+            <p className={styles.answerText}>{q.answerExplanation}</p>
+          </div>
+        )}
+
+        <EduBottomBar
+          onPrev={handlePrev}
+          onNext={handleNext}
+          disableNext={!selected && !confirmed}
+        />
       </div>
     </div>
   );

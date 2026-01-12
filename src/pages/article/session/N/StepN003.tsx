@@ -52,8 +52,11 @@ export default function StepN003({ articleId, articleUrl }: Props) {
 
   // ✅ start 응답 steps에서 stepOrder=3 찾기
   const currentStep = useMemo(() => {
-    return steps.find(
-      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+    // contentType이 서버에서 바뀌는 경우가 있어 stepOrder 우선 fallback
+    return (
+      steps.find(
+        (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+      ) ?? steps.find((s) => Number(s.stepOrder) === STEP_ORDER)
     );
   }, [steps]);
 
@@ -61,29 +64,32 @@ export default function StepN003({ articleId, articleUrl }: Props) {
   const [data, setData] = useState<IssueData | null>(null);
   const [submitErr, setSubmitErr] = useState("");
 
-  // ✅ currentStep.content에서 표 데이터 파싱
+  // ✅ currentStep.content에서 표 데이터 파싱 (서버 응답 형태가 달라도 최대한 복구)
   useEffect(() => {
     setLoading(true);
     setSubmitErr("");
 
     try {
-      const first = currentStep?.content?.contents?.[0];
+      const c = currentStep?.content;
+      const contents = c?.contents;
 
-      if (currentStep && first) {
-        setData({
-          issue: String(first?.issue ?? ""),
-          cause: String(first?.cause ?? ""),
-          circumstance: String(first?.circumstance ?? ""),
-          result: String(first?.result ?? ""),
-          effect: String(first?.effect ?? ""),
-        });
-      } else {
-        console.warn("[StepN003] CURRENT_AFFAIRS contents not found", {
-          currentStep,
-          stepsLen: steps.length,
-        });
-        setData(null);
-      }
+      // 1) contents가 배열이면 첫 번째 사용
+      // 2) contents가 객체이면 그 자체 사용
+      // 3) 없으면 content 자체에서 바로 꺼내기
+      const source: any =
+        (Array.isArray(contents) ? contents[0] : contents) ?? c ?? {};
+
+      const next: IssueData = {
+        issue: String(source?.issue ?? source?.issueName ?? ""),
+        cause: String(source?.cause ?? ""),
+        circumstance: String(source?.circumstance ?? source?.situation ?? ""),
+        result: String(source?.result ?? ""),
+        effect: String(source?.effect ?? source?.impact ?? ""),
+      };
+
+      // 전부 비어있으면 null로 처리 (스켈/경고 표시)
+      const anyFilled = Object.values(next).some((v) => (v ?? "").toString().trim().length > 0);
+      setData(anyFilled ? next : null);
     } catch (err) {
       console.error("[StepN003] parse failed", err);
       setData(null);
@@ -123,7 +129,6 @@ export default function StepN003({ articleId, articleUrl }: Props) {
     } catch (e) {
       console.error("[StepN003] submit failed:", e);
       setSubmitErr("저장에 실패했어요. 네트워크/로그인 상태를 확인해주세요.");
-      // 저장 실패해도 UX상 다음으로 넘기고 싶으면 true로 바꿔도 됨
       return false;
     }
   };
@@ -152,7 +157,7 @@ export default function StepN003({ articleId, articleUrl }: Props) {
     if (loading) return;
 
     const ok = await submitViewed();
-    if (!ok) return; // 저장 실패 시 막고 싶으면 유지, 막기 싫으면 이 줄 삭제
+    if (!ok) return;
 
     nav("/nie/session/N/step/004", {
       state: {
@@ -171,8 +176,10 @@ export default function StepN003({ articleId, articleUrl }: Props) {
     <div className={styles.viewport}>
       <div className={styles.container}>
         <div className={styles.progressWrap}>
-          {/* 기존 하드코딩 42% 대신 stepOrder 기반으로 계산하고 싶으면 바꿀 수 있음 */}
-          <div className={styles.progress} style={{ width: "42%" }} />
+          <div
+            className={styles.progress}
+            style={{ width: `${(STEP_ORDER / 5) * 100}%` }}
+          />
         </div>
 
         <h2 className={styles.heading}>시사 학습</h2>
