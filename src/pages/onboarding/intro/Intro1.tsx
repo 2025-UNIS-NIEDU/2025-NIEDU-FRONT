@@ -21,7 +21,7 @@ export default function Intro1() {
           {/* ✅ 전체 중앙 정렬 */}
           <div className={styles.center}>
             <img
-              src="public/icons/n-logo.svg"
+              src="/icons/n-logo.svg"
               alt="NIEdu 로고"
               className={styles.logo}
               draggable={false}

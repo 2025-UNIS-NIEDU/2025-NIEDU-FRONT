@@ -66,6 +66,7 @@ export default function ArticlePrepare() {
   }, [open]);
 
   // ✅ 백엔드 없이 바로 StepRunner 로 보내기
+// ✅ 백엔드 start 호출 후 StepRunner 로 보내기 + steps 저장(새로고침 대비)
 const startSession = async () => {
   if (!level || !articleId || !sessionId) {
     setErrorMsg("필수 정보가 부족해요. (courseId/sessionId/level)");
@@ -86,17 +87,50 @@ const startSession = async () => {
       { level: level.code }
     );
 
-    const data = res.data.data;
+    const payload = res.data?.data;
 
-    // ✅ start 응답에서 stepOrder 기반으로 첫 화면 결정
-    // - 문서에는 entryStepId가 stepId (Long)로 옴
-    // - StepRunner는 지금 stepIdParam을 "1/2/3"처럼 쓰니까
-    //   우리 쪽에서 "entry stepOrder"를 찾아서 그 값으로 라우팅하는 게 안전함
-    const steps = Array.isArray(data?.steps) ? data.steps : [];
-    const entryStepId = Number(data?.entryStepId ?? 1);
+    // ✅ steps가 어디에 있든 최대한 찾아서 파싱
+    const stepsRaw =
+      (Array.isArray(payload?.steps) && payload.steps) ||
+      (Array.isArray(payload?.session?.steps) && payload.session.steps) ||
+      (Array.isArray(payload?.result?.steps) && payload.result.steps) ||
+      [];
 
-    const entry = steps.find((s: any) => Number(s.stepId) === entryStepId);
+    const entryStepIdRaw =
+      payload?.entryStepId ??
+      payload?.session?.entryStepId ??
+      payload?.result?.entryStepId ??
+      1;
+
+    const entryStepId = Number(entryStepIdRaw);
+
+    // ✅ entryStepId로 entryOrder 찾기 (없으면 1)
+    const entry = stepsRaw.find((s: any) => Number(s?.stepId) === entryStepId);
     const entryOrder = Number(entry?.stepOrder ?? 1);
+
+    if (!stepsRaw.length) {
+      // steps가 비어 있으면 StepRunner로 보내면 무조건 "세션 데이터 없음" 뜸
+      console.warn("[ArticlePrepare] start ok but steps empty:", payload);
+      setErrorMsg("세션 시작은 됐지만 steps 데이터가 없어요. (백엔드 응답 확인 필요)");
+      return;
+    }
+
+    // ✅ 새로고침/직접진입 대비: sessionStorage에 저장
+    const storageKey = `niedu_session_${courseIdNum}_${sessionId}_${level.code}`;
+    sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        articleId,
+        articleUrl,
+        startTime: Date.now(),
+        courseId: courseIdNum,
+        sessionId,
+        level: level.code,
+        steps: stepsRaw,
+        progress: Number(payload?.progress ?? payload?.session?.progress ?? 0),
+        entryStepId,
+      })
+    );
 
     navigate(`/nie/session/${level.code}/step/${entryOrder}`, {
       state: {
@@ -106,8 +140,8 @@ const startSession = async () => {
         courseId: courseIdNum,
         sessionId,
         level: level.code,
-        steps,
-        progress: Number(data?.progress ?? 0),
+        steps: stepsRaw,
+        progress: Number(payload?.progress ?? payload?.session?.progress ?? 0),
         entryStepId,
       },
       replace: true,
@@ -117,6 +151,7 @@ const startSession = async () => {
     setErrorMsg("세션 시작에 실패했어요. (로그인/토큰 확인)");
   }
 };
+
 
 
   return (

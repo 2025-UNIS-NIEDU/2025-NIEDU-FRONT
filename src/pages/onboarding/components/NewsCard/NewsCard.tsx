@@ -1,23 +1,25 @@
+// src/pages/onboarding/components/NewsCard/NewsCard.tsx
 import styles from "./NewsCard.module.css";
 
 interface NewsCardProps {
   title: string;
   source: string;
-  imageUrl?: string; // ✅ API 이미지
+  imageUrl?: string;
 }
 
-const FALLBACK_IMAGE = "/icons/vite.svg"; // ✅ 실제 존재하는 이미지로
+const FALLBACK_IMG = "/sample-news.png";
 
 export default function NewsCard({ title, source, imageUrl }: NewsCardProps) {
   return (
     <div className={styles.card}>
       <img
-        src={imageUrl || FALLBACK_IMAGE}
+        src={imageUrl || FALLBACK_IMG}
         alt="news"
         onError={(e) => {
           const img = e.currentTarget;
-          if (img.src.endsWith(FALLBACK_IMAGE)) return;
-          img.src = FALLBACK_IMAGE;
+          if (!img.src.endsWith(FALLBACK_IMG)) {
+            img.src = FALLBACK_IMG;
+          }
         }}
       />
       <div className={styles.overlay}>

@@ -1,4 +1,3 @@
-// src/pages/article/session/StepRunner.tsx
 import { useLocation, useParams } from "react-router-dom";
 
 import StepN001 from "./N/StepN001";
@@ -28,6 +27,7 @@ type LocState = {
   steps?: StepMeta[];
   progress?: number;
   startTime?: number;
+  entryStepId?: number;
 };
 
 type Level = "N" | "E" | "I";
@@ -41,20 +41,35 @@ export default function StepRunner() {
   const location = useLocation();
   const state = (location.state as LocState | undefined) ?? {};
 
-  // URL에서 level fallback
-  const segments = location.pathname.split("/");
-  const levelFromPath = segments[3];
-
-  const rawLevel = (state.level ?? levelParam ?? levelFromPath ?? "")
+  // level 결정
+  const rawLevel = (state.level ?? levelParam ?? "")
     .toString()
     .toUpperCase();
 
   const lev = rawLevel as Level;
 
-  const stepIdStr = (stepIdParam ?? "").toString(); // "1" | "001"
+  // step
+  const stepIdStr = (stepIdParam ?? "").toString(); // "1"
   const stepOrder = Number(stepIdStr); // 1~5
 
-  const steps = state.steps ?? [];
+  // ✅ steps 복구: state -> sessionStorage
+  let steps: StepMeta[] = Array.isArray(state.steps) ? state.steps : [];
+
+  const courseIdNum = Number(state.courseId ?? 0);
+  const sessionIdNum = Number(state.sessionId ?? 0);
+
+  if (!steps.length && courseIdNum && sessionIdNum && (lev === "N" || lev === "I" || lev === "E")) {
+    const storageKey = `niedu_session_${courseIdNum}_${sessionIdNum}_${lev}`;
+    const cached = sessionStorage.getItem(storageKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed?.steps)) steps = parsed.steps;
+      } catch (e) {
+        console.warn("[StepRunner] failed to parse cached session:", e);
+      }
+    }
+  }
 
   console.log("[StepRunner]", {
     pathname: location.pathname,
@@ -70,10 +85,9 @@ export default function StepRunner() {
       <div style={{ padding: 16 }}>
         <div style={{ fontWeight: 700, marginBottom: 8 }}>세션 데이터가 없어요.</div>
         <div style={{ opacity: 0.8, lineHeight: 1.5 }}>
-          이 화면은 ArticlePrepare에서 start API 호출 후 전달되는 <code>steps</code>가
-          필요합니다.
+          이 화면은 ArticlePrepare에서 start API 호출 후 전달되는 <code>steps</code>가 필요합니다.
           <br />
-          학습 시작 버튼을 통해 진입해주세요.
+          학습 시작 버튼을 통해 진입해주세요. (또는 courseId/sessionId/state 유실 여부 확인)
         </div>
       </div>
     );

@@ -247,7 +247,11 @@ export default function Home() {
                       goToDetail(courseId, { from: "home-today" });
                     }}
                   >
-                    <NewsCard title={news.title} source={news.source} />
+                    <NewsCard
+  title={news.title}
+  source={news.source}
+  imageUrl={news.imageUrl}
+/>
                   </button>
                 );
               })
