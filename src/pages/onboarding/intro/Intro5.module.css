@@ -1,27 +1,30 @@
-.illWrap {
+/* Intro5.module.css */
+
+.center {
+  flex: 1;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  margin-top: 44px;
+
+  text-align: center;
+  padding: 0 16px;
 }
 
 .ill {
-  width: 250px;
+  width: 210px;   /* 필요 시 조절 */
   height: auto;
+  display: block;
+  margin-bottom: 26px;
 }
 
 .textArea {
-  margin-top: 22px;
   padding: 0 4px;
 }
 
 .p {
   margin: 0;
-  font-size: 18px;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.45;
   color: var(--text);
-  font-weight: 700;
-}
-
-.p b {
-  font-weight: 900;
 }

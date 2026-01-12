@@ -1,16 +1,23 @@
-.illWrap {
+.center {
+  flex: 1; /* base.content 내부에서 중앙 공간 차지 */
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  margin-top: 52px;
+
+  text-align: center;
+  padding: 0 16px;
 }
 
 .ill {
   width: 170px;
   height: auto;
+  display: block; /* 이미지 아래 이상한 여백 방지 */
+  margin-bottom: 34px;
 }
 
+
 .textArea {
-  margin-top: 34px;
   padding: 0 4px;
 }
 

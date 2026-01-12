@@ -1,37 +1,81 @@
+/* IntroHeader.module.css */
+/* IntroHeader.module.css */
+
 .top {
+  position: relative;
+  height: 48px;
+
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-top: 18px;
+  justify-content: flex-end; /* skip 버튼 오른쪽 */
+
+  padding: 16px 18px 8px;
+  z-index: 10;
 }
 
+/* ✅ 점들: 화면 상단 가운데 */
 .dots {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 8px;
 }
+
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
-  background: var(--dot);
+  background: #d1d5db; /* 기본: 회색 */
 }
 
+/* active 기본 크기 */
 .active {
-  background: var(--dot-active);
+  width: 18px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+/* ===== 테마 ===== */
+
+/* Intro1 (파란 배경) */
+.dark .dot {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.dark .active {
+  background: #ffffff;
+}
+
+/* Intro2~ (흰 배경) */
+.light .dot {
+  background: #d1d5db; /* 회색 */
+}
+
+.light .active {
+  background: #3b82f6; /* 파란색 */
 }
 
 .skip {
-  background: none;
-  border: none;
-  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 6px 8px;
   font-size: 13px;
-  font-weight: 600;
   cursor: pointer;
-  line-height: 150%;
 }
 
-.skipPlaceholder {
-  width: 72px; /* 도트가 중앙에 보이게 오른쪽 공간 유지 */
+/* ===== skip 색상 ===== */
+
+/* Intro1 (파란 배경) → 흰색 */
+.dark .skip {
+  color: rgba(255, 255, 255, 0.9);
 }
+
+/* Intro2~ (흰 배경) → 회색 */
+.light .skip {
+  color: #91969f; /* tailwind gray-400 느낌 */
+}
+

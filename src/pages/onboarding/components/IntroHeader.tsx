@@ -1,15 +1,25 @@
 import styles from "./IntroHeader.module.css";
 
 type Props = {
-  total: number;     // 7
-  active: number;    // 1~7
+  total: number;
+  active: number;
   onSkip?: () => void;
+  theme?: "dark" | "light"; // ✅ 추가
 };
 
-export default function IntroHeader({ total, active, onSkip }: Props) {
+export default function IntroHeader({
+  total,
+  active,
+  onSkip,
+  theme = "light",
+}: Props) {
   return (
     <div className={styles.top}>
-      <div className={styles.dots} aria-label="onboarding progress">
+      <div
+        className={`${styles.dots} ${
+          theme === "dark" ? styles.dark : styles.light
+        }`}
+      >
         {Array.from({ length: total }).map((_, i) => {
           const isActive = i + 1 === active;
           return (

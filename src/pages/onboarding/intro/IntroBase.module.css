@@ -43,11 +43,11 @@
   max-width: 600px;         /* ✅ 너무 커지는 걸 방지 */
   margin: 0 auto;           /* ✅ 가운데 정렬 */
   display: block;
-  height: 50px;
+  height: 60px;
   border-radius: 25px;
   border: none;
   background: linear-gradient(180deg, #f7f7f7 0%, #efefef 100%);
-  color: #000;
+  color: #ffffff;
   font-size: 16px;
   font-weight: 500;
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.5);
@@ -57,27 +57,39 @@
 
 /* 회색(비활성 느낌) */
 .grayBtn {
-  background: linear-gradient(
-    180deg,
-    var(--btn-gray-top) 0%,
-    var(--btn-gray-bottom) 100%
-  );
+border-radius: 28px;
+border: 2px solid var(--gray1_stroke, rgba(191, 195, 201, 0.20));
+background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 9.14%, rgba(191, 195, 201, 0.10) 82.53%));
+
+/* gray1 */
+backdrop-filter: blur(6px);
   color: #8b8b8b;
 }
 
 /* 기본(회색이지만 텍스트 진하게 쓰고 싶으면) */
 .grayBtnStrong {
-  background: linear-gradient(
-    180deg,
-    var(--btn-gray-top) 0%,
-    var(--btn-gray-bottom) 100%
-  );
-  color: #000;
+  border-radius: 28px;
+border: 2px solid var(--gray1_stroke, rgba(191, 195, 201, 0.20));
+background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 9.14%, rgba(191, 195, 201, 0.10) 82.53%));
+
+/* gray1 */
+backdrop-filter: blur(6px);;
+  color: #ffffff;
 }
 
 /* 카카오 */
 .kakaoBtn {
   background: var(--kakao);
-  color: #111;
+  border-radius: 28px;
+background: #FEE500;
   font-weight: 800;
+  color: #000;
+text-align: center;
+
+/* Heading4/regular */
+font-family: Pretendard;
+font-size: 19px;
+font-style: normal;
+font-weight: 600;
+line-height: 150%; /* 28.5px */
 }

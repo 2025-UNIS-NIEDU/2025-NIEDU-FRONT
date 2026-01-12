@@ -9,12 +9,23 @@ export default function Intro1() {
   return (
     <div className={base.viewport}>
       <div className={`${base.container} ${styles.bgBlue}`}>
-        <IntroHeader total={7} active={1} onSkip={() => nav("/onboarding/intro/7")} />
+<IntroHeader
+  total={7}
+  active={1}
+  theme="dark"
+  onSkip={() => nav("/onboarding/intro/7")}
+/>
+
 
         <div className={base.content}>
+          {/* ✅ 전체 중앙 정렬 */}
           <div className={styles.center}>
-            {/* 로고 이미지가 없으면 텍스트로 대체 */}
-            <div className={styles.logoBox}>N</div>
+            <img
+              src="public/icons/n-logo.svg"
+              alt="NIEdu 로고"
+              className={styles.logo}
+              draggable={false}
+            />
 
             <div className={styles.titleArea}>
               <div className={styles.title1}>뉴스와 학습을 연결하다</div>

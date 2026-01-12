@@ -37,7 +37,7 @@ export default function Intro7() {
 
         <div className={base.content}>
           <div className={styles.illWrap}>
-            <img className={styles.ill} src="/onboarding/bunny.png" alt="bunny" />
+            <img className={styles.ill} src="/icons/intro7img.png" alt="bunny" />
           </div>
 
           <div className={styles.textArea}>
