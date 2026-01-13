@@ -196,11 +196,11 @@ export default function StepE003() {
         </div>
 
         <EduBottomBar
-          onPrev={handlePrev}
-          onNext={handleNext}
-          nextDisabled={!confirmed && userAnswer.trim().length === 0}
-          nextLabel={confirmed ? "다음" : "정답 확인"}
-        />
+  onPrev={handlePrev}
+  onNext={handleNext}
+  disableNext={!confirmed && userAnswer.trim().length === 0}
+/>
+
       </div>
     </div>
   );
