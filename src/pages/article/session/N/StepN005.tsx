@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
-import { submitStepAnswer, getSessionSummary } from "@/lib/apiClient";
+import { submitStepAnswer, getSessionSummary, quitSession } from "@/lib/apiClient";
 import styles from "./StepN005.module.css";
 
 type StepMeta = {
@@ -53,7 +53,7 @@ export default function StepN005() {
   const [selected, setSelected] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
-  // ✅ 여러 문항 답안을 누적 저장(서버가 step 단위로 전체 답안을 기대할 수 있음)
+  // ✅ 누적 답안
   const [answers, setAnswers] = useState<Record<number, string>>({});
 
   const startTime = state.startTime;
@@ -88,6 +88,17 @@ export default function StepN005() {
   const total = items.length;
 
   const handlePrev = () => nav(-1);
+
+  const handleQuit = async () => {
+    if (cid && sid) {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepN005] quit failed:", e);
+      }
+    }
+    nav("/learn", { replace: true });
+  };
 
   const formatDuration = (ms: number) => {
     const totalSec = Math.max(0, Math.floor(ms / 1000));
@@ -138,12 +149,17 @@ export default function StepN005() {
       return;
     }
 
-    // ✅ 마지막이면 summary로 streak 가져오기
+    // ✅ 마지막이면 (1) 세션 종료 집계 → (2) summary
     try {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepN005] quit on finish failed:", e);
+      }
+
       const summary = await getSessionSummary({ courseId: cid, sessionId: sid });
       const learningMs =
-        Number(summary?.data?.learningTime ?? 0) ||
-        (startTime ? Date.now() - startTime : 0);
+        Number(summary?.data?.learningTime ?? 0) || (startTime ? Date.now() - startTime : 0);
 
       nav("/article/result", {
         state: {
@@ -228,7 +244,12 @@ export default function StepN005() {
           </div>
         )}
 
-        <EduBottomBar onPrev={handlePrev} onNext={handleNext} disableNext={!selected && !confirmed} />
+        <EduBottomBar
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onQuit={() => void handleQuit()}
+          disableNext={!selected && !confirmed}
+        />
       </div>
     </div>
   );

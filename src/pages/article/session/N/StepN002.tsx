@@ -354,6 +354,51 @@ export default function StepN002() {
 
         <div className={styles.bottomSpace} />
       </div>
+{/* ✅ 용어 상세 팝업 (용어사전 팝업과 동일 동작) */}
+{activeTerm && (
+  <div className={styles.modalOverlay} onClick={() => setActiveTerm(null)}>
+    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className={styles.modalStarBtn}
+        onClick={() => toggleFavorite(activeTerm.id)}
+        aria-label="즐겨찾기"
+      >
+        <img
+          className={styles.modalStarIcon}
+          src={
+            favorites.includes(activeTerm.id)
+              ? "/icons/Frame 1686564291 (1).svg"
+              : "/icons/Frame 1686564291.svg"
+          }
+          alt=""
+        />
+      </button>
+
+      <h2 className={styles.modalTitle}>{activeTerm.term}</h2>
+      <p className={styles.modalDefinition}>{activeTerm.definition}</p>
+
+      <div className={styles.modalBlock}>
+        <div className={styles.modalBlockTitle}>예시 문장</div>
+        <div className={styles.modalBlockBody}>{activeTerm.example}</div>
+      </div>
+
+      <div className={styles.modalBlock}>
+        <div className={styles.modalBlockTitle}>추가 설명</div>
+        <div className={styles.modalBlockBody}>{activeTerm.extra}</div>
+      </div>
+
+      <button
+        type="button"
+        className={styles.modalCloseBtn}
+        onClick={() => setActiveTerm(null)}
+        aria-label="닫기"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+)}
 
       <EduBottomBar
         onPrev={goPrev}

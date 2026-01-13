@@ -8,7 +8,7 @@ import type { ApiResponse } from "@/types/api";
 import styles from "./ReviewNotesPage.module.css";
 
 type ReviewNoteItem = {
-  quizType: string;
+  quizType: string; // "OX_QUIZ" | "MULTIPLE_CHOICE" ...
   content: any;
   isCorrect?: boolean;
 };
@@ -28,6 +28,17 @@ function toKoreanLevel(code?: string) {
   return "";
 }
 
+function isMCType(t: string) {
+  const u = String(t || "").toUpperCase();
+  return (
+    u === "MULTIPLE_CHOICE" ||
+    u === "MULTIPLE_CHOICE_QUIZ" ||
+    u === "MCQ" ||
+    u.includes("MULTIPLE") ||
+    u.includes("CHOICE")
+  );
+}
+
 export default function ReviewNotesPage() {
   const nav = useNavigate();
   const [sp] = useSearchParams();
@@ -39,7 +50,8 @@ export default function ReviewNotesPage() {
   const [loading, setLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
 
-  const [picked, setPicked] = useState<Record<number, "O" | "X" | null>>({});
+  // ✅ OX만이 아니라 MC도 가능하게 string으로 확장
+  const [picked, setPicked] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
     if (!date) return;
@@ -67,6 +79,7 @@ export default function ReviewNotesPage() {
               .filter((x) => x.quizType)
           : [];
 
+        // ✅ isCorrect가 있으면 “틀린 것만” 보여줌(복습노트니까)
         const wrongOnly = notes.some((n) => typeof n.isCorrect === "boolean")
           ? notes.filter((n) => n.isCorrect === false)
           : notes;
@@ -109,7 +122,6 @@ export default function ReviewNotesPage() {
           <div className={styles.rightDummy} />
         </header>
 
-        {/* 상단 숫자: 복습 개수 기준 */}
         <div className={styles.pageNav}>
           <button className={styles.navArrow} onClick={goPrev} aria-label="이전" disabled={activeIdx <= 0}>
             ◀
@@ -156,7 +168,6 @@ export default function ReviewNotesPage() {
           )}
         </div>
 
-        {/* dot = 틀린 문제 개수 */}
         <div className={styles.dots} aria-label="틀린 문제 개수">
           {Array.from({ length: total }).map((_, i) => (
             <span key={i} className={`${styles.dot} ${i === activeIdx ? styles.dotActive : ""}`} />
@@ -177,15 +188,17 @@ function QuizCard({
   onPick,
 }: {
   item: ReviewNoteItem;
-  picked: "O" | "X" | null;
-  onPick: (v: "O" | "X") => void;
+  picked: string | null;
+  onPick: (v: string) => void;
 }) {
+  // ✅ OX
   if (item.quizType === "OX_QUIZ") {
     const q = String(item.content?.question ?? item.content?.q ?? "");
     const correct = String(item.content?.correctAnswer ?? item.content?.answer ?? "O");
-    const correctSentence =
+    const explain =
       String(
-        item.content?.correctSentence ??
+        item.content?.answerExplanation ??
+          item.content?.correctSentence ??
           item.content?.correctExplanation ??
           item.content?.explanation ??
           ""
@@ -212,7 +225,61 @@ function QuizCard({
           </button>
         </div>
 
-        {picked && <div className={styles.answerLine}>{correctSentence ? correctSentence : `정답: ${correct}`}</div>}
+        {picked && (
+          <div className={styles.answerLine}>
+            {explain ? explain : `정답: ${correct}`}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ✅ MULTIPLE_CHOICE (N005)
+  if (isMCType(item.quizType)) {
+    const q = String(item.content?.question ?? "");
+    const correct = String(item.content?.correctAnswer ?? item.content?.answer ?? "");
+    const explain = String(item.content?.answerExplanation ?? item.content?.explanation ?? "").trim();
+
+    const rawOptions = item.content?.options ?? item.content?.choices ?? [];
+    const options: { label: string; text: string }[] = Array.isArray(rawOptions)
+      ? rawOptions.map((o: any, idx: number) => ({
+          label: String(o?.label ?? String.fromCharCode(65 + idx)), // A,B,C,D...
+          text: String(o?.text ?? o?.value ?? o ?? ""),
+        }))
+      : [];
+
+    return (
+      <div className={styles.quizWrap}>
+        <div className={styles.question}>{q}</div>
+
+        <div className={styles.mcList}>
+          {options.map((o) => {
+            const isSel = picked === o.label;
+            const show = !!picked; // 하나라도 고르면 정답 표시
+            const isCorrect = show && o.label === correct;
+            const isWrong = show && isSel && o.label !== correct;
+
+            return (
+              <button
+                key={o.label}
+                type="button"
+                className={`${styles.mcOption} ${
+                  isCorrect ? styles.mcCorrect : isWrong ? styles.mcWrong : isSel ? styles.mcActive : ""
+                }`}
+                onClick={() => onPick(o.label)}
+              >
+                <span className={styles.mcLabel}>{o.label}</span>
+                <span className={styles.mcText}>{o.text}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {picked && (
+          <div className={styles.answerLine}>
+            {explain ? explain : `정답: ${correct}`}
+          </div>
+        )}
       </div>
     );
   }

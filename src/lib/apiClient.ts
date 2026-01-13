@@ -54,7 +54,12 @@ export async function submitStepAnswer(args: {
       return { answers: ua };
     }
 
-    // 단일 오브젝트면 answers 1개짜리로 래핑(방어)
+    // ✅ TERM_LEARNING 같은 케이스는 객체(JSON) 그대로가 정답인 경우가 있음
+    //    (openedTermIds/favoriteTermIds 등)
+    //    그래서 "객체"는 래핑하지 않고 그대로 보냄.
+    if (typeof ua === "object") return ua;
+
+    // 그 외(원시값)는 answers로 감싸서 방어
     return { answers: [ua] };
   };
 
@@ -65,6 +70,14 @@ export async function submitStepAnswer(args: {
       userAnswer: normalizeUserAnswer(args.contentType, args.userAnswer),
     }
   );
+}
+
+// ✅ 학습 세션 종료(진행률/복습노트 집계 트리거)
+export async function quitSession(args: { courseId: number; sessionId: number }) {
+  const res = await api.post<ApiResponse<null>>(
+    `/api/edu/courses/${args.courseId}/sessions/${args.sessionId}/quit`
+  );
+  return res.data;
 }
 
 export async function submitForFeedback(args: {
@@ -83,10 +96,7 @@ export async function submitForFeedback(args: {
   return res.data;
 }
 
-export async function getSessionSummary(args: {
-  courseId: number;
-  sessionId: number;
-}) {
+export async function getSessionSummary(args: { courseId: number; sessionId: number }) {
   const res = await api.get<ApiResponse<{ streak: number; learningTime: any }>>(
     `/api/edu/courses/${args.courseId}/sessions/${args.sessionId}/summary`
   );

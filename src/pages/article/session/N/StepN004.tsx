@@ -1,8 +1,9 @@
+// src/pages/article/session/N/StepN004.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN004.module.css";
-import { submitStepAnswer } from "@/lib/apiClient"; // ✅ 추가
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
 
 type Props = {
   articleId?: string;
@@ -25,7 +26,6 @@ type RouteState = {
   courseId?: number | string;
   sessionId?: number | string;
   level?: "N" | "E" | "I";
-
   steps?: StepMeta[];
 };
 
@@ -53,7 +53,6 @@ export default function StepN004({ articleId, articleUrl }: Props) {
   const STEP_ORDER = 4;
   const CONTENT_TYPE = "OX_QUIZ";
 
-  // ✅ 현재 스텝 메타(backend start 응답에서 찾음)
   const currentStep = useMemo(() => {
     return steps.find(
       (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
@@ -65,13 +64,12 @@ export default function StepN004({ articleId, articleUrl }: Props) {
   const [choice, setChoice] = useState<"O" | "X" | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
-  // ✅ 여러 문항 답안을 누적 저장(서버가 step 단위로 전체 답안을 기대할 수 있음)
+  // ✅ 누적 답안 (서버가 step 단위 전체 저장 기대)
   const [answers, setAnswers] = useState<Record<number, "O" | "X">>({});
 
   const [loading, setLoading] = useState(true);
   const [submitErr, setSubmitErr] = useState("");
 
-  // ✅ step.content에서 contents 파싱
   useEffect(() => {
     setLoading(true);
     setSubmitErr("");
@@ -116,7 +114,6 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     setChoice(val);
   };
 
-  // ✅ 현재 문제 답안 저장 API (누적 전송)
   const submitCurrentAnswer = async (nextAnswers: Record<number, "O" | "X">) => {
     setSubmitErr("");
 
@@ -130,15 +127,12 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     }
     if (!q || !choice) return false;
 
-    // ✅ 서버가 step 단위로 answers 전체를 기대할 수 있어서 누적 전송
     const userAnswer = Object.entries(nextAnswers).map(([contentId, value]) => ({
       contentId: Number(contentId),
-      value, // "O" | "X"
+      value,
     }));
 
     try {
-      // ✅ 핵심: apiClient.submitStepAnswer 사용
-      // -> 배열(userAnswer)을 넘기면 apiClient가 { answers: [...] } 로 정규화해서 서버에 전송함
       await submitStepAnswer({
         courseId: cid,
         sessionId: sid,
@@ -154,7 +148,6 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     }
   };
 
-  // ✅ 정답 확인 버튼: 확인 누를 때 저장까지 같이
   const checkAnswer = async () => {
     if (!q || !choice) return;
 
@@ -163,12 +156,10 @@ export default function StepN004({ articleId, articleUrl }: Props) {
 
     const ok = await submitCurrentAnswer(next);
     if (!ok) return;
-
     setConfirmed(true);
   };
 
   const nextProblem = async () => {
-    // 마지막 문제면 StepN005로 이동
     if (index >= quizzes.length - 1) {
       nav("/nie/session/N/step/005", {
         state: {
@@ -188,6 +179,21 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     setChoice(null);
     setConfirmed(false);
     setSubmitErr("");
+  };
+
+  // ✅ 종료 = quit API 호출(진행률/복습노트 집계) 후 이동
+  const handleQuit = async () => {
+    const cid = Number(courseId ?? aId);
+    const sid = Number(sessionId);
+
+    if (cid && sid) {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepN004] quit failed:", e);
+      }
+    }
+    nav("/learn", { replace: true });
   };
 
   if (loading) return <div className={styles.loading}>불러오는 중…</div>;
@@ -286,7 +292,7 @@ export default function StepN004({ articleId, articleUrl }: Props) {
             },
           })
         }
-        onQuit={() => nav("/learn")}
+        onQuit={() => void handleQuit()}
         onNext={confirmed ? nextProblem : undefined}
         disablePrev={false}
         disableNext={!confirmed}

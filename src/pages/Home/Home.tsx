@@ -97,10 +97,11 @@ const normalizeCourse = (x: any): HomeCourse => {
 };
 
 /** ✅ 오늘자 뉴스도 어떤 키로 오든 흡수해서 쓰기 */
+/** ✅ 오늘자 뉴스도 어떤 키로 오든 흡수해서 쓰기 */
 const normalizeNews = (x: any): HomeNewsItem => {
   const newsId = Number(x?.newsId ?? x?.id ?? x?.news_id ?? 0);
 
-  const courseId = Number(
+  let courseId = Number(
     x?.courseId ??
       x?.course_id ??
       x?.courseID ??
@@ -111,6 +112,9 @@ const normalizeNews = (x: any): HomeNewsItem => {
       x?.course?.course_id ??
       0
   );
+
+  // ✅ /api/home/news 응답이 id만 주고 courseId를 안 주는 경우 fallback
+  if ((!courseId || Number.isNaN(courseId)) && newsId) courseId = newsId;
 
   const keywordsRaw = x?.keywords ?? x?.tags ?? x?.keywordList ?? x?.keyWords ?? [];
   const keywords = Array.isArray(keywordsRaw) ? keywordsRaw.map(String) : [];

@@ -11,7 +11,7 @@ type CourseDetailData = {
   thumbnailUrl: string;
   title: string;
   topic: string | null;
-  progress: number;
+  progress: number; // 0~100
   description: string;
 };
 
@@ -21,10 +21,44 @@ type SessionData = {
   headline: string;
   publisher: string;
   publishedAt: string;
-  sourceUrl?: string; // ✅ 추가 (있으면 넘김)
+  sourceUrl?: string;
 };
 
 const KEYWORDS = ["#미래", "#전환", "#협력"];
+
+// ✅ 서버가 어떤 키로 진행률을 주든 흡수하는 함수
+function pickProgress(d: any): number {
+  const candidates = [
+    d?.progress,
+    d?.progressRate,
+    d?.progress_rate,
+    d?.progressPercent,
+    d?.progress_percent,
+    d?.completionRate,
+    d?.completion_rate,
+    d?.completionPercent,
+    d?.completion_percent,
+    d?.courseProgress,
+    d?.course_progress,
+    d?.learningProgress,
+    d?.learning_progress,
+    d?.userProgress,
+    d?.user_progress,
+    d?.myProgress,
+    d?.my_progress,
+  ];
+
+  const raw = candidates.find((v) => v !== undefined && v !== null);
+  const n = Number(raw);
+
+  if (!Number.isFinite(n)) return 0;
+
+  // 혹시 0~1로 주는 서버면 0~100으로 변환(방어)
+  const pct = n <= 1 && n > 0 ? Math.round(n * 100) : Math.round(n);
+
+  // 0~100 클램프
+  return Math.max(0, Math.min(100, pct));
+}
 
 export default function ArticleDetail() {
   const { articleId } = useParams<{ articleId: string }>();
@@ -59,11 +93,13 @@ export default function ArticleDetail() {
       try {
         const detailRes = await api.get<ApiResponse<any>>(`/api/edu/courses/${courseId}`);
         const d = detailRes.data?.data ?? {};
+
         setDetail({
           thumbnailUrl: String(d.thumbnailUrl ?? ""),
           title: String(d.title ?? ""),
           topic: d.topic ?? null,
-          progress: Number(d.progress ?? 0),
+          // ✅ 여기! progress 키 다양하게 흡수
+          progress: pickProgress(d),
           description: String(d.description ?? ""),
         });
       } catch (e) {
@@ -88,7 +124,7 @@ export default function ArticleDetail() {
               headline: String(x?.headline ?? x?.title ?? ""),
               publisher: String(x?.publisher ?? ""),
               publishedAt: String(x?.publishedAt ?? x?.date ?? ""),
-              sourceUrl: x?.sourceUrl ? String(x.sourceUrl) : undefined, // ✅ 있으면 저장
+              sourceUrl: x?.sourceUrl ? String(x.sourceUrl) : undefined,
             };
           })
           .filter((x: SessionData) => x.id > 0 && !!x.headline);
@@ -117,8 +153,8 @@ export default function ArticleDetail() {
 
     goToPrepare(articleId, {
       sessionId: first.id,
-      title: detail.title, // ✅ 코스 타이틀
-      articleUrl: first.sourceUrl, // ✅ 있으면 넘김 (없어도 start 응답에 들어옴)
+      title: detail.title,
+      articleUrl: first.sourceUrl,
     });
   };
 
@@ -192,18 +228,14 @@ export default function ArticleDetail() {
                     articleId &&
                     goToPrepare(articleId, {
                       sessionId: s.id,
-                      title: s.headline, // ✅ 세션 제목
-                      articleUrl: s.sourceUrl, // ✅ 있으면 넘김
+                      title: s.headline,
+                      articleUrl: s.sourceUrl,
                     })
                   }
                 >
                   <div className={styles.sessionThumb}>
                     {s.thumbnailUrl && (
-                      <img
-                        src={s.thumbnailUrl}
-                        alt=""
-                        className={styles.sessionThumbImg}
-                      />
+                      <img src={s.thumbnailUrl} alt="" className={styles.sessionThumbImg} />
                     )}
                   </div>
 

@@ -19,7 +19,7 @@ export type StepMeta = {
 
 type PrepareLocationState = {
   articleTitle?: string;
-  sessionId?: number; // 🔻 이제 "있으면 참고" 정도로만
+  sessionId?: number;   // 🔻 이제 "있으면 참고" 정도로만
   articleUrl?: string;
 };
 
@@ -219,7 +219,16 @@ export default function ArticlePrepare() {
           </h1>
         </section>
 
-        {/* (요청) "선택된 세션: 100" 문구는 UI에서 숨김 */}
+        {/* ✅ 세션 선택 UI (간단 드롭다운/텍스트 형태) */}
+        <div style={{ padding: "0 20px", marginTop: 8 }}>
+          {loadingSessions ? (
+            <div style={{ fontSize: 12, opacity: 0.7 }}>세션 불러오는 중...</div>
+          ) : sessions.length > 0 ? (
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              선택된 세션: <b>{selectedSessionId}</b>
+            </div>
+          ) : null}
+        </div>
 
         <section className={styles.levelSection} ref={menuRef}>
           <button
