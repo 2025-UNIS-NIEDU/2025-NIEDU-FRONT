@@ -176,9 +176,10 @@ export default function Learn() {
 
   const latest3 = useMemo(() => latestByTopic.slice(0, 3), [latestByTopic]);
 
-  const popularPreview = useMemo(() => popular.slice(0, 4), [popular]);
-  const personalizedPreview = useMemo(() => personalized.slice(0, 4), [personalized]);
-  const newPreview = useMemo(() => news.slice(0, 4), [news]);
+  // ✅ 프리뷰는 6개까지
+  const popularPreview = useMemo(() => popular.slice(0, 6), [popular]);
+  const personalizedPreview = useMemo(() => personalized.slice(0, 6), [personalized]);
+  const newPreview = useMemo(() => news.slice(0, 6), [news]);
 
   const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
@@ -268,19 +269,19 @@ export default function Learn() {
           </div>
         </section>
 
-        {/* 인기 코스 */}
+        {/* ✅ 인기 코스 (가로 스크롤) */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>인기 코스</h2>
             <img
               src="/icons/ep_arrow-up-bold.svg"
               alt="더 보기"
-              className={styles.arrow}
+              className={styles.arrowW}
               onClick={() => navigate("/learn/popular")}
             />
           </div>
 
-          <div className={styles.cardGrid}>
+          <div className={styles.hScroll}>
             {loadingOthers && popularPreview.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
             ) : popularPreview.length === 0 ? (
@@ -291,38 +292,38 @@ export default function Learn() {
               popularPreview.map((c) => (
                 <div
                   key={c.courseId}
-                  className={styles.courseCard}
+                  className={styles.hCard}
                   onClick={() => goToDetail(String(c.courseId), { from: "learn-popular" })}
                 >
-                  <img
-                    src={c.thumbnailUrl ?? FALLBACK_THUMB}
-                    onError={handleImgError}
-                    alt=""
-                    className={styles.cardThumb}
-                  />
-                  <div className={styles.cardBody}>
-                    <h3 className={styles.cardTitle}>{c.title}</h3>
-                    <p className={styles.cardSub}>{c.topic ?? "NIEdu"}</p>
+                  <div className={styles.hThumbWrap}>
+                    <img
+                      src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                      onError={handleImgError}
+                      alt=""
+                      className={styles.hThumb}
+                    />
                   </div>
+                  <h3 className={styles.hTitle}>{c.title}</h3>
+                  <p className={styles.hSub}>{c.topic ?? "NIEdu"}</p>
                 </div>
               ))
             )}
           </div>
         </section>
 
-        {/* 맞춤추천 코스 */}
+        {/* ✅ 맞춤추천 코스 (가로 스크롤) */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>맞춤추천 코스</h2>
             <img
               src="/icons/ep_arrow-up-bold.svg"
               alt="더 보기"
-              className={styles.arrow}
+              className={styles.arrowW}
               onClick={() => navigate("/learn/personalized")}
             />
           </div>
 
-          <div className={styles.cardGrid}>
+          <div className={styles.hScroll}>
             {loadingOthers && personalizedPreview.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
             ) : personalizedPreview.length === 0 ? (
@@ -333,40 +334,40 @@ export default function Learn() {
               personalizedPreview.map((c) => (
                 <div
                   key={c.courseId}
-                  className={styles.courseCard}
+                  className={styles.hCard}
                   onClick={() =>
                     goToDetail(String(c.courseId), { from: "learn-personalized" })
                   }
                 >
-                  <img
-                    src={c.thumbnailUrl ?? FALLBACK_THUMB}
-                    onError={handleImgError}
-                    alt=""
-                    className={styles.cardThumb}
-                  />
-                  <div className={styles.cardBody}>
-                    <h3 className={styles.cardTitle}>{c.title}</h3>
-                    <p className={styles.cardSub}>{c.topic ?? "NIEdu"}</p>
+                  <div className={styles.hThumbWrap}>
+                    <img
+                      src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                      onError={handleImgError}
+                      alt=""
+                      className={styles.hThumb}
+                    />
                   </div>
+                  <h3 className={styles.hTitle}>{c.title}</h3>
+                  <p className={styles.hSub}>{c.topic ?? "NIEdu"}</p>
                 </div>
               ))
             )}
           </div>
         </section>
 
-        {/* 새로운 코스 */}
+        {/* ✅ 새로운 코스 (가로 스크롤) */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>새로운 코스</h2>
             <img
               src="/icons/ep_arrow-up-bold.svg"
               alt="더 보기"
-              className={styles.arrow}
+              className={styles.arrowW}
               onClick={() => navigate("/learn/new")}
             />
           </div>
 
-          <div className={styles.cardGrid}>
+          <div className={styles.hScroll}>
             {loadingOthers && newPreview.length === 0 ? (
               <p className={styles.loading}>불러오는 중...</p>
             ) : newPreview.length === 0 ? (
@@ -377,19 +378,19 @@ export default function Learn() {
               newPreview.map((c) => (
                 <div
                   key={c.courseId}
-                  className={styles.courseCard}
+                  className={styles.hCard}
                   onClick={() => goToDetail(String(c.courseId), { from: "learn-new" })}
                 >
-                  <img
-                    src={c.thumbnailUrl ?? FALLBACK_THUMB}
-                    onError={handleImgError}
-                    alt=""
-                    className={styles.cardThumb}
-                  />
-                  <div className={styles.cardBody}>
-                    <h3 className={styles.cardTitle}>{c.title}</h3>
-                    <p className={styles.cardSub}>{c.topic ?? "NIEdu"}</p>
+                  <div className={styles.hThumbWrap}>
+                    <img
+                      src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                      onError={handleImgError}
+                      alt=""
+                      className={styles.hThumb}
+                    />
                   </div>
+                  <h3 className={styles.hTitle}>{c.title}</h3>
+                  <p className={styles.hSub}>{c.topic ?? "NIEdu"}</p>
                 </div>
               ))
             )}

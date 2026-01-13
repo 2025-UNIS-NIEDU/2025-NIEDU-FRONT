@@ -1,3 +1,4 @@
+// src/pages/article/session/N/StepN002.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
@@ -32,6 +33,81 @@ type RouteState = {
   steps?: StepMeta[];
 };
 
+// ✅ 로컬 용어사전 저장소
+type StoredTerm = {
+  termId: string;
+  term: string;
+  definition: string;
+  exampleSentence: string;
+  additionalExplanation: string;
+  createdAt: number;   // 처음 저장된 시각
+  lastSeenAt: number;  // 최근 열어본 시각 (최근순 정렬 기준)
+};
+
+const TERM_STORE_KEY = "NIEDU_TERM_DICTIONARY_V1";
+
+function safeParse<T>(raw: string | null, fallback: T): T {
+  try {
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function readTermStore(): StoredTerm[] {
+  return safeParse<StoredTerm[]>(localStorage.getItem(TERM_STORE_KEY), []);
+}
+
+function writeTermStore(list: StoredTerm[]) {
+  localStorage.setItem(TERM_STORE_KEY, JSON.stringify(list));
+}
+
+// ✅ terms 배열을 “누적 저장(merge)”
+// - 동일 termId 있으면 텍스트는 최신값으로 덮고
+// - createdAt은 유지, lastSeenAt은 유지(열어본 순간 갱신)
+function upsertTermsToStore(terms: Term[]) {
+  const now = Date.now();
+  const prev = readTermStore();
+  const map = new Map<string, StoredTerm>();
+
+  for (const t of prev) map.set(t.termId, t);
+
+  for (const t of terms) {
+    const exist = map.get(t.id);
+    if (!exist) {
+      map.set(t.id, {
+        termId: t.id,
+        term: t.term,
+        definition: t.definition,
+        exampleSentence: t.example,
+        additionalExplanation: t.extra,
+        createdAt: now,
+        lastSeenAt: 0,
+      });
+    } else {
+      map.set(t.id, {
+        ...exist,
+        term: t.term,
+        definition: t.definition,
+        exampleSentence: t.example,
+        additionalExplanation: t.extra,
+      });
+    }
+  }
+
+  writeTermStore(Array.from(map.values()));
+}
+
+function touchTerm(termId: string) {
+  const now = Date.now();
+  const prev = readTermStore();
+  const next = prev.map((t) =>
+    t.termId === termId ? { ...t, lastSeenAt: now } : t
+  );
+  writeTermStore(next);
+}
+
 export default function StepN002() {
   const nav = useNavigate();
   const location = useLocation();
@@ -58,16 +134,15 @@ export default function StepN002() {
 
   // ------------------------------------------
   // ✅ 백에서 내려온 step.content로 TERM_LEARNING 데이터 파싱
+  // + ✅ 로컬 용어사전 누적 저장(merge)
   // ------------------------------------------
   useEffect(() => {
     setLoading(true);
     setSubmitErr("");
 
     try {
-      // 1) 보통: content.contents[0].terms
       const rawTerms =
         currentStep?.content?.contents?.[0]?.terms ??
-        // 2) 혹시: content.terms 로 오는 경우
         currentStep?.content?.terms ??
         null;
 
@@ -92,6 +167,9 @@ export default function StepN002() {
         .filter((x: Term) => x.id && x.term);
 
       setTerms(mapped);
+
+      // ✅ 여기서 “API로 내려온 용어들” 전부 누적 저장
+      if (mapped.length > 0) upsertTermsToStore(mapped);
     } catch (err) {
       console.error("[StepN002] term parse failed:", err);
       setTerms([]);
@@ -112,12 +190,15 @@ export default function StepN002() {
   const openTerm = (term: Term) => {
     setActiveTerm(term);
     setOpened((prev) => (prev.includes(term.id) ? prev : [...prev, term.id]));
+
+    // ✅ “최근 저장(최근 본)” 정렬을 위해 lastSeenAt 갱신
+    touchTerm(term.id);
   };
 
   const canGoNext = opened.length > 0 && !loading;
 
   // ------------------------------------------
-  // ✅ answer 저장
+  // ✅ answer 저장 (기존 유지)
   // ------------------------------------------
   const submitAnswer = async () => {
     setSubmitErr("");
@@ -128,10 +209,9 @@ export default function StepN002() {
 
     if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
       console.warn("[StepN002] missing courseId/sessionId/stepId -> skip submit");
-      return true; // 없으면 그냥 이동은 되게
+      return true;
     }
 
-    // ✅ 너가 기존에 보내던 포맷 유지
     const userAnswer = {
       openedTermIds: opened,
       favoriteTermIds: favorites,
@@ -153,7 +233,6 @@ export default function StepN002() {
     }
   };
 
-  // 이전 단계로
   const goPrev = () => {
     nav("/nie/session/N/step/001", {
       state: {
@@ -163,17 +242,16 @@ export default function StepN002() {
         courseId,
         sessionId,
         level: "N",
-        steps, // ✅ 유지
+        steps,
       },
     });
   };
 
-  // 다음 단계로
   const goNext = async () => {
     if (!canGoNext) return;
 
     const ok = await submitAnswer();
-    if (!ok) return; // 저장 실패 시 막고 싶으면 유지, 싫으면 삭제
+    if (!ok) return;
 
     nav("/nie/session/N/step/003", {
       state: {
@@ -183,7 +261,7 @@ export default function StepN002() {
         courseId,
         sessionId,
         level: "N",
-        steps, // ✅ 유지
+        steps,
       },
     });
   };
@@ -258,49 +336,6 @@ export default function StepN002() {
         disablePrev={false}
         disableNext={!canGoNext}
       />
-
-      {activeTerm && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
-            <button
-              type="button"
-              className={styles.modalStarBtn}
-              onClick={() => toggleFavorite(activeTerm.id)}
-            >
-              <img
-                src={
-                  favorites.includes(activeTerm.id)
-                    ? "/icons/Frame 1686564291 (1).svg"
-                    : "/icons/Frame 1686564291.svg"
-                }
-                alt=""
-                className={styles.modalStarIcon}
-              />
-            </button>
-
-            <h3 className={styles.modalTitle}>{activeTerm.term}</h3>
-            <p className={styles.modalDefinition}>{activeTerm.definition}</p>
-
-            <div className={styles.modalBlock}>
-              <div className={styles.modalBlockTitle}>예시 문장</div>
-              <p className={styles.modalBlockBody}>{activeTerm.example}</p>
-            </div>
-
-            <div className={styles.modalBlock}>
-              <div className={styles.modalBlockTitle}>부가 설명</div>
-              <p className={styles.modalBlockBody}>{activeTerm.extra}</p>
-            </div>
-
-            <button
-              type="button"
-              className={styles.modalCloseBtn}
-              onClick={() => setActiveTerm(null)}
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

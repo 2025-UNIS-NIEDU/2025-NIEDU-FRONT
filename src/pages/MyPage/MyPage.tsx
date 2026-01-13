@@ -293,7 +293,7 @@ export default function MyPage() {
             }
           }}
         >
-          <img src="/icons/majesticons_note.svg" alt="" className={styles.sectionIcon} />
+          <img src="/icons/fluent_note-24-filled.svg" alt="" className={styles.sectionIcon} />
           <span>복습 노트</span>
         </div>
 

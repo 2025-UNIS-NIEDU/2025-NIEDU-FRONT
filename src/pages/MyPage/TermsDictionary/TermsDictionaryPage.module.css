@@ -1,19 +1,39 @@
 /* src/pages/MyPage/TermsDictionary/TermsDictionaryPage.module.css */
 .viewport {
-  min-height: 100vh;
-  background: #f6f6f8;
+  position: fixed;          /* ✅ 화면에 고정 */
+  inset: 0;
+  overflow-y: auto;         /* ✅ 세로 스크롤 받는 주체 */
+  -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
+  overflow-x: hidden;
   display: flex;
   justify-content: center;
-}
+  align-items: stretch;
+ background: #eef0f4;
 
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.viewport::-webkit-scrollbar { display: none; }
+
+/* 콘텐츠는 자연스럽게 늘어나게 */
 .container {
-  width: 100%;
-  max-width: 430px;
-  min-height: 100vh;
-  background: #fff;
   position: relative;
-  padding: 14px 16px 84px;
+  display: flex;
+  flex-direction: column;
+  /* justify-content: space-between;  ⛔ 제거 (컨텐츠를 위아래로 벌려 스크롤 막힘 유발) */
+
+  width: 100%;
+  max-width: 700px;
+  min-height: 1000%;         /* ✅ max-height 대신 min-height */
+  /* max-height: 100%;       ⛔ 제거 */
+
+  margin: 0 auto;
+  background: #fff;
   box-sizing: border-box;
+
+  padding: 16px 20px;
+  padding-bottom: 220px;     /* ✅ BottomNav 높이만큼 여유 */
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .topBar { display: flex; align-items: center; justify-content: space-between; }
@@ -48,7 +68,7 @@
 }
 
 .chevOpen {
-  transform: rotate(0deg);
+  transform: rotate(90deg);
 }
 
 .sortMenu {
