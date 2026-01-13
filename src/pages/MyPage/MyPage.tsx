@@ -47,6 +47,12 @@ type StreakData = {
   todayAttended?: boolean;
 };
 
+type LogTag = {
+  keywords: string[];
+  topic?: string;
+  subTopic?: string;
+};
+
 const toISODate = (y: number, m0: number, d: number) => {
   const mm = String(m0 + 1).padStart(2, "0");
   const dd = String(d).padStart(2, "0");
@@ -78,6 +84,9 @@ export default function MyPage() {
   const [loadingCal, setLoadingCal] = useState(true);
   const [loadingUser, setLoadingUser] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // ✅ 날짜별 학습로그 태그 보강용
+  const [logTagMap, setLogTagMap] = useState<Record<string, LogTag>>({});
 
   const monthForApi = month0 + 1;
 
@@ -139,7 +148,7 @@ export default function MyPage() {
     void run();
   }, []);
 
-  // 캘린더 (✅ calendar API만 사용. learning-log 결합 제거 = 구조 원복)
+  // 캘린더 (calendar API)
   useEffect(() => {
     const run = async () => {
       setLoadingCal(true);
@@ -160,6 +169,50 @@ export default function MyPage() {
 
     void run();
   }, [year, monthForApi]);
+
+  // ✅ 캘린더 월 데이터가 바뀌면: 해당 월의 days 기준으로 learning-log를 추가로 호출해 태그 보강
+  useEffect(() => {
+    if (!calendarData?.days?.length) {
+      setLogTagMap({});
+      return;
+    }
+
+    const run = async () => {
+      const next: Record<string, LogTag> = {};
+
+      await Promise.all(
+        calendarData.days.map(async (d) => {
+          try {
+            const res = await api.get<ApiResponse<any>>(
+              `/api/my/learning-log?date=${encodeURIComponent(d.date)}`
+            );
+
+            const sessions = res.data?.data?.sessions ?? res.data?.data ?? [];
+            if (!Array.isArray(sessions) || sessions.length === 0) return;
+
+            const keywords: string[] = Array.from(
+              new Set(
+                sessions
+                  .flatMap((s: any) => (Array.isArray(s?.keywords) ? s.keywords : []))
+                  .filter((v: unknown): v is string => typeof v === "string" && v.length > 0)
+              )
+            );
+
+            const topic = sessions.find((s: any) => typeof s?.topic === "string")?.topic;
+            const subTopic = sessions.find((s: any) => typeof s?.subTopic === "string")?.subTopic;
+
+            next[d.date] = { keywords, topic, subTopic };
+          } catch (e) {
+            // 로그 없는 날짜거나 토큰 문제일 수 있음 -> 무시
+          }
+        })
+      );
+
+      setLogTagMap(next);
+    };
+
+    void run();
+  }, [calendarData]);
 
   // local calendar grid
   const firstDay = new Date(year, month0, 1).getDay();
@@ -226,11 +279,7 @@ export default function MyPage() {
         {/* 프로필 영역 */}
         <div className={styles.profileBox}>
           <div className={styles.profileImageWrapper}>
-            <img
-              src="/icons/Ellipse 25.svg"
-              alt="프로필 프레임"
-              className={styles.profileFrame}
-            />
+            <img src="/icons/Ellipse 25.svg" alt="프로필 프레임" className={styles.profileFrame} />
             {serverProfileUrl && (
               <img src={serverProfileUrl} alt="프로필" className={styles.profilePhoto} />
             )}
@@ -262,10 +311,7 @@ export default function MyPage() {
           className={styles.sectionTitle}
           role="button"
           tabIndex={0}
-          onClick={() => {
-            // ✅ 초기 진입은 date 없이 호출(서버가 "오늘"로 처리)
-            nav("/mypage/review-notes");
-          }}
+          onClick={() => nav("/mypage/review-notes")}
           onKeyDown={(e) => e.key === "Enter" && nav("/mypage/review-notes")}
         >
           <img src="/icons/fluent_note-24-filled.svg" alt="" className={styles.sectionIcon} />
@@ -310,16 +356,26 @@ export default function MyPage() {
                   return true;
                 });
 
-                const hasData = courses.length > 0;
+                const logKeywords = logTagMap[iso]?.keywords ?? [];
 
-                // ✅ 태그 없으면 카테고리(topic/subTopic)만 보여주기 (요구대로)
+                // ✅ 태그 없으면 카테고리(topic/subTopic)만
                 const flatKeywords = courses
                   .flatMap((c) => (Array.isArray(c.keywords) ? c.keywords : []))
                   .filter((x): x is string => typeof x === "string" && x.length > 0);
 
-                const uniqueKeywords = Array.from(new Set(flatKeywords)).slice(0, 2);
+                // ✅ 1순위: learning-log 키워드, 2순위: calendar keywords
+                const mergedKeywords = logKeywords.length > 0 ? logKeywords : flatKeywords;
+                const uniqueKeywords = Array.from(new Set(mergedKeywords)).slice(0, 2);
 
                 const topicPairs = courses.filter((c) => c?.topic || c?.subTopic).slice(0, 1);
+
+                // ✅ learning-log가 있으면 courses가 비어도 클릭 가능
+                const hasLog =
+                  (logTagMap[iso]?.keywords?.length ?? 0) > 0 ||
+                  !!logTagMap[iso]?.topic ||
+                  !!logTagMap[iso]?.subTopic;
+
+                const hasData = courses.length > 0 || hasLog;
 
                 return (
                   <div
