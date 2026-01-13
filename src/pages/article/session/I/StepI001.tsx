@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepI001.module.css";
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
 
 type StepMeta = {
   stepId: number;
@@ -62,8 +63,45 @@ export default function StepI001() {
   };
 
   const goPrev = () => nav(-1);
-  const goNext = () =>
-    nav("/nie/session/I/step/002", { state: { ...state, articleUrl: sourceUrl }, replace: true });
+
+  // ✅ ARTICLE_READING도 한 번 answer 저장 호출이 있어야 I 레벨 진행률 집계됨
+  const goNext = async () => {
+    const cid = Number(state.courseId ?? state.articleId);
+    const sid = Number(state.sessionId);
+    const stepId = Number(currentStep?.stepId);
+
+    if (cid && sid && stepId) {
+      try {
+        await submitStepAnswer({
+          courseId: cid,
+          sessionId: sid,
+          stepId,
+          contentType: CONTENT_TYPE,
+          userAnswer: { opened: true },
+        });
+      } catch (e) {
+        console.error("[StepI001] submit answer error:", e);
+      }
+    }
+
+    nav("/nie/session/I/step/002", {
+      state: { ...state, articleUrl: sourceUrl },
+      replace: true,
+    });
+  };
+
+  const handleQuit = async () => {
+    const cid = Number(state.courseId ?? state.articleId);
+    const sid = Number(state.sessionId);
+    if (cid && sid) {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepI001] quit failed:", e);
+      }
+    }
+    nav("/learn", { replace: true });
+  };
 
   return (
     <div className={styles.viewport}>
@@ -93,7 +131,7 @@ export default function StepI001() {
           </button>
         </div>
 
-        <EduBottomBar onPrev={goPrev} onNext={goNext} />
+        <EduBottomBar onPrev={goPrev} onNext={goNext} onQuit={handleQuit} />
       </div>
     </div>
   );

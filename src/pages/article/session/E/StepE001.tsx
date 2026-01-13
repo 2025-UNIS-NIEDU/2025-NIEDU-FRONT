@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepE001.module.css";
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
 
 type StepMeta = {
   stepId: number;
@@ -64,11 +65,46 @@ export default function StepE001() {
   };
 
   const goPrev = () => nav(-1);
-  const goNext = () => {
-    nav("/nie/session/E/step/002", {
+
+  // ✅ ARTICLE_READING도 answer 저장 호출 → E 레벨 진행률 집계
+  const goNext = async () => {
+    const cid = Number(state.courseId ?? state.articleId);
+    const sid = Number(state.sessionId);
+    const stepId = Number(currentStep?.stepId);
+
+    if (cid && sid && stepId) {
+      try {
+        await submitStepAnswer({
+          courseId: cid,
+          sessionId: sid,
+          stepId,
+          contentType: CONTENT_TYPE,
+          userAnswer: { opened: true },
+        });
+      } catch (e) {
+        console.error("[StepE001] submit answer error:", e);
+      }
+    }
+
+    nav("/nie/session/E/step/2", {
       state: { ...state, level: "E", articleUrl: sourceUrl || state.articleUrl },
       replace: true,
     });
+  };
+
+  const handleQuit = async () => {
+    const cid = Number(state.courseId ?? state.articleId);
+    const sid = Number(state.sessionId);
+
+    if (cid && sid) {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepE001] quit failed:", e);
+      }
+    }
+
+    nav("/learn", { replace: true });
   };
 
   return (
@@ -111,7 +147,7 @@ export default function StepE001() {
           </button>
         </div>
 
-        <EduBottomBar onPrev={goPrev} onNext={goNext} />
+        <EduBottomBar onPrev={goPrev} onNext={goNext} onQuit={handleQuit} />
       </div>
     </div>
   );
