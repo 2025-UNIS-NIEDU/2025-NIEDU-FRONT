@@ -53,6 +53,9 @@ export default function StepN005() {
   const [selected, setSelected] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
+  // ✅ 여러 문항 답안을 누적 저장(서버가 step 단위로 전체 답안을 기대할 수 있음)
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+
   const startTime = state.startTime;
 
   const cid = Number(state.courseId ?? state.articleId);
@@ -78,6 +81,7 @@ export default function StepN005() {
     setIndex(0);
     setSelected(null);
     setConfirmed(false);
+    setAnswers({});
   }, [currentStep]);
 
   const q = items[index];
@@ -93,21 +97,33 @@ export default function StepN005() {
     return `${min}분 ${sec}초`;
   };
 
-  const saveAnswer = async () => {
-    if (!cid || !sid || !stepId || !q || !selected) return;
+  const saveAnswer = async (nextAnswers: Record<number, string>) => {
+    if (!cid || !sid || !stepId) return;
+    const userAnswer = Object.entries(nextAnswers).map(([contentId, value]) => ({
+      contentId: Number(contentId),
+      value,
+    }));
+
     await submitStepAnswer({
       courseId: cid,
       sessionId: sid,
       stepId,
       contentType: CONTENT_TYPE,
-      userAnswer: [{ contentId: q.contentId, value: selected }],
+      userAnswer,
     });
   };
 
   const handleNext = async () => {
     if (!confirmed) {
       try {
-        await saveAnswer();
+        if (!q || !selected) {
+          setConfirmed(true);
+          return;
+        }
+
+        const next = { ...answers, [q.contentId]: selected };
+        setAnswers(next);
+        await saveAnswer(next);
       } catch (e) {
         console.error("[StepN005] submit error:", e);
       }
@@ -140,13 +156,10 @@ export default function StepN005() {
     } catch (e) {
       console.error("[StepN005] summary error:", e);
       const learningMs = startTime ? Date.now() - startTime : 0;
-      nav(
-        "/article/result",
-        {
-          state: { level: "N", streak: 0, durationLabel: formatDuration(learningMs) },
-          replace: true,
-        }
-      );
+      nav("/article/result", {
+        state: { level: "N", streak: 0, durationLabel: formatDuration(learningMs) },
+        replace: true,
+      });
     }
   };
 
@@ -159,7 +172,6 @@ export default function StepN005() {
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 상단 진행 바 (1/5 텍스트 대신) */}
         <div className={styles.progressWrap}>
           <div className={styles.progress} style={{ width: progressPct }} />
         </div>
@@ -216,11 +228,7 @@ export default function StepN005() {
           </div>
         )}
 
-        <EduBottomBar
-          onPrev={handlePrev}
-          onNext={handleNext}
-          disableNext={!selected && !confirmed}
-        />
+        <EduBottomBar onPrev={handlePrev} onNext={handleNext} disableNext={!selected && !confirmed} />
       </div>
     </div>
   );

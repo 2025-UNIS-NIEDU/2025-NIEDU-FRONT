@@ -104,18 +104,28 @@ export default function RecentCourses() {
               <div className={styles.body}>
                 <h2 className={styles.itemTitle}>{c.title}</h2>
 
-                {/* ✅ 진행률 대신: 토픽 + 키워드(서브토픽) */}
+                {/* ✅ 진행률 대신: 토픽 + 키워드 칩 여러 개 (두 번째 스샷 느낌) */}
                 <div className={styles.tagRow}>
                   <span className={styles.tag}>{c.topic || "토픽"}</span>
 
                   {(() => {
-                    const kw =
-                      c.subTopic ||
-                      c.keywords?.[0] ||
-                      c.keywords?.find(Boolean) ||
-                      "서브토픽";
-                    const label = kw.startsWith("#") ? kw : `#${kw}`;
-                    return <span className={styles.tag}>{label}</span>;
+                    const raw = [
+                      c.subTopic,
+                      ...(Array.isArray(c.keywords) ? c.keywords : []),
+                    ].filter(Boolean) as string[];
+
+                    // 중복 제거 + 2개까지만
+                    const uniq = Array.from(new Set(raw)).slice(0, 2);
+                    const chips = uniq.length ? uniq : ["서브토픽"];
+
+                    return chips.map((kw) => {
+                      const label = kw.startsWith("#") ? kw : `#${kw}`;
+                      return (
+                        <span key={label} className={styles.tag}>
+                          {label}
+                        </span>
+                      );
+                    });
                   })()}
                 </div>
               </div>

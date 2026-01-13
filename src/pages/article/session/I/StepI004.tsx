@@ -53,6 +53,9 @@ export default function StepI004() {
   const [userAnswer, setUserAnswer] = useState("");
   const [confirmed, setConfirmed] = useState(false);
 
+  // ✅ 여러 문항 답안을 누적 저장(서버가 step 단위로 전체 답안을 기대할 수 있음)
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+
   const cid = Number(state.courseId ?? state.articleId);
   const sid = Number(state.sessionId);
   const stepId = Number(currentStep?.stepId);
@@ -73,6 +76,7 @@ export default function StepI004() {
     setIndex(0);
     setUserAnswer("");
     setConfirmed(false);
+    setAnswers({});
   }, [currentStep]);
 
   const q = items[index];
@@ -82,12 +86,19 @@ export default function StepI004() {
 
   const saveAnswer = async () => {
     if (!cid || !sid || !stepId || !q) return;
+
+    const next = { ...answers, [q.contentId]: userAnswer };
+    setAnswers(next);
+
     await submitStepAnswer({
       courseId: cid,
       sessionId: sid,
       stepId,
       contentType: CONTENT_TYPE,
-      userAnswer: [{ contentId: q.contentId, value: userAnswer }],
+      userAnswer: Object.entries(next).map(([contentId, value]) => ({
+        contentId: Number(contentId),
+        value,
+      })),
     });
   };
 

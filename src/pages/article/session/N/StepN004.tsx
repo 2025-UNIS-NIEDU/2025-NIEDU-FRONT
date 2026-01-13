@@ -65,6 +65,10 @@ export default function StepN004({ articleId, articleUrl }: Props) {
   const [index, setIndex] = useState(0);
   const [choice, setChoice] = useState<"O" | "X" | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+
+  // ✅ 여러 문항 답안을 누적 저장(서버가 step 단위로 전체 답안을 기대할 수 있음)
+  const [answers, setAnswers] = useState<Record<number, "O" | "X">>({});
+
   const [loading, setLoading] = useState(true);
   const [submitErr, setSubmitErr] = useState("");
 
@@ -100,6 +104,7 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     setIndex(0);
     setChoice(null);
     setConfirmed(false);
+    setAnswers({});
     setLoading(false);
   }, [currentStep]);
 
@@ -112,8 +117,8 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     setChoice(val);
   };
 
-  // ✅ 현재 문제 답안 저장 API
-  const submitCurrentAnswer = async () => {
+  // ✅ 현재 문제 답안 저장 API (누적 전송)
+  const submitCurrentAnswer = async (nextAnswers: Record<number, "O" | "X">) => {
     setSubmitErr("");
 
     const cid = Number(courseId ?? aId);
@@ -126,13 +131,10 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     }
     if (!q || !choice) return false;
 
-    // ✅ 기존 너 코드랑 동일 포맷 유지: [{ contentId, value }]
-    const userAnswer = [
-      {
-        contentId: q.contentId,
-        value: choice, // "O" | "X"
-      },
-    ];
+    const userAnswer = Object.entries(nextAnswers).map(([contentId, value]) => ({
+      contentId: Number(contentId),
+      value,
+    }));
 
     try {
       await api.post<ApiResponse<null>>(
@@ -152,8 +154,12 @@ export default function StepN004({ articleId, articleUrl }: Props) {
 
   // ✅ 정답 확인 버튼: 확인 누를 때 저장까지 같이
   const checkAnswer = async () => {
-    if (!choice) return;
-    const ok = await submitCurrentAnswer();
+    if (!q || !choice) return;
+
+    const next = { ...answers, [q.contentId]: choice };
+    setAnswers(next);
+
+    const ok = await submitCurrentAnswer(next);
     if (!ok) return;
     setConfirmed(true);
   };
@@ -169,7 +175,7 @@ export default function StepN004({ articleId, articleUrl }: Props) {
           courseId,
           sessionId,
           level: "N",
-          steps, // ✅ 유지
+          steps,
         },
       });
       return;
@@ -230,7 +236,11 @@ export default function StepN004({ articleId, articleUrl }: Props) {
           {submitErr && <div className={styles.loading}>{submitErr}</div>}
 
           {!confirmed && (
-            <button className={styles.checkBtn} disabled={!choice} onClick={() => void checkAnswer()}>
+            <button
+              className={styles.checkBtn}
+              disabled={!choice}
+              onClick={() => void checkAnswer()}
+            >
               정답 확인하기
             </button>
           )}
