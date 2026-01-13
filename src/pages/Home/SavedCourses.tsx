@@ -13,6 +13,42 @@ type HomeCourse = {
   thumbnailUrl?: string;
   progressRate: number;
   isSaved: boolean;
+  topic?: string | null;
+  subTopic?: string | null;
+  keywords?: string[];
+};
+
+const normalizeCourse = (x: any): HomeCourse | null => {
+  const courseId = Number(
+    x?.courseId ??
+      x?.id ??
+      x?.courseID ??
+      x?.course_id ??
+      x?.coursePk ??
+      x?.courseNo ??
+      0
+  );
+  const title = String(x?.title ?? x?.name ?? x?.headline ?? "");
+  if (!courseId || !title) return null;
+
+  const thumb = x?.thumbnailUrl ?? x?.thumbnail ?? x?.imageUrl ?? x?.thumbUrl;
+  const rawKeywords = x?.keywords ?? x?.keywordList ?? x?.tags ?? x?.hashTags;
+  const keywords = Array.isArray(rawKeywords)
+    ? rawKeywords.map((k: any) => String(k)).filter(Boolean)
+    : [];
+
+  return {
+    courseId,
+    title,
+    thumbnailUrl: thumb ? String(thumb) : undefined,
+    progressRate: Number(
+      x?.progressRate ?? x?.progress ?? x?.completionRate ?? x?.progressPercent ?? 0
+    ),
+    isSaved: Boolean(x?.isSaved ?? x?.saved ?? x?.bookmarked ?? true),
+    topic: x?.topic ?? null,
+    subTopic: x?.subTopic ?? null,
+    keywords,
+  };
 };
 
 export default function SavedCourses() {
@@ -26,7 +62,8 @@ export default function SavedCourses() {
         const res = await api.get<ApiResponse<HomeCourse[]>>("/api/home/courses", {
           params: { type: "saved", view: "all" },
         });
-        setCourses(Array.isArray(res.data.data) ? res.data.data : []);
+        const raw = Array.isArray(res.data.data) ? res.data.data : [];
+        setCourses(raw.map(normalizeCourse).filter(Boolean) as HomeCourse[]);
       } catch (e) {
         console.error("[SavedCourses] fetch error:", e);
         setCourses([]);
@@ -62,9 +99,14 @@ export default function SavedCourses() {
               />
               <div className={styles.body}>
                 <h2 className={styles.itemTitle}>{c.title}</h2>
+
                 <div className={styles.tagRow}>
-                  <span className={styles.tag}>진행률 {c.progressRate}%</span>
-                  <span className={styles.tag}>저장됨</span>
+                  <span className={styles.tag}>{c.topic || "토픽"}</span>
+                  {(() => {
+                    const kw = c.subTopic || c.keywords?.[0] || "서브토픽";
+                    const label = kw.startsWith("#") ? kw : `#${kw}`;
+                    return <span className={styles.tag}>{label}</span>;
+                  })()}
                 </div>
               </div>
             </article>

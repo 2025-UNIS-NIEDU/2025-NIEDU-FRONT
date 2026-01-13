@@ -1,11 +1,11 @@
 /* 바깥(데스크탑 전체) */
 .viewport {
   position: fixed;
- inset: 0;
+  inset: 0;
   display: flex;
   justify-content: center;
   align-items: stretch;
-  background: #615959
+  background: #615959;
 }
 
 /* 실제 '모바일 화면' 캔버스 */
@@ -16,37 +16,39 @@
   justify-content: space-between;
 
   width: 100%;
-  max-width: 700px;     /* 아이폰 기준 폭 */
+  max-width: 700px; /* 아이폰 기준 폭 */
   min-height: 100%;
   margin: 0 auto;
   background: #fff;
   box-sizing: border-box;
 
   padding: 6vh 20px;
-  padding-bottom: 100px; /* 하단 버튼 자리 */
+  padding-bottom: 100px; /* 하단바 자리 */
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
 /* 상단 헤더 */
 .header {
   display: flex;
-  align-items: center;      /* 세로 중앙 */
-  justify-content: center;  /* 가로 중앙 */
-  position: relative;       /* ← back 버튼 고정 위치를 위한 기준 */
+  align-items: center;
+  justify-content: center;
+  position: relative;
   height: 48px;
 }
+
 .backArrow {
   width: 20px;
   height: 20px;
   cursor: pointer;
-  /* up 아이콘을 '왼쪽(<)'으로 보이게 */
   transform: rotate(-180deg);
   opacity: 0.85;
-  transition: opacity .15s, transform .1s;
+  transition: opacity 0.15s, transform 0.1s;
   position: absolute;
   left: 0;
 }
+
 .backArrow:active {
-  transform: rotate(90deg) translateX(-1px);
+  transform: rotate(-180deg) translateX(-1px);
 }
 
 .title {
@@ -61,10 +63,10 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 470px;
+  padding-bottom: 8px;
 }
 
-/* 리스트 아이템 (섬네일 + 텍스트) */
+/* ✅ 검정 테두리 제거(아이템: 깔끔한 카드) */
 .item {
   display: flex;
   align-items: center;
@@ -72,13 +74,15 @@
   background: #fff;
   border-radius: 12px;
   padding: 10px 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: none;
+  box-shadow: none;
 }
 
+/* ✅ 이미지 정사각형 + 더 크게 */
 .thumb {
-  width: 72px;
-  height: 72px;
-  border-radius: 10px;
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
   object-fit: cover;
   background: #eee;
 }
@@ -96,7 +100,7 @@
   line-height: 1.25;
 }
 
-/* 태그(키워드) 칩: Home과 디자인 통일 */
+/* 태그(키워드) 칩 */
 .tagRow {
   display: flex;
   flex-wrap: wrap;
@@ -108,8 +112,8 @@
   line-height: 18px;
   padding: 0 8px;
   border-radius: 999px;
-  background: #EEF2FF;
-  color: #3B5BDB;
+  background: #eef2ff;
+  color: #3b5bdb;
   border: 1px solid rgba(59, 91, 219, 0.15);
   white-space: nowrap;
 }

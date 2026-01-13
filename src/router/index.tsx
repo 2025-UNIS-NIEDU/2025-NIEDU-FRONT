@@ -19,6 +19,10 @@ import RecentCourses from "@/pages/Home/RecentCourses";
 import SavedCourses from "@/pages/Home/SavedCourses";
 import Learn from "@/pages/Learn/Learn";
 import LearnSearch from "@/pages/Learn/LearnSearch";
+import LearnTopicsPage from "@/pages/Learn/LearnTopicsPage";
+import LearnPopularPage from "@/pages/Learn/LearnPopularPage";
+import LearnPersonalizedPage from "@/pages/Learn/LearnPersonalizedPage";
+import LearnNewPage from "@/pages/Learn/LearnNewPage";
 import ArticlePrepare from "@/pages/article/ArticlePrepare";
 import LoginSuccess from "@/pages/LoginSuccess";
 import StepRunner from "@/pages/article/session/StepRunner";
@@ -28,7 +32,6 @@ import ArticleDetail from "@/pages/ArticleDetail/ArticleDetail";
 import MyPage from "@/pages/MyPage/MyPage";
 import ReviewNotesPage from "@/pages/MyPage/ReviewNotes/ReviewNotesPage";
 import TermsDictionaryPage from "@/pages/MyPage/TermsDictionary/TermsDictionaryPage";
-
 
 export default function AppRouter() {
   return (
@@ -56,15 +59,21 @@ export default function AppRouter() {
       <Route path="/home" element={<Home />} />
       <Route path="/recent-courses" element={<RecentCourses />} />
       <Route path="/saved-courses" element={<SavedCourses />} />
+
       <Route path="/learn" element={<Learn />} />
       <Route path="/learn/search" element={<LearnSearch />} />
+      <Route path="/learn/topics" element={<LearnTopicsPage />} />
+      <Route path="/learn/popular" element={<LearnPopularPage />} />
+      <Route path="/learn/personalized" element={<LearnPersonalizedPage />} />
+      <Route path="/learn/new" element={<LearnNewPage />} />
+
       <Route path="/article/:articleId/prepare" element={<ArticlePrepare />} />
       <Route path="/login/success" element={<LoginSuccess />} />
       <Route path="/nie/session/:level/step/:stepId" element={<StepRunner />} />
       <Route path="/nie/session/I/result" element={<EduResult />} />
-      {/* N(E) 공통 결과 화면 */}
       <Route path="/article/result" element={<EduResult />} />
       <Route path="/article/:articleId" element={<ArticleDetail />} />
+
       <Route path="/mypage" element={<MyPage />} />
       <Route path="/mypage/review-notes" element={<ReviewNotesPage />} />
       <Route path="/mypage/terms" element={<TermsDictionaryPage />} />
