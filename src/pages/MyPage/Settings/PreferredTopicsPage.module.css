@@ -1,20 +1,27 @@
 /* src/pages/MyPage/Settings/PreferredTopicsPage.module.css */
 .viewport {
-  height: 100vh;
-  width: 100vw;
+  position: fixed;
+  inset: 0;
   display: flex;
   justify-content: center;
-  background: #f6f7fb;
-  font-family: Pretendard, sans-serif;
+  align-items: stretch;
+  background: #eef0f4;
+  overflow-y: auto;
 }
 
 .container {
   position: relative;
-  width: 402px;
-  max-width: 100vw;
-  height: 100vh;
-  background: #f6f7fb;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 700px;
+  min-height: 100%;
+  margin: 0 auto;
+  background: #fff;
+  box-sizing: border-box;
+  padding: 6vh 20px;
+  padding-bottom: 80px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .dimBg {

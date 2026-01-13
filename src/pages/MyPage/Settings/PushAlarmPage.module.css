@@ -1,28 +1,38 @@
 /* src/pages/MyPage/Settings/PushAlarmPage.module.css */
 .viewport {
-  height: 100vh;
-  width: 100vw;
+  position: fixed;
+  inset: 0;
   display: flex;
   justify-content: center;
-  background: #f6f7fb;
-  font-family: Pretendard, sans-serif;
+  align-items: stretch;
+  
+  background: transparent;
+  overflow-y: auto;
 }
 
 .container {
   position: relative;
-  width: 402px;
-  max-width: 100vw;
-  height: 100vh;
-  background: #f6f7fb;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 700px;
+  min-height: 100%;
+  margin: 0 auto;
+  
+  box-sizing: border-box;
+  padding: 6vh 20px;
+  padding-bottom: 80px;
+  background: transparent;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
-
+/* ✅ dim 뒤에 settings 배경(#F2F2F7)이 “투명으로” 보이게 */
 .dimBg {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.18);
 }
 
+/* bottom sheet */
 .sheet {
   position: absolute;
   left: 0;
@@ -91,75 +101,98 @@
   height: 18px;
 }
 
-.addBtn {
+/* ✅ inline “dial(휠)” 영역 */
+.pickerInline {
   margin-top: 12px;
+  border-radius: 14px;
+  background: rgba(242, 242, 247, 0.72); /* ✅ #F2F2F7 투명 */
+  backdrop-filter: blur(10px);
+  padding: 14px 12px 12px;
+}
+
+.pickerInner {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  justify-items: center;
+  padding: 6px 0 10px;
+}
+
+/* wheel */
+.wheelCol {
+  position: relative;
   width: 100%;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px dashed rgba(111, 140, 255, 0.5);
-  background: rgba(111, 140, 255, 0.06);
-  color: #2f55ff;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
+  max-width: 92px;
+  height: 156px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
 }
 
-.saveBtn {
-  margin-top: 16px;
-  width: 100%;
-  height: 54px;
-  border-radius: 999px;
-  border: 0;
-  background: #6f8cff;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
+.wheelScroll {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none; /* firefox */
+  -ms-overflow-style: none; /* ie */
+  scroll-snap-type: y mandatory;
+}
+.wheelScroll::-webkit-scrollbar {
+  display: none;
 }
 
-.saveBtn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.pickerDim {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.22);
+.wheelItem {
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 30;
+  scroll-snap-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(15, 15, 15, 0.35);
+  user-select: none;
 }
 
-.pickerBox {
-  width: calc(100% - 60px);
-  max-width: 320px;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 16px;
-  box-sizing: border-box;
-}
-
-.pickerTitle {
-  text-align: center;
-  font-size: 14px;
+.wheelItemActive {
+  color: #0f0f0f;
   font-weight: 800;
-  margin-bottom: 12px;
 }
 
-.timeInput {
-  width: 100%;
-  height: 42px;
+.wheelCenterLine {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 36px;
+  transform: translateY(-50%);
   border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  padding: 0 12px;
-  font-size: 16px;
-  box-sizing: border-box;
+  background: rgba(111, 140, 255, 0.10);
+  pointer-events: none;
 }
 
+.wheelFadeTop,
+.wheelFadeBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 42px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wheelFadeTop {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
+}
+
+.wheelFadeBottom {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
+}
+
+/* picker buttons */
 .pickerBtns {
-  margin-top: 12px;
+  margin-top: 10px;
   display: flex;
   gap: 10px;
 }
@@ -169,7 +202,7 @@
   height: 38px;
   border-radius: 10px;
   border: 0;
-  background: #f1f3f6;
+  background: #ffffff;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
@@ -187,6 +220,25 @@
   cursor: pointer;
 }
 
+.saveBtn {
+  margin-top: 16px;
+  width: 100%;
+  height: 54px;
+  border-radius: 28px;
+  border: 0;
+  background: var(--blue2_fill, linear-gradient(90deg, #6088f8 0%, rgba(96, 136, 248, 0.5) 100%));
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.saveBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .savedToast {
   position: absolute;
   left: 50%;
@@ -201,6 +253,7 @@
   z-index: 40;
 }
 
+/* 바깥 탭하면 닫히게 */
 .backTap {
   position: absolute;
   inset: 0;
@@ -209,6 +262,14 @@
   z-index: 5;
 }
 
+/* sheet 내부는 클릭 가능 */
 .sheet * {
   pointer-events: auto;
+}
+
+/* ✅ PC에서 휠 영역만 스크롤로 잘 움직이게 */
+@media (min-width: 768px) {
+  .wheelItem {
+    font-size: 17px;
+  }
 }

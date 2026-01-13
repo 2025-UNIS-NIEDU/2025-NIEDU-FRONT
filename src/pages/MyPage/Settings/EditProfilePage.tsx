@@ -72,7 +72,7 @@ export default function EditProfilePage() {
       <div className={styles.container}>
         <div className={styles.header}>
           <button className={styles.backBtn} type="button" onClick={() => nav(-1)}>
-            <img src="/icons/icon-back.svg" alt="뒤로" />
+            <img src="/icons/fluent_ios-arrow.svg" alt="뒤로" />
           </button>
           <h1 className={styles.title}>정보 수정</h1>
         </div>
@@ -82,7 +82,7 @@ export default function EditProfilePage() {
             <div className={styles.avatarCircle}>
               {baseImage ? <img src={baseImage} alt="프로필" className={styles.avatarImg} /> : null}
             </div>
-            <img src="/icons/icon-photo.svg" alt="사진 변경" className={styles.photoIcon} />
+            <img src="/icons/Frame 1686564376.svg" alt="사진 변경" className={styles.photoIcon} />
           </button>
           <input
             ref={fileRef}
@@ -107,7 +107,7 @@ export default function EditProfilePage() {
               type="button"
               onClick={() => document.querySelector<HTMLInputElement>(`.${styles.nickInput}`)?.focus()}
             >
-              <img src="/icons/icon-pen.svg" alt="수정" />
+              <img src="/icons/fluent_edit-20-filled.svg" alt="수정" />
             </button>
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function EditProfilePage() {
 
         {savedToast && (
           <div className={styles.toast}>
-            <img src="/icons/icon-user.svg" alt="" className={styles.toastIcon} />
+            <img src="/icons/famicons_person.svg" alt="" className={styles.toastIcon} />
             <span>프로필 정보가 변경되었습니다</span>
           </div>
         )}

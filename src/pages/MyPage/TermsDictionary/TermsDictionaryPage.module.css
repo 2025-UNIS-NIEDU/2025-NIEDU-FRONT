@@ -52,9 +52,13 @@
   padding: 6px;
   border-radius: 10px;
   cursor: pointer;
+  color: #000;
 }
 .backBtn:active {
   background: rgba(15, 15, 15, 0.05);
+}
+.backBtn img {
+  filter: brightness(0) saturate(100%) invert(45%) sepia(6%) saturate(300%) hue-rotate(180deg);
 }
 
 .title {
