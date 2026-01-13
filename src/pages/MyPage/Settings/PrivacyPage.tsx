@@ -33,7 +33,7 @@ NIEdu는 원칙적으로 이용자가 서비스를 탈퇴하거나 수집 목적
       <div className={styles.container}>
         <div className={styles.header}>
           <button className={styles.backBtn} type="button" onClick={() => nav(-1)}>
-            <img src="/icons/icon-back.svg" alt="뒤로" />
+            <img src="/icons/fluent_ios-arrow.svg" alt="뒤로" />
           </button>
           <h1 className={styles.title}>개인정보처리방침</h1>
         </div>

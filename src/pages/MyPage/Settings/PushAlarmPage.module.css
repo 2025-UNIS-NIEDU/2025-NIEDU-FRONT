@@ -26,9 +26,20 @@
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 /* ✅ dim 뒤에 settings 배경(#F2F2F7)이 “투명으로” 보이게 */
+/* src/pages/MyPage/Settings/PushAlarmPage.module.css */
+.modalRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  pointer-events: auto;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ✅ “투명”이 아니라: Settings 화면이 그대로 보이도록 dim만 덮음 */
 .dimBg {
   position: absolute;
   inset: 0;
+  border: 0;
   background: rgba(0, 0, 0, 0.18);
 }
 
@@ -38,12 +49,13 @@
   left: 0;
   right: 0;
   bottom: 64px;
+  margin: 0 auto;
+  max-width: 402px;
   background: #ffffff;
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
   padding: 12px 18px 18px;
   box-sizing: border-box;
-  z-index: 10;
 }
 
 .grabber {
@@ -95,37 +107,33 @@
   justify-content: center;
   cursor: pointer;
 }
-
 .iconBtn img {
   width: 18px;
   height: 18px;
 }
 
-/* ✅ inline “dial(휠)” 영역 */
 .pickerInline {
   margin-top: 12px;
-  border-radius: 14px;
+  border-radius: 16px;
   background: rgba(242, 242, 247, 0.72); /* ✅ #F2F2F7 투명 */
   backdrop-filter: blur(10px);
   padding: 14px 12px 12px;
 }
 
-.pickerInner {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
+/* ✅ “붙어있게” (gap 거의 없음) */
+.pickerRow {
+  display: flex;
   align-items: center;
-  justify-items: center;
-  padding: 6px 0 10px;
+  justify-content: center;
+  gap: 6px; /* ← 여기 */
+  padding: 2px 0 10px;
 }
 
-/* wheel */
 .wheelCol {
   position: relative;
-  width: 100%;
-  max-width: 92px;
+  width: 92px;
   height: 156px;
-  border-radius: 14px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.55);
   overflow: hidden;
 }
@@ -133,9 +141,8 @@
 .wheelScroll {
   height: 100%;
   overflow-y: auto;
-  scrollbar-width: none; /* firefox */
-  -ms-overflow-style: none; /* ie */
-  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .wheelScroll::-webkit-scrollbar {
   display: none;
@@ -146,7 +153,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  scroll-snap-align: center;
   font-size: 18px;
   font-weight: 700;
   color: rgba(15, 15, 15, 0.35);
@@ -166,7 +172,7 @@
   height: 36px;
   transform: translateY(-50%);
   border-radius: 10px;
-  background: rgba(111, 140, 255, 0.10);
+  background: rgba(111, 140, 255, 0.1);
   pointer-events: none;
 }
 
@@ -190,7 +196,6 @@
   background: linear-gradient(to top, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
 }
 
-/* picker buttons */
 .pickerBtns {
   margin-top: 10px;
   display: flex;
@@ -199,23 +204,23 @@
 
 .pickerCancel {
   flex: 1;
-  height: 38px;
-  border-radius: 10px;
+  height: 44px;
+  border-radius: 12px;
   border: 0;
   background: #ffffff;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
 }
 
 .pickerOk {
   flex: 1;
-  height: 38px;
-  border-radius: 10px;
+  height: 44px;
+  border-radius: 12px;
   border: 0;
   background: #6f8cff;
   color: #ffffff;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -223,53 +228,18 @@
 .saveBtn {
   margin-top: 16px;
   width: 100%;
-  height: 54px;
-  border-radius: 28px;
+  height: 64px;
+  border-radius: 32px;
   border: 0;
   background: var(--blue2_fill, linear-gradient(90deg, #6088f8 0%, rgba(96, 136, 248, 0.5) 100%));
   backdrop-filter: blur(6px);
   color: #ffffff;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 900;
   cursor: pointer;
 }
 
 .saveBtn:disabled {
   opacity: 0.45;
   cursor: default;
-}
-
-.savedToast {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 150px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.72);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 700;
-  z-index: 40;
-}
-
-/* 바깥 탭하면 닫히게 */
-.backTap {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  background: transparent;
-  z-index: 5;
-}
-
-/* sheet 내부는 클릭 가능 */
-.sheet * {
-  pointer-events: auto;
-}
-
-/* ✅ PC에서 휠 영역만 스크롤로 잘 움직이게 */
-@media (min-width: 768px) {
-  .wheelItem {
-    font-size: 17px;
-  }
 }

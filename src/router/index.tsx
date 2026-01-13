@@ -1,5 +1,5 @@
 // src/router/index.tsx
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 import Intro1 from "@/pages/onboarding/intro/Intro1";
 import Intro2 from "@/pages/onboarding/intro/Intro2";
@@ -40,54 +40,74 @@ import TermsPage from "@/pages/MyPage/Settings/TermsPage";
 import PrivacyPage from "@/pages/MyPage/Settings/PrivacyPage";
 
 export default function AppRouter() {
+  const location = useLocation() as any;
+  const backgroundLocation = location.state?.backgroundLocation;
+
   return (
-    <Routes>
-      <Route path="/" element={<Intro1 />} />
-      <Route path="/onboarding/intro/1" element={<Intro1 />} />
-      <Route path="/onboarding/intro/2" element={<Intro2 />} />
-      <Route path="/onboarding/intro/3" element={<Intro3 />} />
-      <Route path="/onboarding/intro/4" element={<Intro4 />} />
-      <Route path="/onboarding/intro/5" element={<Intro5 />} />
-      <Route path="/onboarding/intro/6" element={<Intro6 />} />
-      <Route path="/onboarding/intro/7" element={<Intro7 />} />
+    <>
+      {/* ✅ 기본 라우트 (배경이 있으면 배경을 먼저 렌더) */}
+      <Routes location={backgroundLocation || location}>
+        <Route path="/" element={<Intro1 />} />
+        <Route path="/onboarding/intro/1" element={<Intro1 />} />
+        <Route path="/onboarding/intro/2" element={<Intro2 />} />
+        <Route path="/onboarding/intro/3" element={<Intro3 />} />
+        <Route path="/onboarding/intro/4" element={<Intro4 />} />
+        <Route path="/onboarding/intro/5" element={<Intro5 />} />
+        <Route path="/onboarding/intro/6" element={<Intro6 />} />
+        <Route path="/onboarding/intro/7" element={<Intro7 />} />
 
-      <Route path="/onboarding/2" element={<Navigate to="/onboarding/intro/2" replace />} />
-      <Route path="/onboarding/3" element={<Navigate to="/onboarding/intro/3" replace />} />
-      <Route path="/onboarding/4" element={<Navigate to="/onboarding/intro/4" replace />} />
+        <Route path="/onboarding/2" element={<Navigate to="/onboarding/intro/2" replace />} />
+        <Route path="/onboarding/3" element={<Navigate to="/onboarding/intro/3" replace />} />
+        <Route path="/onboarding/4" element={<Navigate to="/onboarding/intro/4" replace />} />
 
-      <Route path="/onboarding/topic" element={<OnboardingTopic />} />
-      <Route path="/onboarding/alarm" element={<OnboardingAlarm />} />
+        <Route path="/onboarding/topic" element={<OnboardingTopic />} />
+        <Route path="/onboarding/alarm" element={<OnboardingAlarm />} />
 
-      <Route path="/home" element={<Home />} />
-      <Route path="/recent-courses" element={<RecentCourses />} />
-      <Route path="/saved-courses" element={<SavedCourses />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/recent-courses" element={<RecentCourses />} />
+        <Route path="/saved-courses" element={<SavedCourses />} />
 
-      <Route path="/learn" element={<Learn />} />
-      <Route path="/learn/search" element={<LearnSearch />} />
-      <Route path="/learn/topics" element={<LearnTopicsPage />} />
-      <Route path="/learn/popular" element={<LearnPopularPage />} />
-      <Route path="/learn/personalized" element={<LearnPersonalizedPage />} />
-      <Route path="/learn/new" element={<LearnNewPage />} />
+        <Route path="/learn" element={<Learn />} />
+        <Route path="/learn/search" element={<LearnSearch />} />
+        <Route path="/learn/topics" element={<LearnTopicsPage />} />
+        <Route path="/learn/popular" element={<LearnPopularPage />} />
+        <Route path="/learn/personalized" element={<LearnPersonalizedPage />} />
+        <Route path="/learn/new" element={<LearnNewPage />} />
 
-      <Route path="/article/:articleId/prepare" element={<ArticlePrepare />} />
-      <Route path="/login/success" element={<LoginSuccess />} />
-      <Route path="/nie/session/:level/step/:stepId" element={<StepRunner />} />
-      <Route path="/nie/session/I/result" element={<EduResult />} />
-      <Route path="/article/result" element={<EduResult />} />
-      <Route path="/article/:articleId" element={<ArticleDetail />} />
+        <Route path="/article/:articleId/prepare" element={<ArticlePrepare />} />
+        <Route path="/login/success" element={<LoginSuccess />} />
+        <Route path="/nie/session/:level/step/:stepId" element={<StepRunner />} />
+        <Route path="/nie/session/I/result" element={<EduResult />} />
+        <Route path="/article/result" element={<EduResult />} />
+        <Route path="/article/:articleId" element={<ArticleDetail />} />
 
-      <Route path="/mypage" element={<MyPage />} />
-      <Route path="/mypage/settings" element={<SettingsPage />} />
-      <Route path="/mypage/settings/edit" element={<EditProfilePage />} />
-      <Route path="/mypage/settings/push" element={<PushAlarmPage />} />
-      <Route path="/mypage/settings/topics" element={<PreferredTopicsPage />} />
-      <Route path="/mypage/settings/terms" element={<TermsPage />} />
-      <Route path="/mypage/settings/privacy" element={<PrivacyPage />} />
-      <Route path="/mypage/log" element={<LearningLogPage />} />
-      <Route path="/mypage/review-notes" element={<ReviewNotesPage />} />
-      <Route path="/mypage/terms" element={<TermsDictionaryPage />} />
+        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/mypage/settings" element={<SettingsPage />} />
+        <Route path="/mypage/settings/edit" element={<EditProfilePage />} />
+        <Route path="/mypage/settings/topics" element={<PreferredTopicsPage />} />
+        <Route path="/mypage/settings/terms" element={<TermsPage />} />
+        <Route path="/mypage/settings/privacy" element={<PrivacyPage />} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="/mypage/log" element={<LearningLogPage />} />
+        <Route path="/mypage/review-notes" element={<ReviewNotesPage />} />
+        <Route path="/mypage/terms" element={<TermsDictionaryPage />} />
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+
+      {/* ✅ 모달 라우트: 배경이 있을 때만 PushAlarmPage를 “위에” 올림 */}
+      {backgroundLocation && (
+        <Routes>
+          <Route path="/mypage/settings/push" element={<PushAlarmPage />} />
+        </Routes>
+      )}
+
+      {/* ✅ 직접 URL로 /push 진입했을 때도 보이게(백업) */}
+      {!backgroundLocation && (
+        <Routes>
+          <Route path="/mypage/settings/push" element={<PushAlarmPage />} />
+        </Routes>
+      )}
+    </>
   );
 }

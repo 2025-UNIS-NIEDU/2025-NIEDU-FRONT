@@ -1,6 +1,6 @@
 // src/pages/MyPage/Settings/SettingsPage.tsx
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
 import api from "@/api/axiosInstance";
@@ -22,6 +22,7 @@ function getLocalProfile() {
 
 export default function SettingsPage() {
   const nav = useNavigate();
+  const location = useLocation();
 
   const [me, setMe] = useState<MeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +58,7 @@ export default function SettingsPage() {
       <div className={styles.container}>
         <div className={styles.header}>
           <button className={styles.backBtn} type="button" onClick={() => nav(-1)}>
-            <img src="/icons/icon-back.svg" alt="뒤로" />
+            <img src="/icons/fluent_ios-arrow.svg" alt="뒤로" />
           </button>
           <h1 className={styles.title}>설정</h1>
         </div>
@@ -83,7 +84,17 @@ export default function SettingsPage() {
         <button className={styles.rowBtn} type="button" onClick={() => nav("/mypage/settings/topics")}>
           <div className={styles.rowTitle}>선호 토픽 설정</div>
         </button>
-        <button className={styles.rowBtn} type="button" onClick={() => nav("/mypage/settings/push")}>
+
+        {/* ✅ Push는 “모달 라우트”로 열어서 Settings가 뒤에 보이게 */}
+        <button
+          className={styles.rowBtn}
+          type="button"
+          onClick={() =>
+            nav("/mypage/settings/push", {
+              state: { backgroundLocation: location },
+            })
+          }
+        >
           <div className={styles.rowTitle}>푸시 알림 설정</div>
         </button>
 

@@ -6,32 +6,46 @@
   justify-content: center;
   align-items: stretch;
   background: #eef0f4;
+
+  /* ✅ 세로 스크롤 허용 + 가로는 숨김 */
   overflow-y: auto;
+  overflow-x: hidden;
+
+  /* ✅ 모든 브라우저 스크롤바 숨김 */
+  -ms-overflow-style: none; /* IE / old Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.viewport::-webkit-scrollbar {
+  display: none; /* Chrome / Safari / Edge */
 }
 
 .container {
   position: relative;
   display: flex;
   flex-direction: column;
+
   width: 100%;
-  max-width: 700px;
-  min-height: 100%;
+  max-width: 700px; /* 아이폰 기준 폭 */
+  min-height: 100vh; /* 화면 높이 이상으로는 자유롭게 커질 수 있게 */
   margin: 0 auto;
   background: #fff;
   box-sizing: border-box;
+
   padding: 6vh 20px;
-  padding-bottom: 80px;
+  padding-bottom: 80px; /* 하단바 + 약간 여백만 남기기 */
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
+
 .header {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #f6f7fb;
+  background: #ffffff;
   padding: 8px 0 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-left: 22px;
 }
 
 .backBtn {
@@ -49,8 +63,8 @@
 }
 
 .backBtn img {
-  width: 20px;
-  height: 20px;
+  width: 35px;
+  height: 35px;
 }
 
 .title {
@@ -153,6 +167,7 @@ line-height: 150%; /* 22.5px */
   flex: 1;
   height: 38px;
   border-radius: 10px;
+  border: 0;
 background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 9.14%, rgba(191, 195, 201, 0.10) 82.53%));
   font-size: 14px;
   font-weight: 700;
@@ -164,6 +179,7 @@ background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 
   flex: 1;
   height: 38px;
   border-radius: 10px;
+  border: 0;
 background: linear-gradient(0deg, rgba(96, 136, 248, 0.80) 0%, rgba(96, 136, 248, 0.40) 192.5%);
   font-size: 14px;
   font-weight: 700;

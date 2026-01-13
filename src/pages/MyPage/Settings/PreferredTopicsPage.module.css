@@ -5,7 +5,8 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
-  background: #eef0f4;
+  
+  background: transparent;
   overflow-y: auto;
 }
 
@@ -17,7 +18,7 @@
   max-width: 700px;
   min-height: 100%;
   margin: 0 auto;
-  background: #fff;
+  background: transparent;
   box-sizing: border-box;
   padding: 6vh 20px;
   padding-bottom: 80px;
@@ -34,7 +35,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 64px;
+  bottom: 164px;
   background: #ffffff;
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
@@ -45,16 +46,16 @@
 
 .grabber {
   width: 42px;
-  height: 4px;
+  height: 24px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.12);
-  margin: 0 auto 10px;
+  margin: 0 auto 20px;
 }
 
 .sheetTitle {
   text-align: center;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: #0f0f0f;
   margin-bottom: 16px;
 }
@@ -68,8 +69,8 @@
 }
 
 .chip {
-  height: 34px;
-  padding: 0 16px;
+  height: 54px;
+  padding: 12px 0 20px;
   border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: #ffffff;
@@ -89,9 +90,13 @@
   margin-top: 18px;
   width: 100%;
   height: 54px;
-  border-radius: 999px;
+  border-radius: 28px;
+background: var(--blue2_fill, linear-gradient(90deg, #6088F8 0%, rgba(96, 136, 248, 0.50) 100%));
+
+/* gray1 */
+backdrop-filter: blur(6px);
   border: 0;
-  background: #6f8cff;
+ 
   color: #ffffff;
   font-size: 16px;
   font-weight: 800;
