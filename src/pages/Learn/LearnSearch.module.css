@@ -39,18 +39,18 @@
 
 .searchBar {
   flex: 1;
-  height: 38px;
+  height: 58px;
   border-radius: 999px;
   background: #f3f4f6;
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  gap: 8px;
+  padding: 0 16px;
+  gap: 12px;
 }
 
 .searchIcon {
-  width: 18px;
-  height: 18px;
+  width: 21px;
+  height: 21px;
   opacity: 0.55;
 }
 
@@ -64,7 +64,7 @@
 }
 
 .input::placeholder {
-  color: #9aa0a6;
+color: #84868A;
 }
 
 .clearBtn {
@@ -159,10 +159,11 @@
 }
 
 .chipGray {
-  border: 1px solid #e5e7eb;
-  background: #f3f4f6;
-  color: #6b7280;
-  border-radius: 999px;
+  border-radius: 20px;
+border: 2px solid var(--gray1_stroke, rgba(191, 195, 201, 0.20));
+background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 9.14%, rgba(191, 195, 201, 0.10) 82.53%));
+  color: #7D7E81;
+  
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
@@ -199,12 +200,12 @@
 }
 
 .autoWrap {
-  margin-top: 18px;
+  margin-top: 38px;
 }
 
 .autoList {
   list-style: none;
-  margin: 0;
+  margin: 12px;
   padding: 0;
 }
 

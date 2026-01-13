@@ -1,123 +1,220 @@
 /* src/pages/MyPage/TermsDictionary/TermsDictionaryPage.module.css */
+
 .viewport {
-  position: fixed;          /* ✅ 화면에 고정 */
+  position: fixed;
   inset: 0;
-  overflow-y: auto;         /* ✅ 세로 스크롤 받는 주체 */
-  -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
-  overflow-x: hidden;
   display: flex;
   justify-content: center;
   align-items: stretch;
- background: #eef0f4;
+  background: #eef0f4;
+
+  overflow-y: auto;
+  overflow-x: hidden;
 
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.viewport::-webkit-scrollbar { display: none; }
+.viewport::-webkit-scrollbar {
+  display: none;
+}
 
-/* 콘텐츠는 자연스럽게 늘어나게 */
 .container {
   position: relative;
   display: flex;
   flex-direction: column;
-  /* justify-content: space-between;  ⛔ 제거 (컨텐츠를 위아래로 벌려 스크롤 막힘 유발) */
 
   width: 100%;
   max-width: 700px;
-  min-height: 1000%;         /* ✅ max-height 대신 min-height */
-  /* max-height: 100%;       ⛔ 제거 */
-
+  min-height: 100vh;
   margin: 0 auto;
+
   background: #fff;
   box-sizing: border-box;
+  padding: 16px 20px 84px;
 
-  padding: 16px 20px;
-  padding-bottom: 220px;     /* ✅ BottomNav 높이만큼 여유 */
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.topBar { display: flex; align-items: center; justify-content: space-between; }
-.backBtn { background: transparent; border: 0; padding: 6px; cursor: pointer; }
-.title { font-size: 16px; font-weight: 700; margin: 0; }
-.rightDummy { width: 32px; }
-
-.sortRow {
+/* Top bar */
+.topBar {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
-  position: relative;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
 }
 
-.sortSelect {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+.backBtn {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  padding: 6px;
+  border-radius: 10px;
   cursor: pointer;
 }
-
-.chev {
-  width: 14px;
-  height: 14px;
-  transform: rotate(180deg);
-  transition: transform 0.15s ease;
+.backBtn:active {
+  background: rgba(15, 15, 15, 0.05);
 }
 
-.chevOpen {
-  transform: rotate(90deg);
+.title {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  color: #000;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 150%;
+}
+
+/* sort dropdown */
+.sortWrap {
+  position: relative;
+  width: 130px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sortDropBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+
+  border: 2px solid rgba(191, 195, 201, 0.2);
+  background: linear-gradient(
+    292deg,
+    rgba(191, 195, 201, 0.2) 9.14%,
+    rgba(191, 195, 201, 0.1) 82.53%
+  );
+
+  color: #000;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 150%;
 }
 
 .sortMenu {
   position: absolute;
   top: 42px;
   right: 0;
-  width: 140px;
+  z-index: 30;
+
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
-  z-index: 10;
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  padding: 6px;
+  min-width: 150px;
 }
 
-.sortOption {
+.sortItem {
   width: 100%;
-  text-align: left;
-  padding: 10px 12px;
   border: 0;
-  background: #fff;
-  font-size: 12px;
+  background: transparent;
   cursor: pointer;
+  font-family: Pretendard;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+
+  padding: 10px 12px;
+  border-radius: 12px;
 }
 
-.sortOption:hover {
-  background: #f3f4f6;
+.sortItemActive {
+  background: rgba(96, 136, 248, 0.12);
+  color: #6088f8;
 }
 
-.loading, .empty { margin-top: 16px; opacity: 0.7; }
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 0 2px;
+}
 
-.groups { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
-.groupTitle { font-size: 12px; font-weight: 700; opacity: 0.6; margin-bottom: 8px; }
+.tabBtn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+
+  border: 2px solid rgba(191, 195, 201, 0.2);
+  background: linear-gradient(
+    292deg,
+    rgba(191, 195, 201, 0.2) 9.14%,
+    rgba(191, 195, 201, 0.1) 82.53%
+  );
+
+  color: #7d7e81;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 150%;
+}
+
+.tabActive {
+  border: 2px solid rgba(96, 136, 248, 0.2);
+  background: linear-gradient(
+    292deg,
+    rgba(96, 136, 248, 0.4) 9.14%,
+    rgba(96, 136, 248, 0.1) 82.53%
+  );
+  color: #6088f8;
+}
+
+/* Body */
+.loading,
+.empty {
+  margin-top: 18px;
+  font-size: 13px;
+  color: #6b7280;
+  opacity: 0.9;
+}
+
+.groups {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.groupTitle {
+  margin: 2px 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(15, 15, 15, 0.45);
+}
 
 .termGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
 .termChip {
-  border: 1px solid #eee;
+  border: 1px solid #e7e7eb;
   background: #fff;
-  border-radius: 10px;
-  padding: 12px 8px;
-  font-size: 12px;
+  border-radius: 12px;
+  padding: 12px 10px;
   cursor: pointer;
+
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f0f0f;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.bottomSpace { height: 40px; }
+.termChip:active {
+  background: rgba(15, 15, 15, 0.04);
+}
 
-/* 모달은 StepN002.module.css 재사용 */
+.bottomSpace {
+  height: 40px;
+}

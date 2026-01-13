@@ -33,15 +33,18 @@ type RouteState = {
   steps?: StepMeta[];
 };
 
-// ✅ 로컬 용어사전 저장소
+// ✅ 로컬 용어사전 저장소(프론트-only)
 type StoredTerm = {
   termId: string;
   term: string;
   definition: string;
   exampleSentence: string;
   additionalExplanation: string;
-  createdAt: number;   // 처음 저장된 시각
-  lastSeenAt: number;  // 최근 열어본 시각 (최근순 정렬 기준)
+
+  createdAt: number; // 처음 저장된 시각 (최신순 기준)
+  lastSeenAt: number; // 최근 열어본 시각(옵션)
+  isFavorite: boolean; // 즐겨찾기 여부
+  favoritedAt: number; // 즐겨찾기 누른 시각(즐겨찾기 최신순)
 };
 
 const TERM_STORE_KEY = "NIEDU_TERM_DICTIONARY_V1";
@@ -63,9 +66,9 @@ function writeTermStore(list: StoredTerm[]) {
   localStorage.setItem(TERM_STORE_KEY, JSON.stringify(list));
 }
 
-// ✅ terms 배열을 “누적 저장(merge)”
+// ✅ terms 배열을 누적 저장(merge)
 // - 동일 termId 있으면 텍스트는 최신값으로 덮고
-// - createdAt은 유지, lastSeenAt은 유지(열어본 순간 갱신)
+// - createdAt/isFavorite/favoritedAt/lastSeenAt은 유지
 function upsertTermsToStore(terms: Term[]) {
   const now = Date.now();
   const prev = readTermStore();
@@ -75,6 +78,7 @@ function upsertTermsToStore(terms: Term[]) {
 
   for (const t of terms) {
     const exist = map.get(t.id);
+
     if (!exist) {
       map.set(t.id, {
         termId: t.id,
@@ -84,6 +88,8 @@ function upsertTermsToStore(terms: Term[]) {
         additionalExplanation: t.extra,
         createdAt: now,
         lastSeenAt: 0,
+        isFavorite: false,
+        favoritedAt: 0,
       });
     } else {
       map.set(t.id, {
@@ -99,6 +105,7 @@ function upsertTermsToStore(terms: Term[]) {
   writeTermStore(Array.from(map.values()));
 }
 
+// ✅ “최근 열어본” 갱신(옵션)
 function touchTerm(termId: string) {
   const now = Date.now();
   const prev = readTermStore();
@@ -108,11 +115,32 @@ function touchTerm(termId: string) {
   writeTermStore(next);
 }
 
+// ✅ 즐겨찾기 토글 + 저장
+function toggleFavoriteInStore(termId: string) {
+  const now = Date.now();
+  const prev = readTermStore();
+  const next = prev.map((t) => {
+    if (t.termId !== termId) return t;
+    const nextFav = !t.isFavorite;
+    return {
+      ...t,
+      isFavorite: nextFav,
+      favoritedAt: nextFav ? now : 0,
+    };
+  });
+  writeTermStore(next);
+}
+
+function getFavoriteIdsFromStore(): string[] {
+  return readTermStore()
+    .filter((t) => t.isFavorite)
+    .map((t) => t.termId);
+}
+
 export default function StepN002() {
   const nav = useNavigate();
   const location = useLocation();
 
-  // StepRunner / StepN001 → 넘어온 값
   const { articleId, articleUrl, startTime, courseId, sessionId, steps } =
     (location.state as RouteState) || {};
 
@@ -132,10 +160,12 @@ export default function StepN002() {
   const [activeTerm, setActiveTerm] = useState<Term | null>(null);
   const [submitErr, setSubmitErr] = useState("");
 
-  // ------------------------------------------
-  // ✅ 백에서 내려온 step.content로 TERM_LEARNING 데이터 파싱
-  // + ✅ 로컬 용어사전 누적 저장(merge)
-  // ------------------------------------------
+  // ✅ mount 시: 로컬 즐겨찾기 불러오기
+  useEffect(() => {
+    setFavorites(getFavoriteIdsFromStore());
+  }, []);
+
+  // ✅ step.content 파싱 + 용어 전체 localStorage 누적 저장
   useEffect(() => {
     setLoading(true);
     setSubmitErr("");
@@ -168,8 +198,11 @@ export default function StepN002() {
 
       setTerms(mapped);
 
-      // ✅ 여기서 “API로 내려온 용어들” 전부 누적 저장
-      if (mapped.length > 0) upsertTermsToStore(mapped);
+      if (mapped.length > 0) {
+        upsertTermsToStore(mapped);
+        // ✅ upsert 이후 즐겨찾기 상태 다시 로드 (동기화)
+        setFavorites(getFavoriteIdsFromStore());
+      }
     } catch (err) {
       console.error("[StepN002] term parse failed:", err);
       setTerms([]);
@@ -178,28 +211,22 @@ export default function StepN002() {
     }
   }, [currentStep]);
 
-  // ------------------------------------------
-  // 상태 변경 핸들러
-  // ------------------------------------------
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
   const openTerm = (term: Term) => {
     setActiveTerm(term);
     setOpened((prev) => (prev.includes(term.id) ? prev : [...prev, term.id]));
-
-    // ✅ “최근 저장(최근 본)” 정렬을 위해 lastSeenAt 갱신
     touchTerm(term.id);
+  };
+
+  const toggleFavorite = (id: string) => {
+    // ✅ store에 저장
+    toggleFavoriteInStore(id);
+    // ✅ UI state 즉시 반영
+    setFavorites(getFavoriteIdsFromStore());
   };
 
   const canGoNext = opened.length > 0 && !loading;
 
-  // ------------------------------------------
-  // ✅ answer 저장 (기존 유지)
-  // ------------------------------------------
+  // ✅ answer 저장(있으면 서버에도 저장)
   const submitAnswer = async () => {
     setSubmitErr("");
 
@@ -207,8 +234,8 @@ export default function StepN002() {
     const sid = Number(sessionId);
     const stepId = Number(currentStep?.stepId);
 
+    // 식별자 없으면 서버 제출 스킵(프론트는 동작)
     if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
-      console.warn("[StepN002] missing courseId/sessionId/stepId -> skip submit");
       return true;
     }
 
@@ -249,7 +276,6 @@ export default function StepN002() {
 
   const goNext = async () => {
     if (!canGoNext) return;
-
     const ok = await submitAnswer();
     if (!ok) return;
 

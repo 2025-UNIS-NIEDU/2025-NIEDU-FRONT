@@ -4,7 +4,11 @@ import { useNavigate } from "react-router-dom";
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
 import styles from "./TermsDictionaryPage.module.css";
 
+// ✅ N단계 팝업 CSS 재사용 (똑같이!)
+import modal from "@/pages/article/session/N/StepN002.module.css";
+
 type Sort = "alphabetical" | "recent";
+type Tab = "all" | "favorite";
 
 type StoredTerm = {
   termId: string;
@@ -12,8 +16,11 @@ type StoredTerm = {
   definition: string;
   exampleSentence: string;
   additionalExplanation: string;
-  createdAt: number;
-  lastSeenAt: number;
+
+  createdAt: number; // 전체 최신순 기준
+  lastSeenAt: number; // 옵션
+  isFavorite: boolean;
+  favoritedAt: number; // 즐겨찾기 최신순 기준
 };
 
 const TERM_STORE_KEY = "NIEDU_TERM_DICTIONARY_V1";
@@ -31,117 +38,125 @@ function readTermStore(): StoredTerm[] {
   return safeParse<StoredTerm[]>(localStorage.getItem(TERM_STORE_KEY), []);
 }
 
-// ✅ 한글 초성(가나다순 그룹용)
-const CHO = [
-  "ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ",
-] as const;
+function writeTermStore(list: StoredTerm[]) {
+  localStorage.setItem(TERM_STORE_KEY, JSON.stringify(list));
+}
 
+function toggleFavoriteInStore(termId: string) {
+  const now = Date.now();
+  const prev = readTermStore();
+  const next = prev.map((t) => {
+    if (t.termId !== termId) return t;
+    const nextFav = !t.isFavorite;
+    return {
+      ...t,
+      isFavorite: nextFav,
+      favoritedAt: nextFav ? now : 0,
+    };
+  });
+  writeTermStore(next);
+}
+
+// ✅ 가나다 초성 그룹
 function getInitialGroup(term: string) {
   if (!term) return "#";
-  const ch = term.trim()[0];
+  const s = term.trim();
+  if (!s) return "#";
+  const ch = s[0];
   const code = ch.charCodeAt(0);
 
-  // 한글 음절 범위
   if (code >= 0xac00 && code <= 0xd7a3) {
     const idx = Math.floor((code - 0xac00) / 588);
+    const CHO = [
+      "ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ",
+    ];
     return CHO[idx] ?? "ㅎ";
   }
 
-  // 영문
   if (/[a-zA-Z]/.test(ch)) return ch.toUpperCase();
-
-  // 숫자/기타
   if (/[0-9]/.test(ch)) return "0-9";
   return "#";
-}
-
-function startOfDay(ts: number) {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-function periodLabelByTime(ts: number) {
-  if (!ts) return "이전";
-  const now = Date.now();
-  const today0 = startOfDay(now);
-  const target0 = startOfDay(ts);
-
-  const diffDays = Math.floor((today0 - target0) / (24 * 60 * 60 * 1000));
-
-  if (diffDays === 0) return "오늘";
-  if (diffDays === 1) return "어제";
-  if (diffDays <= 7) return "최근 7일";
-  return "이전";
 }
 
 export default function TermsDictionaryPage() {
   const nav = useNavigate();
 
+  const [tab, setTab] = useState<Tab>("all");
   const [sort, setSort] = useState<Sort>("alphabetical");
   const [openSort, setOpenSort] = useState(false);
 
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const allTerms = useMemo(() => {
-    // ✅ localStorage에 누적된 “API로 내려온 용어” 전부
-    const list = readTermStore();
+  // ✅ localStorage 기반
+  const store = useMemo(() => {
+    return readTermStore().filter((t) => t.termId && t.term);
+  }, [tab, sort, open, selectedId]);
 
-    // term이 비어있는 이상치 제거
-    return list.filter((t) => t.termId && t.term);
-  }, []);
+  const allCount = store.length;
+  const favCount = store.filter((t) => t.isFavorite).length;
 
-  const selected = useMemo(() => {
-    if (!selectedId) return null;
-    return allTerms.find((t) => t.termId === selectedId) ?? null;
-  }, [selectedId, allTerms]);
+  const filtered = useMemo(() => {
+    if (tab === "favorite") return store.filter((t) => t.isFavorite);
+    return store;
+  }, [store, tab]);
 
+  // ✅ 정렬 + 그룹
   const groups = useMemo(() => {
-    if (allTerms.length === 0) return [];
+    if (filtered.length === 0) return [];
 
-    if (sort === "alphabetical") {
-      // 가나다순: group(초성) → term 오름차순
-      const map = new Map<string, StoredTerm[]>();
-      for (const t of allTerms) {
-        const key = getInitialGroup(t.term);
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push(t);
-      }
-
-      const keys = Array.from(map.keys()).sort((a, b) => a.localeCompare(b, "ko"));
-      return keys.map((k) => ({
-        title: k,
-        items: map
-          .get(k)!
-          .slice()
-          .sort((a, b) => a.term.localeCompare(b.term, "ko")),
-      }));
+    // 최신순: 한 그룹으로만
+    if (sort === "recent") {
+      const arr = filtered.slice().sort((a, b) => {
+        const ta = tab === "favorite" ? (a.favoritedAt || 0) : (a.createdAt || 0);
+        const tb = tab === "favorite" ? (b.favoritedAt || 0) : (b.createdAt || 0);
+        return tb - ta;
+      });
+      return [{ title: "", items: arr }];
     }
 
-    // recent: lastSeenAt 기준 최신 → period(오늘/어제/최근7일/이전)로 묶기
-    const sorted = allTerms
-      .slice()
-      .sort((a, b) => (b.lastSeenAt || 0) - (a.lastSeenAt || 0));
-
+    // 가나다순: 초성 그룹
     const map = new Map<string, StoredTerm[]>();
-    for (const t of sorted) {
-      const key = periodLabelByTime(t.lastSeenAt);
+    for (const t of filtered) {
+      const key = getInitialGroup(t.term);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(t);
     }
 
-    const order = ["오늘", "어제", "최근 7일", "이전"];
-    return order
-      .filter((k) => map.has(k))
-      .map((k) => ({ title: k, items: map.get(k)! }));
-  }, [allTerms, sort]);
+    const keys = Array.from(map.keys()).sort((a, b) => a.localeCompare(b, "ko"));
+    return keys.map((k) => ({
+      title: k,
+      items: map.get(k)!.slice().sort((a, b) => a.term.localeCompare(b.term, "ko")),
+    }));
+  }, [filtered, sort, tab]);
 
-  const sortLabel = sort === "alphabetical" ? "가나다 순" : "최근 저장 순";
+  const selected = useMemo(() => {
+    if (!selectedId) return null;
+    return store.find((t) => t.termId === selectedId) ?? null;
+  }, [selectedId, store]);
+
+  const sortLabel = sort === "alphabetical" ? "가나다 순" : "최신 순";
 
   const openDetail = (termId: string) => {
     setSelectedId(termId);
     setOpen(true);
+  };
+
+  const onToggleFavorite = (termId: string) => {
+    toggleFavoriteInStore(termId);
+
+    // 즐겨찾기 탭에서 해제하면 목록에서 빠질 수 있어 팝업 닫기 처리
+    if (tab === "favorite") {
+      const after = readTermStore();
+      const stillFav = after.some((t) => t.termId === termId && t.isFavorite);
+      if (!stillFav) {
+        setOpen(false);
+        return;
+      }
+    }
+
+    // selected 갱신 트리거
+    setSelectedId(termId);
   };
 
   return (
@@ -151,44 +166,27 @@ export default function TermsDictionaryPage() {
           <button className={styles.backBtn} onClick={() => nav(-1)} aria-label="뒤로가기">
             <img src="/icons/fluent_ios-arrow-24-filled.svg" alt="" />
           </button>
+
           <h1 className={styles.title}>용어사전</h1>
 
-          {/* ✅ 드롭다운 정렬(스샷처럼 버튼 2개 아님) */}
-          <div style={{ position: "relative" }}>
+          <div className={styles.sortWrap}>
             <button
               type="button"
-              className={styles.sortDropBtn ?? styles.rightDummy}
+              className={styles.sortDropBtn}
               onClick={() => setOpenSort((v) => !v)}
               aria-label="정렬"
             >
               {sortLabel}
-              <span style={{ marginLeft: 6 }}>▾</span>
+              <span>▾</span>
             </button>
 
             {openSort && (
-              <div className={styles.sortMenu ?? ""} style={{
-                position: "absolute",
-                top: 38,
-                right: 0,
-                background: "#fff",
-                borderRadius: 12,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
-                padding: 6,
-                zIndex: 20,
-                minWidth: 140
-              }}>
+              <div className={styles.sortMenu} onClick={(e) => e.stopPropagation()}>
                 <button
                   type="button"
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: sort === "alphabetical" ? "rgba(96,136,248,0.12)" : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "Pretendard",
-                  }}
+                  className={`${styles.sortItem} ${
+                    sort === "alphabetical" ? styles.sortItemActive : ""
+                  }`}
                   onClick={() => {
                     setSort("alphabetical");
                     setOpenSort(false);
@@ -199,35 +197,53 @@ export default function TermsDictionaryPage() {
 
                 <button
                   type="button"
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: sort === "recent" ? "rgba(96,136,248,0.12)" : "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "Pretendard",
-                  }}
+                  className={`${styles.sortItem} ${
+                    sort === "recent" ? styles.sortItemActive : ""
+                  }`}
                   onClick={() => {
                     setSort("recent");
                     setOpenSort(false);
                   }}
                 >
-                  최근 저장 순
+                  최신 순
                 </button>
               </div>
             )}
           </div>
         </header>
 
-        {allTerms.length === 0 ? (
-          <p className={styles.empty}>용어가 없어요. (학습에서 용어 카드를 열어보면 자동 저장돼요)</p>
+        {/* 탭 */}
+        <div className={styles.tabs}>
+          <button
+            type="button"
+            className={`${styles.tabBtn} ${tab === "all" ? styles.tabActive : ""}`}
+            onClick={() => setTab("all")}
+          >
+            전체 {allCount}
+          </button>
+          <button
+            type="button"
+            className={`${styles.tabBtn} ${tab === "favorite" ? styles.tabActive : ""}`}
+            onClick={() => setTab("favorite")}
+          >
+            즐겨찾기 {favCount}
+          </button>
+        </div>
+
+        {/* 리스트 */}
+        {filtered.length === 0 ? (
+          <p className={styles.empty}>
+            {tab === "favorite"
+              ? "즐겨찾기한 용어가 없어요."
+              : "용어가 없어요. 학습에서 용어 카드를 열면 자동으로 저장돼요."}
+          </p>
         ) : (
           <div className={styles.groups}>
             {groups.map((g) => (
-              <section key={g.title} className={styles.group}>
-                <div className={styles.groupTitle}>{g.title}</div>
+              <section key={g.title || "recent"}>
+                {sort === "alphabetical" && g.title && (
+                  <div className={styles.groupTitle}>{g.title}</div>
+                )}
 
                 <div className={styles.termGrid}>
                   {g.items.map((t) => (
@@ -235,6 +251,7 @@ export default function TermsDictionaryPage() {
                       key={t.termId}
                       className={styles.termChip}
                       onClick={() => openDetail(t.termId)}
+                      title={t.term}
                     >
                       {t.term}
                     </button>
@@ -250,37 +267,40 @@ export default function TermsDictionaryPage() {
 
       <BottomNav activeTab="mypage" />
 
-      {/* ✅ 상세 팝업: 이제 API 호출 없이 localStorage 데이터로 바로 보여줌 */}
-      {open && (
-        <div className={styles.overlay} onClick={() => setOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <button className={styles.starBtn} type="button" aria-label="즐겨찾기">
-              <img src="/icons/STAR.svg" alt="" />
+      {/* ✅ 팝업: StepN002 팝업이랑 완전 동일 */}
+      {open && selected && (
+        <div className={modal.modalOverlay} onClick={() => setOpen(false)}>
+          <div className={modal.modal} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className={modal.modalStarBtn}
+              onClick={() => onToggleFavorite(selected.termId)}
+              aria-label="즐겨찾기"
+            >
+              <img
+                className={modal.modalStarIcon}
+                src={
+                  selected.isFavorite
+                    ? "/icons/Frame 1686564291 (1).svg"
+                    : "/icons/Frame 1686564291.svg"
+                }
+                alt=""
+              />
             </button>
 
-            {!selected ? (
-              <p className={styles.empty}>상세를 불러오지 못했어요.</p>
-            ) : (
-              <>
-                <h2 className={styles.termTitle}>{selected.term}</h2>
-                <p className={styles.termDesc}>{selected.definition}</p>
+            <h2 className={modal.modalTitle}>{selected.term}</h2>
+            <p className={modal.modalDefinition}>{selected.definition}</p>
 
-                <div className={styles.block}>
-                  <div className={styles.blockLabel}>예시 문장</div>
-                  <div className={styles.blockText}>{selected.exampleSentence}</div>
-                </div>
+            <div className={modal.modalBlock}>
+              <div className={modal.modalBlockTitle}>예시 문장</div>
+              <div className={modal.modalBlockBody}>{selected.exampleSentence}</div>
+            </div>
 
-                <div className={styles.block}>
-                  <div className={styles.blockLabel}>추가 설명</div>
-                  <div className={styles.blockText}>{selected.additionalExplanation}</div>
-                </div>
-              </>
-            )}
+            <div className={modal.modalBlock}>
+              <div className={modal.modalBlockTitle}>추가 설명</div>
+              <div className={modal.modalBlockBody}>{selected.additionalExplanation}</div>
+            </div>
           </div>
-
-          <button className={styles.closeBtn} onClick={() => setOpen(false)} aria-label="닫기">
-            ×
-          </button>
         </div>
       )}
     </div>
