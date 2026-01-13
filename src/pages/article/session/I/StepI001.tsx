@@ -64,7 +64,7 @@ export default function StepI001() {
 
   const goPrev = () => nav(-1);
 
-  // ✅ ARTICLE_READING도 한 번 answer 저장 호출이 있어야 I 레벨 진행률 집계됨
+  // ✅ I단계 진행률 0% 고정 방지: step1도 answer 저장
   const goNext = async () => {
     const cid = Number(state.courseId ?? state.articleId);
     const sid = Number(state.sessionId);
@@ -93,6 +93,7 @@ export default function StepI001() {
   const handleQuit = async () => {
     const cid = Number(state.courseId ?? state.articleId);
     const sid = Number(state.sessionId);
+
     if (cid && sid) {
       try {
         await quitSession({ courseId: cid, sessionId: sid });
@@ -100,7 +101,8 @@ export default function StepI001() {
         console.error("[StepI001] quit failed:", e);
       }
     }
-    nav("/learn", { replace: true });
+
+    nav("/learn");
   };
 
   return (

@@ -66,7 +66,7 @@ export default function StepE001() {
 
   const goPrev = () => nav(-1);
 
-  // ✅ ARTICLE_READING도 answer 저장 호출 → E 레벨 진행률 집계
+  // ✅ E단계 진행률 0% 고정 방지: step1도 answer 저장
   const goNext = async () => {
     const cid = Number(state.courseId ?? state.articleId);
     const sid = Number(state.sessionId);
@@ -86,7 +86,7 @@ export default function StepE001() {
       }
     }
 
-    nav("/nie/session/E/step/2", {
+    nav("/nie/session/E/step/002", {
       state: { ...state, level: "E", articleUrl: sourceUrl || state.articleUrl },
       replace: true,
     });
@@ -104,7 +104,7 @@ export default function StepE001() {
       }
     }
 
-    nav("/learn", { replace: true });
+    nav("/learn");
   };
 
   return (
@@ -112,18 +112,10 @@ export default function StepE001() {
       <div className={styles.container}>
         <h1 className={styles.heading}>기사 원문 읽기</h1>
 
-        <button
-          type="button"
-          className={styles.articleCard}
-          onClick={handleOpenArticle}
-        >
+        <button type="button" className={styles.articleCard} onClick={handleOpenArticle}>
           <div className={styles.thumbnailWrapper}>
             {thumbnailUrl ? (
-              <img
-                src={thumbnailUrl}
-                alt="기사 썸네일"
-                className={styles.thumbnail}
-              />
+              <img src={thumbnailUrl} alt="기사 썸네일" className={styles.thumbnail} />
             ) : (
               <div className={styles.thumbnailPlaceholder} />
             )}
@@ -138,11 +130,7 @@ export default function StepE001() {
         </button>
 
         <div className={styles.primaryButtonWrapper}>
-          <button
-            type="button"
-            className={styles.primaryButton}
-            onClick={handleOpenArticle}
-          >
+          <button type="button" className={styles.primaryButton} onClick={handleOpenArticle}>
             원문으로 이동하기
           </button>
         </div>
