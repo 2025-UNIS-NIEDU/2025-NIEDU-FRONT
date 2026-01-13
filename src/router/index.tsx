@@ -1,7 +1,6 @@
 // src/router/index.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
 
-// ✅ 새 Intro 1~7
 import Intro1 from "@/pages/onboarding/intro/Intro1";
 import Intro2 from "@/pages/onboarding/intro/Intro2";
 import Intro3 from "@/pages/onboarding/intro/Intro3";
@@ -10,11 +9,9 @@ import Intro5 from "@/pages/onboarding/intro/Intro5";
 import Intro6 from "@/pages/onboarding/intro/Intro6";
 import Intro7 from "@/pages/onboarding/intro/Intro7";
 
-// 기존 온보딩 다음 단계
 import OnboardingTopic from "@/pages/onboarding/OnboardingTopic";
 import OnboardingAlarm from "@/pages/onboarding/OnboardingAlarm";
 
-// 이하 기존 라우트들 그대로
 import Home from "@/pages/Home/Home";
 import RecentCourses from "@/pages/Home/RecentCourses";
 import SavedCourses from "@/pages/Home/SavedCourses";
@@ -35,10 +32,16 @@ import LearningLogPage from "@/pages/MyPage/LearningLog/LearningLogPage";
 import ReviewNotesPage from "@/pages/MyPage/ReviewNotes/ReviewNotesPage";
 import TermsDictionaryPage from "@/pages/MyPage/TermsDictionary/TermsDictionaryPage";
 
+import SettingsPage from "@/pages/MyPage/Settings/SettingsPage";
+import EditProfilePage from "@/pages/MyPage/Settings/EditProfilePage";
+import PushAlarmPage from "@/pages/MyPage/Settings/PushAlarmPage";
+import PreferredTopicsPage from "@/pages/MyPage/Settings/PreferredTopicsPage";
+import TermsPage from "@/pages/MyPage/Settings/TermsPage";
+import PrivacyPage from "@/pages/MyPage/Settings/PrivacyPage";
+
 export default function AppRouter() {
   return (
     <Routes>
-      {/* ✅ 새 온보딩 인트로 */}
       <Route path="/" element={<Intro1 />} />
       <Route path="/onboarding/intro/1" element={<Intro1 />} />
       <Route path="/onboarding/intro/2" element={<Intro2 />} />
@@ -48,16 +51,13 @@ export default function AppRouter() {
       <Route path="/onboarding/intro/6" element={<Intro6 />} />
       <Route path="/onboarding/intro/7" element={<Intro7 />} />
 
-      {/* ✅ 기존 경로 유지용 리다이렉트 */}
       <Route path="/onboarding/2" element={<Navigate to="/onboarding/intro/2" replace />} />
       <Route path="/onboarding/3" element={<Navigate to="/onboarding/intro/3" replace />} />
       <Route path="/onboarding/4" element={<Navigate to="/onboarding/intro/4" replace />} />
 
-      {/* 다음 온보딩 단계 */}
       <Route path="/onboarding/topic" element={<OnboardingTopic />} />
       <Route path="/onboarding/alarm" element={<OnboardingAlarm />} />
 
-      {/* 앱 라우트 */}
       <Route path="/home" element={<Home />} />
       <Route path="/recent-courses" element={<RecentCourses />} />
       <Route path="/saved-courses" element={<SavedCourses />} />
@@ -77,11 +77,16 @@ export default function AppRouter() {
       <Route path="/article/:articleId" element={<ArticleDetail />} />
 
       <Route path="/mypage" element={<MyPage />} />
+      <Route path="/mypage/settings" element={<SettingsPage />} />
+      <Route path="/mypage/settings/edit" element={<EditProfilePage />} />
+      <Route path="/mypage/settings/push" element={<PushAlarmPage />} />
+      <Route path="/mypage/settings/topics" element={<PreferredTopicsPage />} />
+      <Route path="/mypage/settings/terms" element={<TermsPage />} />
+      <Route path="/mypage/settings/privacy" element={<PrivacyPage />} />
       <Route path="/mypage/log" element={<LearningLogPage />} />
       <Route path="/mypage/review-notes" element={<ReviewNotesPage />} />
       <Route path="/mypage/terms" element={<TermsDictionaryPage />} />
 
-      {/* 없는 경로는 홈(or /)로 보내기 */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

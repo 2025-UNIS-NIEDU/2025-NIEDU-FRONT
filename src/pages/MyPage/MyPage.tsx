@@ -202,8 +202,8 @@ export default function MyPage() {
             const subTopic = sessions.find((s: any) => typeof s?.subTopic === "string")?.subTopic;
 
             next[d.date] = { keywords, topic, subTopic };
-          } catch (e) {
-            // 로그 없는 날짜거나 토큰 문제일 수 있음 -> 무시
+          } catch {
+            // ignore
           }
         })
       );
@@ -268,7 +268,11 @@ export default function MyPage() {
         {/* 상단 */}
         <div className={styles.topBar}>
           <h1 className={styles.title}>마이페이지</h1>
-          <button type="button" className={styles.settingsButton}>
+          <button
+            type="button"
+            className={styles.settingsButton}
+            onClick={() => nav("/mypage/settings")}
+          >
             <img src="/icons/icon-settings.svg" alt="" className={styles.settingsIcon} />
             <span>설정</span>
           </button>
@@ -283,7 +287,6 @@ export default function MyPage() {
             {serverProfileUrl && (
               <img src={serverProfileUrl} alt="프로필" className={styles.profilePhoto} />
             )}
-            {/* ✅ + 버튼 제거 유지 */}
           </div>
 
           <div>
@@ -350,26 +353,21 @@ export default function MyPage() {
 
                 const coursesRaw = dayToCourses.get(day) ?? [];
 
-                // ✅ progressRate가 있는 경우만 0% 제외 (없으면 그냥 표시)
                 const courses = coursesRaw.filter((c) => {
                   if (typeof c.progressRate === "number") return c.progressRate > 0;
                   return true;
                 });
 
                 const logKeywords = logTagMap[iso]?.keywords ?? [];
-
-                // ✅ 태그 없으면 카테고리(topic/subTopic)만
                 const flatKeywords = courses
                   .flatMap((c) => (Array.isArray(c.keywords) ? c.keywords : []))
                   .filter((x): x is string => typeof x === "string" && x.length > 0);
 
-                // ✅ 1순위: learning-log 키워드, 2순위: calendar keywords
                 const mergedKeywords = logKeywords.length > 0 ? logKeywords : flatKeywords;
                 const uniqueKeywords = Array.from(new Set(mergedKeywords)).slice(0, 2);
 
                 const topicPairs = courses.filter((c) => c?.topic || c?.subTopic).slice(0, 1);
 
-                // ✅ learning-log가 있으면 courses가 비어도 클릭 가능
                 const hasLog =
                   (logTagMap[iso]?.keywords?.length ?? 0) > 0 ||
                   !!logTagMap[iso]?.topic ||

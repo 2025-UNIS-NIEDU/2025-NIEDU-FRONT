@@ -1,0 +1,74 @@
+/* src/pages/MyPage/Settings/PolicyPage.module.css */
+.viewport {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  background: #f6f7fb;
+  font-family: Pretendard, sans-serif;
+}
+
+.container {
+  position: relative;
+  width: 402px;
+  max-width: 100vw;
+  height: 100vh;
+  background: #f6f7fb;
+  padding: 16px 16px 90px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #f6f7fb;
+  padding: 8px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backBtn {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.backBtn img {
+  width: 20px;
+  height: 20px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f0f0f;
+}
+
+.card {
+  margin-top: 10px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 14px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #0f0f0f;
+}

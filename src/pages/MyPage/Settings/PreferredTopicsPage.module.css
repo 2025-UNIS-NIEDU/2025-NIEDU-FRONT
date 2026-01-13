@@ -1,0 +1,118 @@
+/* src/pages/MyPage/Settings/PreferredTopicsPage.module.css */
+.viewport {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  background: #f6f7fb;
+  font-family: Pretendard, sans-serif;
+}
+
+.container {
+  position: relative;
+  width: 402px;
+  max-width: 100vw;
+  height: 100vh;
+  background: #f6f7fb;
+  overflow: hidden;
+}
+
+.dimBg {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 64px;
+  background: #ffffff;
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  padding: 12px 18px 18px;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.grabber {
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+  margin: 0 auto 10px;
+}
+
+.sheetTitle {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f0f0f;
+  margin-bottom: 16px;
+}
+
+.chips {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.chip {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b6f76;
+  cursor: pointer;
+}
+
+.chipOn {
+  border-color: rgba(111, 140, 255, 0.8);
+  background: rgba(111, 140, 255, 0.12);
+  color: #2f55ff;
+}
+
+.saveBtn {
+  margin-top: 18px;
+  width: 100%;
+  height: 54px;
+  border-radius: 999px;
+  border: 0;
+  background: #6f8cff;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.savedToast {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 150px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 40;
+}
+
+.backTap {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  z-index: 5;
+}
+
+.sheet * {
+  pointer-events: auto;
+}
