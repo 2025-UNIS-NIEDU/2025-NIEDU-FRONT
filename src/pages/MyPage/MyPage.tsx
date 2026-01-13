@@ -1,6 +1,5 @@
 // src/pages/MyPage/MyPage.tsx
 import { useEffect, useMemo, useState } from "react";
-import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
@@ -18,19 +17,27 @@ type DateNavigatorData = {
 };
 
 type CalendarCourse = {
-  topic?: string; // 한글
-  subTopic?: string; // 한글
+  // ✅ 서버가 아직 topic/subTopic을 주는 경우도 있어서 유지
+  topic?: string;
+  subTopic?: string;
+
+  // ✅ 우리가 원하는 키워드 태그 (ArticleDetail에서 보던 #키워드들)
+  keywords?: string[];
+
+  // ✅ 진행률(0%면 표시/로그 포함 제외)
+  progressRate?: number; // 0~100
+
   extra?: number; // { extra: 2 }
 };
 
 type CalendarDay = {
-  date: string; // LocalDateTime (문서상)
+  date: string;
   courses: CalendarCourse[];
 };
 
 type CalendarData = {
   year: number;
-  month: number; // 1~12
+  month: number;
   days: CalendarDay[];
 };
 
@@ -41,6 +48,9 @@ type MeData = {
 
 type StreakData = {
   streak?: number;
+  streakDays?: number;
+  attendanceStreak?: number;
+  todayAttended?: boolean;
 };
 
 const toISODate = (y: number, m0: number, d: number) => {
@@ -52,40 +62,32 @@ const toISODate = (y: number, m0: number, d: number) => {
 export default function MyPage() {
   const nav = useNavigate();
 
-  // ---------- today ----------
   const today = useMemo(() => new Date(), []);
   const todayYear = today.getFullYear();
-  const todayMonth0 = today.getMonth(); // 0~11
+  const todayMonth0 = today.getMonth();
   const todayDate = today.getDate();
 
-  // ---------- profile (local upload preview) ----------
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-
-  // ---------- user ----------
+  // user
   const [nickname, setNickname] = useState("사용자 님");
   const [streak, setStreak] = useState<number | null>(null);
   const [serverProfileUrl, setServerProfileUrl] = useState<string | null>(null);
 
-  // ---------- calendar state ----------
+  // calendar state
   const [year, setYear] = useState(todayYear);
   const [month0, setMonth0] = useState(todayMonth0);
 
-  // ---------- API states ----------
+  // API states
   const [navData, setNavData] = useState<DateNavigatorData | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
 
   const [loadingNav, setLoadingNav] = useState(true);
   const [loadingCal, setLoadingCal] = useState(true);
-
-  // 사용자/출석은 캘린더와 별도 로딩으로 관리
   const [loadingUser, setLoadingUser] = useState(true);
-
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // helpers
-  const monthForApi = month0 + 1; // 1~12
+  const monthForApi = month0 + 1;
 
-  // ✅ (0) 유저 프로필 + 출석 streak
+  // ✅ 유저 프로필 + 출석 streak (필드명 여러 케이스 대응)
   useEffect(() => {
     const run = async () => {
       setLoadingUser(true);
@@ -101,7 +103,12 @@ export default function MyPage() {
         if (me?.nickname) setNickname(`${me.nickname} 님`);
         if (me?.profileImageUrl) setServerProfileUrl(me.profileImageUrl);
 
-        if (typeof st?.streak === "number") setStreak(st.streak);
+        const s =
+          (typeof st?.streak === "number" && st.streak) ||
+          (typeof st?.streakDays === "number" && st.streakDays) ||
+          (typeof st?.attendanceStreak === "number" && st.attendanceStreak);
+
+        if (typeof s === "number") setStreak(s);
       } catch (e) {
         console.error("[MyPage] user/streak error:", e);
       } finally {
@@ -112,7 +119,7 @@ export default function MyPage() {
     void run();
   }, []);
 
-  // ✅ (1) 날짜 내비게이터: 최초 진입 시 현재 년/월 세팅
+  // 날짜 네비게이터
   useEffect(() => {
     const run = async () => {
       setLoadingNav(true);
@@ -137,7 +144,7 @@ export default function MyPage() {
     void run();
   }, []);
 
-  // ✅ (2) 캘린더: year/month 바뀔 때마다 호출
+  // 캘린더
   useEffect(() => {
     const run = async () => {
       setLoadingCal(true);
@@ -159,7 +166,7 @@ export default function MyPage() {
     void run();
   }, [year, monthForApi]);
 
-  // ---------- local calendar grid ----------
+  // local calendar grid
   const firstDay = new Date(year, month0, 1).getDay();
   const lastDate = new Date(year, month0 + 1, 0).getDate();
 
@@ -167,26 +174,24 @@ export default function MyPage() {
   for (let i = 0; i < firstDay; i++) daysArray.push(null);
   for (let d = 1; d <= lastDate; d++) daysArray.push(d);
 
-  // ---------- calendar day -> courses map ----------
+  // day -> courses map
   const dayToCourses = useMemo(() => {
     const map = new Map<number, CalendarCourse[]>();
     const days = calendarData?.days ?? [];
 
     for (const item of days) {
       const dt = new Date(item.date);
-
       const dayNum = Number.isNaN(dt.getTime())
         ? Number(String(item.date).slice(8, 10))
         : dt.getDate();
 
-      if (!Number.isNaN(dayNum)) {
-        map.set(dayNum, Array.isArray(item.courses) ? item.courses : []);
-      }
+      const courses = Array.isArray(item.courses) ? item.courses : [];
+      if (!Number.isNaN(dayNum)) map.set(dayNum, courses);
     }
     return map;
   }, [calendarData]);
 
-  // ---------- month navigation ----------
+  // month nav
   const handlePrevMonth = () => {
     setMonth0((prev) => {
       if (prev === 0) {
@@ -207,21 +212,7 @@ export default function MyPage() {
     });
   };
 
-  // ---------- profile upload ----------
-  const handleProfileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") setProfileImage(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ---------- UI helpers ----------
   const isThisMonthToday = month0 === todayMonth0 && year === todayYear;
-  const shownProfileImg = profileImage ?? serverProfileUrl;
 
   return (
     <div className={styles.viewport}>
@@ -240,19 +231,16 @@ export default function MyPage() {
         {/* 프로필 영역 */}
         <div className={styles.profileBox}>
           <div className={styles.profileImageWrapper}>
-            <img src="/icons/Ellipse 25.svg" alt="프로필 프레임" className={styles.profileFrame} />
+            <img
+              src="/icons/Ellipse 25.svg"
+              alt="프로필 프레임"
+              className={styles.profileFrame}
+            />
+            {serverProfileUrl && (
+              <img src={serverProfileUrl} alt="프로필" className={styles.profilePhoto} />
+            )}
 
-            {shownProfileImg && <img src={shownProfileImg} alt="프로필" className={styles.profilePhoto} />}
-
-            <label className={styles.profileUploadButton}>
-              +
-              <input
-                type="file"
-                accept="image/*"
-                className={styles.profileUploadInput}
-                onChange={handleProfileChange}
-              />
-            </label>
+            {/* ✅ 요청: 프로필 옆 + 제거 (업로드 UI 제거) */}
           </div>
 
           <div>
@@ -269,15 +257,13 @@ export default function MyPage() {
           role="button"
           tabIndex={0}
           onClick={() => nav("/mypage/terms")}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") nav("/mypage/terms");
-          }}
+          onKeyDown={(e) => e.key === "Enter" && nav("/mypage/terms")}
         >
           <img src="/icons/majesticons_book.svg" alt="" className={styles.sectionIcon} />
           <span>용어 사전</span>
         </div>
 
-        {/* 복습 노트 (아이콘 img 자리 포함) */}
+        {/* 복습 노트 */}
         <div
           className={styles.sectionTitle}
           role="button"
@@ -325,15 +311,28 @@ export default function MyPage() {
                 if (day === null) return <div key={idx} className={styles.emptyCell} />;
 
                 const isToday = isThisMonthToday && day === todayDate;
+                const iso = toISODate(year, month0, day);
 
-                const courses = dayToCourses.get(day) ?? [];
+                const coursesRaw = dayToCourses.get(day) ?? [];
+
+                // ✅ 요청: 진행률 0%는 “당일 학습 로그 태그”에서 제외
+                const courses = coursesRaw.filter((c) => {
+                  if (typeof c.progressRate === "number") return c.progressRate > 0;
+                  return true; // progressRate가 없으면 일단 표시(서버가 아직 안 주는 경우)
+                });
+
                 const hasData = courses.length > 0;
 
-                const topicPairs = courses.filter((c) => c?.topic || c?.subTopic).slice(0, 2);
-                const extraObj = courses.find((c) => typeof c?.extra === "number");
-                const extraCount = typeof extraObj?.extra === "number" ? extraObj.extra : 0;
+                // ✅ “키워드 태그” 우선 (없으면 topic/subTopic fallback)
+                const flatKeywords = courses
+                  .flatMap((c) => (Array.isArray(c.keywords) ? c.keywords : []))
+                  .filter(Boolean);
 
-                const iso = toISODate(year, month0, day);
+                const uniqueKeywords = Array.from(new Set(flatKeywords)).slice(0, 2);
+                const extraCount = Math.max(0, flatKeywords.length - uniqueKeywords.length);
+
+                // fallback tag (기존 topic/subTopic)
+                const topicPairs = courses.filter((c) => c?.topic || c?.subTopic).slice(0, 1);
 
                 return (
                   <div
@@ -341,27 +340,44 @@ export default function MyPage() {
                     className={styles.dayCell}
                     onClick={() => {
                       if (!hasData) return;
-                      // ✅ 캘린더 클릭 → 학습 로그로
                       nav(`/mypage/log?date=${encodeURIComponent(iso)}`);
                     }}
                     style={{ cursor: hasData ? "pointer" : "default" }}
                     aria-disabled={!hasData}
                   >
-                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{day}</div>
+                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>
+                      {day}
+                    </div>
 
-                    {(topicPairs.length > 0 || extraCount > 0) && (
+                    {(uniqueKeywords.length > 0 ||
+                      extraCount > 0 ||
+                      topicPairs.length > 0) && (
                       <div className={styles.tag}>
                         <div className={styles.tagLine}>
-                          {topicPairs.map((c, i) => (
-                            <span key={i} className={styles.tagChunk}>
-                              {c.topic ? <span className={styles.tagStrong}>{c.topic}</span> : null}
-                              {c.subTopic ? <span className={styles.tagWeak}>#{c.subTopic}</span> : null}
-                              {i !== topicPairs.length - 1 ? <span className={styles.tagSlash}> / </span> : null}
-                            </span>
-                          ))}
+                          {uniqueKeywords.length > 0 ? (
+                            uniqueKeywords.map((k, i) => (
+                              <span key={`${k}-${i}`} className={styles.tagChunk}>
+                                <span className={styles.tagWeak}>#{k}</span>
+                                {i !== uniqueKeywords.length - 1 ? (
+                                  <span className={styles.tagSlash}> </span>
+                                ) : null}
+                              </span>
+                            ))
+                          ) : (
+                            topicPairs.map((c, i) => (
+                              <span key={i} className={styles.tagChunk}>
+                                {c.topic ? <span className={styles.tagStrong}>{c.topic}</span> : null}
+                                {c.subTopic ? <span className={styles.tagWeak}>#{c.subTopic}</span> : null}
+                              </span>
+                            ))
+                          )}
                         </div>
 
-                        {extraCount > 0 && <div className={styles.tagExtra}>+{extraCount}</div>}
+                        {(extraCount > 0 || (courses.find((c) => typeof c.extra === "number")?.extra ?? 0) > 0) && (
+                          <div className={styles.tagExtra}>
+                            +{extraCount || (courses.find((c) => typeof c.extra === "number")?.extra ?? 0)}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

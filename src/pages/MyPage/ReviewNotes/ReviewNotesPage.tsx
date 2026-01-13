@@ -8,7 +8,7 @@ import type { ApiResponse } from "@/types/api";
 import styles from "./ReviewNotesPage.module.css";
 
 type ReviewNoteItem = {
-  quizType: string; // "OX_QUIZ" | "MULTIPLE_CHOICE" ...
+  quizType: string;
   content: any;
   isCorrect?: boolean;
 };
@@ -26,6 +26,26 @@ function toKoreanLevel(code?: string) {
   if (code === "I") return "I단계";
   if (code === "E") return "E단계";
   return "";
+}
+
+function normalizeQuizType(t: any) {
+  return String(t ?? "").toUpperCase();
+}
+
+function parseIsCorrect(x: any): boolean | undefined {
+  const v =
+    x?.isCorrect ??
+    x?.correct ??
+    x?.isAnswerCorrect ??
+    x?.result ??
+    x?.isRight;
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") {
+    const u = v.toLowerCase();
+    if (u === "true") return true;
+    if (u === "false") return false;
+  }
+  return undefined;
 }
 
 function isMCType(t: string) {
@@ -50,7 +70,6 @@ export default function ReviewNotesPage() {
   const [loading, setLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
 
-  // ✅ OX만이 아니라 MC도 가능하게 string으로 확장
   const [picked, setPicked] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
@@ -67,22 +86,23 @@ export default function ReviewNotesPage() {
         const d = res.data?.data ?? null;
 
         const notesRaw =
-          Array.isArray(d?.reviewNotes) ? d.reviewNotes : Array.isArray(d?.quizzes) ? d.quizzes : [];
+          Array.isArray(d?.reviewNotes) ? d.reviewNotes :
+          Array.isArray(d?.quizzes) ? d.quizzes :
+          Array.isArray(d?.wrongNotes) ? d.wrongNotes : [];
 
         const notes: ReviewNoteItem[] = Array.isArray(notesRaw)
           ? notesRaw
               .map((x: any) => ({
-                quizType: String(x?.quizType ?? x?.type ?? ""),
+                quizType: normalizeQuizType(x?.quizType ?? x?.type ?? x?.questionType),
                 content: x?.content ?? x?.payload ?? x,
-                isCorrect: typeof x?.isCorrect === "boolean" ? x.isCorrect : undefined,
+                isCorrect: parseIsCorrect(x),
               }))
               .filter((x) => x.quizType)
           : [];
 
-        // ✅ isCorrect가 있으면 “틀린 것만” 보여줌(복습노트니까)
-        const wrongOnly = notes.some((n) => typeof n.isCorrect === "boolean")
-          ? notes.filter((n) => n.isCorrect === false)
-          : notes;
+        // ✅ isCorrect가 하나라도 있으면 “틀린 것만”
+        const hasBool = notes.some((n) => typeof n.isCorrect === "boolean");
+        const wrongOnly = hasBool ? notes.filter((n) => n.isCorrect === false) : notes;
 
         setData({
           topic: d?.topic ?? d?.mainTopic ?? "",
@@ -91,6 +111,7 @@ export default function ReviewNotesPage() {
           title: d?.title ?? d?.articleTitle ?? "",
           reviewNotes: wrongOnly,
         });
+
         setActiveIdx(0);
         setPicked({});
       } catch (e) {
@@ -191,7 +212,7 @@ function QuizCard({
   picked: string | null;
   onPick: (v: string) => void;
 }) {
-  // ✅ OX
+  // OX
   if (item.quizType === "OX_QUIZ") {
     const q = String(item.content?.question ?? item.content?.q ?? "");
     const correct = String(item.content?.correctAnswer ?? item.content?.answer ?? "O");
@@ -225,16 +246,12 @@ function QuizCard({
           </button>
         </div>
 
-        {picked && (
-          <div className={styles.answerLine}>
-            {explain ? explain : `정답: ${correct}`}
-          </div>
-        )}
+        {picked && <div className={styles.answerLine}>{explain ? explain : `정답: ${correct}`}</div>}
       </div>
     );
   }
 
-  // ✅ MULTIPLE_CHOICE (N005)
+  // Multiple Choice
   if (isMCType(item.quizType)) {
     const q = String(item.content?.question ?? "");
     const correct = String(item.content?.correctAnswer ?? item.content?.answer ?? "");
@@ -243,7 +260,7 @@ function QuizCard({
     const rawOptions = item.content?.options ?? item.content?.choices ?? [];
     const options: { label: string; text: string }[] = Array.isArray(rawOptions)
       ? rawOptions.map((o: any, idx: number) => ({
-          label: String(o?.label ?? String.fromCharCode(65 + idx)), // A,B,C,D...
+          label: String(o?.label ?? String.fromCharCode(65 + idx)),
           text: String(o?.text ?? o?.value ?? o ?? ""),
         }))
       : [];
@@ -255,7 +272,7 @@ function QuizCard({
         <div className={styles.mcList}>
           {options.map((o) => {
             const isSel = picked === o.label;
-            const show = !!picked; // 하나라도 고르면 정답 표시
+            const show = !!picked;
             const isCorrect = show && o.label === correct;
             const isWrong = show && isSel && o.label !== correct;
 
@@ -263,9 +280,9 @@ function QuizCard({
               <button
                 key={o.label}
                 type="button"
-                className={`${styles.mcOption} ${
-                  isCorrect ? styles.mcCorrect : isWrong ? styles.mcWrong : isSel ? styles.mcActive : ""
-                }`}
+                className={`${styles.mcOption} ${isSel ? styles.mcPicked : ""} ${
+                  isCorrect ? styles.mcCorrect : ""
+                } ${isWrong ? styles.mcWrong : ""}`}
                 onClick={() => onPick(o.label)}
               >
                 <span className={styles.mcLabel}>{o.label}</span>
@@ -275,18 +292,10 @@ function QuizCard({
           })}
         </div>
 
-        {picked && (
-          <div className={styles.answerLine}>
-            {explain ? explain : `정답: ${correct}`}
-          </div>
-        )}
+        {picked && <div className={styles.answerLine}>{explain ? explain : `정답: ${correct}`}</div>}
       </div>
     );
   }
 
-  return (
-    <div className={styles.quizWrap}>
-      <div className={styles.question}>지원되지 않는 퀴즈 타입: {item.quizType}</div>
-    </div>
-  );
+  return <div className={styles.empty}>지원하지 않는 문제 형식이에요.</div>;
 }

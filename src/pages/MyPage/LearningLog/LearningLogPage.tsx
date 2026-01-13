@@ -9,13 +9,22 @@ import styles from "./LearningLogPage.module.css";
 
 type LogSession = {
   sessionId?: number;
-  topic?: string;
-  subTopic?: string;
-  level?: "N" | "I" | "E";
+  courseId?: number;
+
+  category?: string; // 정치/경제/사회… (서버가 주면 사용)
+  keywords?: string[]; // ✅ 아티클 디테일처럼 #키워드
+
   title?: string;
+  level?: "N" | "I" | "E";
+
   source?: string;
   publishedAt?: string;
-  accuracy?: number; // 0~100
+
+  // ✅ 진행률 (정답률 말고)
+  progressRate?: number; // 0~100
+
+  // fallback (서버가 accuracy만 주는 경우)
+  accuracy?: number;
 };
 
 type LearningLogData = {
@@ -61,55 +70,53 @@ export default function LearningLogPage() {
     const run = async () => {
       setLoading(true);
       try {
-        // 1) 학습 로그 전용 엔드포인트 시도
         const res = await api.get<ApiResponse<any>>(
           `/api/my/learning-log?date=${encodeURIComponent(date)}`
         );
         const d = res.data?.data ?? null;
 
-        const sessions: LogSession[] = Array.isArray(d?.sessions)
-          ? d.sessions
-          : Array.isArray(d?.learningSessions)
-            ? d.learningSessions
-            : [];
+        const sessionsRaw =
+          Array.isArray(d?.sessions) ? d.sessions :
+          Array.isArray(d?.learningSessions) ? d.learningSessions :
+          Array.isArray(d?.logs) ? d.logs : [];
+
+        const sessions: LogSession[] = Array.isArray(sessionsRaw)
+          ? sessionsRaw.map((s: any) => ({
+              sessionId: s?.sessionId,
+              courseId: s?.courseId ?? s?.articleId ?? s?.eduCourseId,
+
+              category: s?.category ?? s?.topic ?? s?.mainTopic,
+              keywords: Array.isArray(s?.keywords) ? s.keywords : Array.isArray(s?.tags) ? s.tags : [],
+
+              title: s?.title ?? s?.articleTitle ?? "",
+              level: s?.level ?? s?.stage ?? "",
+
+              source: s?.source ?? s?.publisher,
+              publishedAt: s?.publishedAt,
+
+              progressRate:
+                typeof s?.progressRate === "number" ? s.progressRate :
+                typeof s?.progress === "number" ? s.progress :
+                undefined,
+
+              accuracy: typeof s?.accuracy === "number" ? s.accuracy : undefined,
+            }))
+          : [];
+
+        // ✅ 요청: 진행률 0%는 “당일 학습 로그”에서 제외
+        const filtered = sessions.filter((s) => {
+          if (typeof s.progressRate === "number") return s.progressRate > 0;
+          return true;
+        });
 
         setData({
           totalStudySeconds: Number(d?.totalStudySeconds ?? d?.totalStudyTimeSeconds ?? 0) || 0,
           streakDays: Number(d?.streakDays ?? d?.attendanceStreak ?? 0) || 0,
-          sessions,
+          sessions: filtered,
         });
-      } catch (e1) {
-        // 2) 없으면 review-notes 쪽 응답으로 최대한 fallback
-        try {
-          const res2 = await api.get<ApiResponse<any>>(
-            `/api/my/review-notes?date=${encodeURIComponent(date)}`
-          );
-          const d2 = res2.data?.data ?? null;
-          const sessions: LogSession[] = Array.isArray(d2?.sessions)
-            ? d2.sessions
-            : d2
-              ? [
-                  {
-                    sessionId: d2?.sessionId,
-                    topic: d2?.topic ?? d2?.mainTopic,
-                    subTopic: d2?.subTopic,
-                    level: d2?.level ?? d2?.stage,
-                    title: d2?.title ?? d2?.articleTitle,
-                    source: d2?.source,
-                    publishedAt: d2?.publishedAt,
-                    accuracy: d2?.accuracy ?? d2?.correctRate,
-                  },
-                ]
-              : [];
-          setData({
-            totalStudySeconds: Number(d2?.totalStudySeconds ?? d2?.totalStudyTimeSeconds ?? 0) || 0,
-            streakDays: Number(d2?.streakDays ?? d2?.attendanceStreak ?? 0) || 0,
-            sessions,
-          });
-        } catch (e2) {
-          console.error("[LearningLog] fetch error:", e1, e2);
-          setData(null);
-        }
+      } catch (e) {
+        console.error("[LearningLog] fetch error:", e);
+        setData(null);
       } finally {
         setLoading(false);
       }
@@ -174,15 +181,15 @@ export default function LearningLogPage() {
         <div className={styles.summaryRow}>
           <div className={styles.summaryItem}>
             <img src="/icons/icon-clock.svg" alt="" className={styles.summaryIcon} />
-            <div>
-              <div className={styles.summaryValue}>{loading ? "-" : formatDuration(data?.totalStudySeconds)}</div>
+            <div className={styles.summaryValue}>
+              {loading ? "-" : formatDuration(data?.totalStudySeconds)}
             </div>
           </div>
 
           <div className={styles.summaryItem}>
             <img src="/icons/icon-fire.svg" alt="" className={styles.summaryIcon} />
-            <div>
-              <div className={styles.summaryValue}>{loading ? "-" : `${data?.streakDays ?? 0}일`}</div>
+            <div className={styles.summaryValue}>
+              {loading ? "-" : `${data?.streakDays ?? 0}일`}
             </div>
           </div>
         </div>
@@ -198,7 +205,6 @@ export default function LearningLogPage() {
         ) : (
           <div className={styles.sessionList}>
             {data.sessions.map((s, idx) => {
-              const accuracy = typeof s.accuracy === "number" ? s.accuracy : null;
               const published = s.publishedAt
                 ? (() => {
                     const d = new Date(s.publishedAt);
@@ -207,24 +213,27 @@ export default function LearningLogPage() {
                   })()
                 : "";
 
+              const progress =
+                typeof s.progressRate === "number"
+                  ? s.progressRate
+                  : typeof s.accuracy === "number"
+                    ? s.accuracy
+                    : null;
+
               return (
-                <button
-                  key={`${s.sessionId ?? idx}`}
-                  className={styles.sessionCard}
-                  onClick={() => {
-                    setActiveIndex(idx);
-                    const qs = new URLSearchParams();
-                    qs.set("date", date);
-                    if (s.sessionId) qs.set("sessionId", String(s.sessionId));
-                    nav(`/mypage/review-notes?${qs.toString()}`);
-                  }}
-                  type="button"
-                >
+                <div key={`${s.sessionId ?? idx}`} className={styles.sessionCard}>
                   <div className={styles.sessionTopRow}>
                     <div className={styles.chips}>
-                      {s.topic && <span className={styles.chip}>{s.topic}</span>}
-                      {s.subTopic && <span className={styles.chipHash}>#{s.subTopic}</span>}
+                      {s.category && <span className={styles.chip}>{s.category}</span>}
+
+                      {/* ✅ title이 아니라 #키워드 */}
+                      {(s.keywords ?? []).slice(0, 2).map((k, i) => (
+                        <span key={`${k}-${i}`} className={styles.chipHash}>
+                          #{k}
+                        </span>
+                      ))}
                     </div>
+
                     {s.level && <span className={styles.levelChip}>{toKoreanLevel(s.level)}</span>}
                   </div>
 
@@ -237,13 +246,25 @@ export default function LearningLogPage() {
                     </div>
 
                     <div className={styles.rightArea}>
-                      <div className={styles.arrowCircle}>
+                      {/* ✅ 화살표 누르면 ArticleDetail로 */}
+                      <button
+                        type="button"
+                        className={styles.arrowCircle}
+                        onClick={() => {
+                          const id = s.courseId;
+                          if (!id) return;
+                          nav(`/article/${id}`);
+                        }}
+                        aria-label="아티클 디테일로 이동"
+                      >
                         <img src="/icons/fluent_arrow-right-24-filled.svg" alt="" />
-                      </div>
-                      {accuracy !== null && <div className={styles.accuracy}>정답률 {accuracy}%</div>}
+                      </button>
+
+                      {/* ✅ 정답률 -> 진행률 */}
+                      {progress !== null && <div className={styles.accuracy}>진행률 {progress}%</div>}
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

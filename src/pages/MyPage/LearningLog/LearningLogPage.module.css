@@ -1,247 +1,328 @@
 /* src/pages/MyPage/LearningLog/LearningLogPage.module.css */
+/* 다른 페이지(Home/Learn/MyPage)랑 동일한 viewport/container 프레임으로 통일 */
+
 .viewport {
-  width: 100%;
-  min-height: 100vh;
-  background: #f6f6f8;
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+
   display: flex;
   justify-content: center;
+  align-items: stretch;
+
+  background: #eef0f4;
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.viewport::-webkit-scrollbar {
+  display: none;
 }
 
 .container {
-  width: 100%;
-  max-width: 430px;
-  min-height: 100vh;
-  padding: 20px 18px 0;
-  box-sizing: border-box;
   position: relative;
+  width: 100%;
+  max-width: 700px;
+  min-height: 150%;
+  margin: 0 auto;
+
+  background: #f6f7fb;
+  box-sizing: border-box;
+
+  padding: 16px 20px;
+  padding-bottom: 220px;
+
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* ---------- Top Bar ---------- */
 .topBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+
+  padding: 8px 0 12px;
 }
 
 .backBtn {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border: none;
   background: transparent;
-  display: flex;
+  padding: 0;
+
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+
   cursor: pointer;
+}
+.backBtn img {
+  width: 22px;
+  height: 22px;
 }
 
 .title {
-  font-size: 16px;
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
   color: #0f0f0f;
+  letter-spacing: -0.2px;
 }
 
 .rightDummy {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
 }
 
+/* ---------- Page Nav (1~n) ---------- */
 .pageNav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 10px;
-  margin: 12px 0 16px;
+
+  margin-top: 8px;
+  margin-bottom: 18px;
 }
 
 .navArrow {
-  width: 28px;
-  height: 28px;
   border: none;
   background: transparent;
-  opacity: 0.7;
+  padding: 6px 8px;
+  font-size: 14px;
+  color: #6b7280;
   cursor: pointer;
 }
-
 .navArrow:disabled {
   opacity: 0.25;
   cursor: default;
 }
 
 .pageNums {
-  flex: 1;
   display: flex;
-  justify-content: center;
-  gap: 14px;
+  align-items: center;
+  gap: 12px;
 }
 
 .pageNum {
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
+  width: 28px;
+  height: 28px;
+
+  border-radius: 999px;
   border: none;
   background: transparent;
-  font-size: 13px;
-  color: #b6b6bf;
+
+  font-size: 14px;
+  font-weight: 600;
+  color: #9ca3af;
   cursor: pointer;
 }
 
 .pageNumActive {
-  background: #dbe6ff;
-  color: #3b66ff;
-  font-weight: 700;
+  background: rgba(79, 124, 255, 0.18);
+  color: #4f7cff;
 }
 
+/* ---------- Sections ---------- */
 .sectionLabel {
-  font-size: 13px;
-  font-weight: 600;
-  color: #9a9aa3;
-  margin: 10px 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #8b8f98;
+  margin: 14px 0 10px;
 }
 
+.dateCaption {
+  margin: 6px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9aa0aa;
+}
+
+/* ---------- Summary Row ---------- */
 .summaryRow {
   display: flex;
-  gap: 14px;
+  gap: 18px;
+  align-items: center;
+  justify-content: flex-start;
+
+  padding: 10px 0 6px;
 }
 
 .summaryItem {
-  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 14px;
-  background: #ffffff;
-  border-radius: 12px;
 }
 
 .summaryIcon {
   width: 20px;
   height: 20px;
+  opacity: 0.9;
 }
 
 .summaryValue {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: #0f0f0f;
+  letter-spacing: -0.3px;
 }
 
-.dateCaption {
-  margin: 10px 0 0;
-  font-size: 12px;
-  color: #b0b0b8;
-}
-
+/* ---------- Session List ---------- */
 .sessionList {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  margin-top: 6px;
 }
 
 .sessionCard {
   width: 100%;
-  text-align: left;
-  background: #ffffff;
   border-radius: 14px;
-  border: 1px solid #d6e2ff;
+  border: 2px solid rgba(79, 124, 255, 0.35);
+  background: #ffffff;
+
   padding: 14px 14px 12px;
-  cursor: pointer;
+  box-sizing: border-box;
 }
 
 .sessionTopRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 10px;
 }
 
 .chips {
   display: flex;
-  gap: 6px;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .chip {
-  background: #eaf0ff;
-  color: #3b66ff;
-  font-size: 11px;
-  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px 10px;
   border-radius: 999px;
-  font-weight: 600;
+
+  background: rgba(79, 124, 255, 0.12);
+  color: #4f7cff;
+
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .chipHash {
-  background: #eaf0ff;
-  color: #3b66ff;
-  font-size: 11px;
-  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px 10px;
   border-radius: 999px;
-  font-weight: 600;
+
+  background: rgba(79, 124, 255, 0.08);
+  color: #4f7cff;
+
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .levelChip {
-  background: #f1f1f3;
-  color: #8e8e97;
-  font-size: 11px;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px 10px;
   border-radius: 999px;
-  font-weight: 600;
+
+  background: rgba(17, 17, 17, 0.06);
+  color: #6b7280;
+
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .sessionTitle {
-  font-size: 14px;
-  font-weight: 700;
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: 800;
   color: #0f0f0f;
-  line-height: 1.25;
-  margin-bottom: 10px;
+  line-height: 1.4;
+
+  /* 길면 말줄임 (1~2줄 느낌) */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
+/* bottom row */
 .sessionBottomRow {
+  margin-top: 10px;
+
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
 }
 
 .sourceRow {
   display: flex;
-  gap: 8px;
-  font-size: 11px;
-  color: #a3a3ad;
+  flex-direction: column;
+  gap: 4px;
+
+  font-size: 12px;
+  font-weight: 600;
+  color: #8b8f98;
 }
 
 .rightArea {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
 }
 
 .arrowCircle {
-  width: 34px;
-  height: 34px;
+  width: 46px;
+  height: 46px;
   border-radius: 999px;
-  background: #eaf0ff;
-  display: flex;
+
+  border: none;
+  background: rgba(79, 124, 255, 0.18);
+
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-}
 
+  cursor: pointer;
+}
 .arrowCircle img {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
 }
 
 .accuracy {
   font-size: 12px;
   font-weight: 700;
-  color: #3b66ff;
+  color: #4f7cff;
 }
 
+/* ---------- States ---------- */
 .loading,
 .empty {
-  padding: 18px 4px;
-  font-size: 13px;
-  color: #8e8e97;
+  padding: 14px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
 }
 
+/* bottom spacer */
 .bottomSpace {
-  height: 86px;
+  height: 120px;
 }
