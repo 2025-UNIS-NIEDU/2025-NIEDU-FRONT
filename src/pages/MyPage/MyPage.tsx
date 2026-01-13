@@ -104,7 +104,6 @@ export default function MyPage() {
         if (typeof st?.streak === "number") setStreak(st.streak);
       } catch (e) {
         console.error("[MyPage] user/streak error:", e);
-        // 여기 실패는 치명적이지 않아서 에러메시지 강제 표출 안 함
       } finally {
         setLoadingUser(false);
       }
@@ -119,9 +118,7 @@ export default function MyPage() {
       setLoadingNav(true);
       setErrorMsg(null);
       try {
-        const res = await api.get<ApiResponse<DateNavigatorData>>(
-          "/api/my/date-navigator"
-        );
+        const res = await api.get<ApiResponse<DateNavigatorData>>("/api/my/date-navigator");
         const d = res.data?.data;
 
         if (d?.currentYear && d?.currentMonth) {
@@ -179,7 +176,7 @@ export default function MyPage() {
       const dt = new Date(item.date);
 
       const dayNum = Number.isNaN(dt.getTime())
-        ? Number(String(item.date).slice(8, 10)) // fallback
+        ? Number(String(item.date).slice(8, 10))
         : dt.getDate();
 
       if (!Number.isNaN(dayNum)) {
@@ -224,8 +221,6 @@ export default function MyPage() {
 
   // ---------- UI helpers ----------
   const isThisMonthToday = month0 === todayMonth0 && year === todayYear;
-
-  // 로컬 업로드가 우선, 없으면 서버 URL
   const shownProfileImg = profileImage ?? serverProfileUrl;
 
   return (
@@ -235,11 +230,7 @@ export default function MyPage() {
         <div className={styles.topBar}>
           <h1 className={styles.title}>마이페이지</h1>
           <button type="button" className={styles.settingsButton}>
-            <img
-              src="/icons/icon-settings.svg"
-              alt=""
-              className={styles.settingsIcon}
-            />
+            <img src="/icons/icon-settings.svg" alt="" className={styles.settingsIcon} />
             <span>설정</span>
           </button>
         </div>
@@ -249,19 +240,9 @@ export default function MyPage() {
         {/* 프로필 영역 */}
         <div className={styles.profileBox}>
           <div className={styles.profileImageWrapper}>
-            <img
-              src="/icons/Ellipse 25.svg"
-              alt="프로필 프레임"
-              className={styles.profileFrame}
-            />
+            <img src="/icons/Ellipse 25.svg" alt="프로필 프레임" className={styles.profileFrame} />
 
-            {shownProfileImg && (
-              <img
-                src={shownProfileImg}
-                alt="프로필"
-                className={styles.profilePhoto}
-              />
-            )}
+            {shownProfileImg && <img src={shownProfileImg} alt="프로필" className={styles.profilePhoto} />}
 
             <label className={styles.profileUploadButton}>
               +
@@ -275,16 +256,14 @@ export default function MyPage() {
           </div>
 
           <div>
-            <p className={styles.name}>
-              {loadingUser ? "불러오는 중..." : nickname}
-            </p>
+            <p className={styles.name}>{loadingUser ? "불러오는 중..." : nickname}</p>
             <p className={styles.streak}>
               {streak === null ? "출석 정보를 불러오는 중..." : `${streak}일 연속 출석하셨어요!`}
             </p>
           </div>
         </div>
 
-        {/* 용어 사전 섹션 (클릭 이동) */}
+        {/* 용어 사전 */}
         <div
           className={styles.sectionTitle}
           role="button"
@@ -294,22 +273,34 @@ export default function MyPage() {
             if (e.key === "Enter") nav("/mypage/terms");
           }}
         >
-          <img
-            src="/icons/majesticons_book.svg"
-            alt=""
-            className={styles.sectionIcon}
-          />
+          <img src="/icons/majesticons_book.svg" alt="" className={styles.sectionIcon} />
           <span>용어 사전</span>
+        </div>
+
+        {/* 복습 노트 (아이콘 img 자리 포함) */}
+        <div
+          className={styles.sectionTitle}
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            const iso = toISODate(todayYear, todayMonth0, todayDate);
+            nav(`/mypage/review-notes?date=${encodeURIComponent(iso)}`);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const iso = toISODate(todayYear, todayMonth0, todayDate);
+              nav(`/mypage/review-notes?date=${encodeURIComponent(iso)}`);
+            }
+          }}
+        >
+          <img src="/icons/majesticons_note.svg" alt="" className={styles.sectionIcon} />
+          <span>복습 노트</span>
         </div>
 
         {/* 달력 */}
         <div className={styles.calendarBox}>
           <div className={styles.monthHeader}>
-            <button
-              className={styles.monthArrow}
-              type="button"
-              onClick={handlePrevMonth}
-            >
+            <button className={styles.monthArrow} type="button" onClick={handlePrevMonth}>
               <img
                 src="/icons/Polygon 4.svg"
                 alt="이전 달"
@@ -321,16 +312,8 @@ export default function MyPage() {
               {year}년 {month0 + 1}월
             </span>
 
-            <button
-              className={styles.monthArrow}
-              type="button"
-              onClick={handleNextMonth}
-            >
-              <img
-                src="/icons/Polygon 4.svg"
-                alt="다음 달"
-                className={styles.monthArrowIcon}
-              />
+            <button className={styles.monthArrow} type="button" onClick={handleNextMonth}>
+              <img src="/icons/Polygon 4.svg" alt="다음 달" className={styles.monthArrowIcon} />
             </button>
           </div>
 
@@ -339,23 +322,16 @@ export default function MyPage() {
           ) : (
             <div className={styles.grid}>
               {daysArray.map((day, idx) => {
-                if (day === null) {
-                  return <div key={idx} className={styles.emptyCell} />;
-                }
+                if (day === null) return <div key={idx} className={styles.emptyCell} />;
 
                 const isToday = isThisMonthToday && day === todayDate;
 
                 const courses = dayToCourses.get(day) ?? [];
                 const hasData = courses.length > 0;
 
-                // topic/subTopic 최대 2개 + extra(추가 n개)
-                const topicPairs = courses
-                  .filter((c) => c?.topic || c?.subTopic)
-                  .slice(0, 2);
-
+                const topicPairs = courses.filter((c) => c?.topic || c?.subTopic).slice(0, 2);
                 const extraObj = courses.find((c) => typeof c?.extra === "number");
-                const extraCount =
-                  typeof extraObj?.extra === "number" ? extraObj.extra : 0;
+                const extraCount = typeof extraObj?.extra === "number" ? extraObj.extra : 0;
 
                 const iso = toISODate(year, month0, day);
 
@@ -365,37 +341,27 @@ export default function MyPage() {
                     className={styles.dayCell}
                     onClick={() => {
                       if (!hasData) return;
-                      nav(`/mypage/review-notes?date=${encodeURIComponent(iso)}`);
+                      // ✅ 캘린더 클릭 → 학습 로그로
+                      nav(`/mypage/log?date=${encodeURIComponent(iso)}`);
                     }}
                     style={{ cursor: hasData ? "pointer" : "default" }}
                     aria-disabled={!hasData}
                   >
-                    <div
-                      className={`${styles.dayNumber} ${
-                        isToday ? styles.today : ""
-                      }`}
-                    >
-                      {day}
-                    </div>
+                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{day}</div>
 
                     {(topicPairs.length > 0 || extraCount > 0) && (
                       <div className={styles.tag}>
-                        {topicPairs.map((c, i) => (
-                          <div key={i}>
-                            {c.topic && (
-                              <span className={styles.tagStrong}>{c.topic}</span>
-                            )}
-                            {c.subTopic && (
-                              <span className={styles.tagWeak}>#{c.subTopic}</span>
-                            )}
-                          </div>
-                        ))}
+                        <div className={styles.tagLine}>
+                          {topicPairs.map((c, i) => (
+                            <span key={i} className={styles.tagChunk}>
+                              {c.topic ? <span className={styles.tagStrong}>{c.topic}</span> : null}
+                              {c.subTopic ? <span className={styles.tagWeak}>#{c.subTopic}</span> : null}
+                              {i !== topicPairs.length - 1 ? <span className={styles.tagSlash}> / </span> : null}
+                            </span>
+                          ))}
+                        </div>
 
-                        {extraCount > 0 && (
-                          <div style={{ marginTop: 2, opacity: 0.85 }}>
-                            +{extraCount}
-                          </div>
-                        )}
+                        {extraCount > 0 && <div className={styles.tagExtra}>+{extraCount}</div>}
                       </div>
                     )}
                   </div>
@@ -404,13 +370,6 @@ export default function MyPage() {
             </div>
           )}
         </div>
-
-        {/* (선택) 디버그 */}
-        {/* {navData && (
-          <pre style={{ fontSize: 10, opacity: 0.6 }}>
-            {JSON.stringify(navData, null, 2)}
-          </pre>
-        )} */}
       </div>
 
       <BottomNav activeTab="mypage" />

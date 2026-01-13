@@ -176,6 +176,10 @@ export default function Learn() {
 
   const latest3 = useMemo(() => latestByTopic.slice(0, 3), [latestByTopic]);
 
+  const popularPreview = useMemo(() => popular.slice(0, 4), [popular]);
+  const personalizedPreview = useMemo(() => personalized.slice(0, 4), [personalized]);
+  const newPreview = useMemo(() => news.slice(0, 4), [news]);
+
   const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     if (img.src.endsWith(FALLBACK_THUMB)) return;
@@ -255,7 +259,7 @@ export default function Learn() {
                   <div className={styles.rowBody}>
                     <h3 className={styles.rowTitle}>{c.title}</h3>
                     <p className={styles.rowSub}>
-                      {c.topic ?? "NIEdu Lab"} · {c.subTopic ?? ""}
+                      {c.topic ?? "NIEdu Lab"} {c.subTopic ? `· ${c.subTopic}` : ""}
                     </p>
                   </div>
                 </div>
@@ -270,21 +274,127 @@ export default function Learn() {
             <h2>인기 코스</h2>
             <img
               src="/icons/ep_arrow-up-bold.svg"
-              alt="arrow"
+              alt="더 보기"
               className={styles.arrow}
               onClick={() => navigate("/learn/popular")}
             />
           </div>
 
-          {/* (기존 코드 그대로) */}
-          {/* ... */}
+          <div className={styles.cardGrid}>
+            {loadingOthers && popularPreview.length === 0 ? (
+              <p className={styles.loading}>불러오는 중...</p>
+            ) : popularPreview.length === 0 ? (
+              <p className={styles.loading} style={{ opacity: 0.7 }}>
+                표시할 코스가 없어요.
+              </p>
+            ) : (
+              popularPreview.map((c) => (
+                <div
+                  key={c.courseId}
+                  className={styles.courseCard}
+                  onClick={() => goToDetail(String(c.courseId), { from: "learn-popular" })}
+                >
+                  <img
+                    src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                    onError={handleImgError}
+                    alt=""
+                    className={styles.cardThumb}
+                  />
+                  <div className={styles.cardBody}>
+                    <h3 className={styles.cardTitle}>{c.title}</h3>
+                    <p className={styles.cardSub}>{c.topic ?? "NIEdu"}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         {/* 맞춤추천 코스 */}
-        {/* ... 화살표는 /learn/personalized */}
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2>맞춤추천 코스</h2>
+            <img
+              src="/icons/ep_arrow-up-bold.svg"
+              alt="더 보기"
+              className={styles.arrow}
+              onClick={() => navigate("/learn/personalized")}
+            />
+          </div>
+
+          <div className={styles.cardGrid}>
+            {loadingOthers && personalizedPreview.length === 0 ? (
+              <p className={styles.loading}>불러오는 중...</p>
+            ) : personalizedPreview.length === 0 ? (
+              <p className={styles.loading} style={{ opacity: 0.7 }}>
+                표시할 코스가 없어요.
+              </p>
+            ) : (
+              personalizedPreview.map((c) => (
+                <div
+                  key={c.courseId}
+                  className={styles.courseCard}
+                  onClick={() =>
+                    goToDetail(String(c.courseId), { from: "learn-personalized" })
+                  }
+                >
+                  <img
+                    src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                    onError={handleImgError}
+                    alt=""
+                    className={styles.cardThumb}
+                  />
+                  <div className={styles.cardBody}>
+                    <h3 className={styles.cardTitle}>{c.title}</h3>
+                    <p className={styles.cardSub}>{c.topic ?? "NIEdu"}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
         {/* 새로운 코스 */}
-        {/* ... 화살표는 /learn/new */}
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2>새로운 코스</h2>
+            <img
+              src="/icons/ep_arrow-up-bold.svg"
+              alt="더 보기"
+              className={styles.arrow}
+              onClick={() => navigate("/learn/new")}
+            />
+          </div>
+
+          <div className={styles.cardGrid}>
+            {loadingOthers && newPreview.length === 0 ? (
+              <p className={styles.loading}>불러오는 중...</p>
+            ) : newPreview.length === 0 ? (
+              <p className={styles.loading} style={{ opacity: 0.7 }}>
+                표시할 코스가 없어요.
+              </p>
+            ) : (
+              newPreview.map((c) => (
+                <div
+                  key={c.courseId}
+                  className={styles.courseCard}
+                  onClick={() => goToDetail(String(c.courseId), { from: "learn-new" })}
+                >
+                  <img
+                    src={c.thumbnailUrl ?? FALLBACK_THUMB}
+                    onError={handleImgError}
+                    alt=""
+                    className={styles.cardThumb}
+                  />
+                  <div className={styles.cardBody}>
+                    <h3 className={styles.cardTitle}>{c.title}</h3>
+                    <p className={styles.cardSub}>{c.topic ?? "NIEdu"}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
 
         <BottomNav />
       </div>

@@ -1,9 +1,11 @@
+// src/pages/MyPage/TermsDictionary/TermsDictionaryPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
 import api from "@/api/axiosInstance";
 import type { ApiResponse } from "@/types/api";
 import styles from "./TermsDictionaryPage.module.css";
+import modalStyles from "@/pages/article/session/N/StepN002.module.css";
 
 type TermItem = { termId: number; term: string };
 type GroupAlphabetical = { initial: string; terms: TermItem[] };
@@ -27,6 +29,7 @@ export default function TermsDictionaryPage() {
   const nav = useNavigate();
 
   const [sort, setSort] = useState<Sort>("alphabetical");
+  const [sortOpen, setSortOpen] = useState(false);
   const [data, setData] = useState<TermsListData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,6 +76,8 @@ export default function TermsDictionaryPage() {
     }
   };
 
+  const sortLabel = sort === "alphabetical" ? "가나다 순" : "최근 저장 순";
+
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
@@ -85,18 +90,39 @@ export default function TermsDictionaryPage() {
         </header>
 
         <div className={styles.sortRow}>
-          <button
-            className={`${styles.sortBtn} ${sort === "alphabetical" ? styles.sortActive : ""}`}
-            onClick={() => setSort("alphabetical")}
-          >
-            가나다순
+          <button type="button" className={styles.sortSelect} onClick={() => setSortOpen((p) => !p)}>
+            {sortLabel}
+            <img
+              src="/icons/ep_arrow-up-bold.svg"
+              alt=""
+              className={`${styles.chev} ${sortOpen ? styles.chevOpen : ""}`}
+            />
           </button>
-          <button
-            className={`${styles.sortBtn} ${sort === "recent" ? styles.sortActive : ""}`}
-            onClick={() => setSort("recent")}
-          >
-            최근학습
-          </button>
+
+          {sortOpen && (
+            <div className={styles.sortMenu}>
+              <button
+                type="button"
+                className={styles.sortOption}
+                onClick={() => {
+                  setSort("alphabetical");
+                  setSortOpen(false);
+                }}
+              >
+                가나다 순
+              </button>
+              <button
+                type="button"
+                className={styles.sortOption}
+                onClick={() => {
+                  setSort("recent");
+                  setSortOpen(false);
+                }}
+              >
+                최근 저장 순
+              </button>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -107,17 +133,11 @@ export default function TermsDictionaryPage() {
           <div className={styles.groups}>
             {(data.groups as any[]).map((g, idx) => (
               <section key={idx} className={styles.group}>
-                <div className={styles.groupTitle}>
-                  {"initial" in g ? g.initial : g.period}
-                </div>
+                <div className={styles.groupTitle}>{"initial" in g ? g.initial : g.period}</div>
 
                 <div className={styles.termGrid}>
                   {g.terms.map((t: TermItem) => (
-                    <button
-                      key={t.termId}
-                      className={styles.termChip}
-                      onClick={() => openDetail(t.termId)}
-                    >
+                    <button key={t.termId} className={styles.termChip} onClick={() => openDetail(t.termId)}>
                       {t.term}
                     </button>
                   ))}
@@ -132,12 +152,12 @@ export default function TermsDictionaryPage() {
 
       <BottomNav activeTab="mypage" />
 
-      {/* 오버레이 상세 (스샷 느낌) */}
+      {/* ✅ N단계 팝업 구조/CSS 재사용 */}
       {open && (
-        <div className={styles.overlay} onClick={() => setOpen(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <button className={styles.starBtn} type="button" aria-label="즐겨찾기">
-              <img src="/icons/STAR.svg" alt="" />
+        <div className={modalStyles.modalOverlay} onClick={() => setOpen(false)}>
+          <div className={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className={modalStyles.modalStarBtn} aria-label="저장됨">
+              <img src="/icons/Frame 1686564291 (1).svg" alt="" className={modalStyles.modalStarIcon} />
             </button>
 
             {loadingDetail ? (
@@ -146,25 +166,25 @@ export default function TermsDictionaryPage() {
               <p className={styles.empty}>상세를 불러오지 못했어요.</p>
             ) : (
               <>
-                <h2 className={styles.termTitle}>{detail.name}</h2>
-                <p className={styles.termDesc}>{detail.definition}</p>
+                <h2 className={modalStyles.modalTitle}>{detail.name}</h2>
+                <p className={modalStyles.modalDefinition}>{detail.definition}</p>
 
-                <div className={styles.block}>
-                  <div className={styles.blockLabel}>예시 문장</div>
-                  <div className={styles.blockText}>{detail.exampleSentence}</div>
+                <div className={modalStyles.modalBlock}>
+                  <div className={modalStyles.modalBlockTitle}>예시 문장</div>
+                  <p className={modalStyles.modalBlockBody}>{detail.exampleSentence}</p>
                 </div>
 
-                <div className={styles.block}>
-                  <div className={styles.blockLabel}>추가 설명</div>
-                  <div className={styles.blockText}>{detail.additionalExplanation}</div>
+                <div className={modalStyles.modalBlock}>
+                  <div className={modalStyles.modalBlockTitle}>부가 설명</div>
+                  <p className={modalStyles.modalBlockBody}>{detail.additionalExplanation}</p>
                 </div>
               </>
             )}
-          </div>
 
-          <button className={styles.closeBtn} onClick={() => setOpen(false)} aria-label="닫기">
-            ×
-          </button>
+            <button type="button" className={modalStyles.modalCloseBtn} onClick={() => setOpen(false)}>
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </div>

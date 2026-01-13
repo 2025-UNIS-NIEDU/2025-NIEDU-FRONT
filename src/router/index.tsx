@@ -1,3 +1,4 @@
+// src/router/index.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // ✅ 새 Intro 1~7
@@ -30,6 +31,7 @@ import EduResult from "@/pages/quiz/EduResult";
 
 import ArticleDetail from "@/pages/ArticleDetail/ArticleDetail";
 import MyPage from "@/pages/MyPage/MyPage";
+import LearningLogPage from "@/pages/MyPage/LearningLog/LearningLogPage";
 import ReviewNotesPage from "@/pages/MyPage/ReviewNotes/ReviewNotesPage";
 import TermsDictionaryPage from "@/pages/MyPage/TermsDictionary/TermsDictionaryPage";
 
@@ -75,6 +77,7 @@ export default function AppRouter() {
       <Route path="/article/:articleId" element={<ArticleDetail />} />
 
       <Route path="/mypage" element={<MyPage />} />
+      <Route path="/mypage/log" element={<LearningLogPage />} />
       <Route path="/mypage/review-notes" element={<ReviewNotesPage />} />
       <Route path="/mypage/terms" element={<TermsDictionaryPage />} />
 

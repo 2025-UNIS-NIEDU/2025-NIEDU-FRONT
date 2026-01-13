@@ -1,34 +1,103 @@
-.viewport { min-height: 100vh; background: #0f0f0f; display: flex; justify-content: center; }
-.container { width: 390px; min-height: 100vh; background: #fff; position: relative; padding: 14px 16px 84px; }
+/* src/pages/MyPage/TermsDictionary/TermsDictionaryPage.module.css */
+.viewport {
+  min-height: 100vh;
+  background: #f6f6f8;
+  display: flex;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  background: #fff;
+  position: relative;
+  padding: 14px 16px 84px;
+  box-sizing: border-box;
+}
 
 .topBar { display: flex; align-items: center; justify-content: space-between; }
 .backBtn { background: transparent; border: 0; padding: 6px; cursor: pointer; }
 .title { font-size: 16px; font-weight: 700; margin: 0; }
 .rightDummy { width: 32px; }
 
-.sortRow { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
-.sortBtn { border: 1px solid #ddd; background: #fff; padding: 6px 10px; border-radius: 999px; font-size: 12px; cursor: pointer; }
-.sortActive { border-color: #cfe0ff; color: #2563eb; }
+.sortRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+  position: relative;
+}
+
+.sortSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chev {
+  width: 14px;
+  height: 14px;
+  transform: rotate(180deg);
+  transition: transform 0.15s ease;
+}
+
+.chevOpen {
+  transform: rotate(0deg);
+}
+
+.sortMenu {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  width: 140px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  z-index: 10;
+}
+
+.sortOption {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 0;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sortOption:hover {
+  background: #f3f4f6;
+}
 
 .loading, .empty { margin-top: 16px; opacity: 0.7; }
 
 .groups { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
 .groupTitle { font-size: 12px; font-weight: 700; opacity: 0.6; margin-bottom: 8px; }
-.termGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.termChip { border: 1px solid #eee; background: #fff; border-radius: 10px; padding: 12px 8px; font-size: 12px; cursor: pointer; }
+
+.termGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.termChip {
+  border: 1px solid #eee;
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
 
 .bottomSpace { height: 40px; }
 
-/* overlay modal */
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; justify-content: center; align-items: center; z-index: 50; }
-.modal { width: 330px; background: #fff; border-radius: 14px; padding: 18px 16px; position: relative; }
-.starBtn { position: absolute; top: 12px; right: 12px; border: 0; background: transparent; cursor: pointer; }
-
-.termTitle { margin: 0; font-size: 16px; font-weight: 800; }
-.termDesc { margin-top: 8px; font-size: 12px; line-height: 1.6; opacity: 0.8; }
-
-.block { margin-top: 14px; }
-.blockLabel { font-size: 12px; font-weight: 800; margin-bottom: 6px; }
-.blockText { font-size: 12px; line-height: 1.6; opacity: 0.8; }
-
-.closeBtn { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; border-radius: 999px; border: 1px solid #ddd; background: #fff; font-size: 26px; line-height: 0; cursor: pointer; }
+/* 모달은 StepN002.module.css 재사용 */
