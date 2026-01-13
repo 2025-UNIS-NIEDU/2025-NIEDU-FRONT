@@ -1,10 +1,9 @@
 // src/pages/article/session/I/StepI003.tsx
-
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
-import { submitStepAnswer } from "@/lib/apiClient";
 import styles from "./StepI003.module.css";
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
 
 type StepMeta = {
   stepId: number;
@@ -25,150 +24,206 @@ type RouteState = {
   steps?: StepMeta[];
 };
 
-type MCQ = {
+type QuizItem = {
   contentId: number;
   question: string;
   options: { label: string; text: string }[];
-  correctAnswer: string; // "A"~"D"
+  correctAnswer: string; // A~D
   answerExplanation: string;
+  sourceUrl?: string;
 };
 
 export default function StepI003() {
   const nav = useNavigate();
   const location = useLocation();
-  const state = (location.state as RouteState | undefined) ?? {};
+  const state = (location.state as RouteState) || {};
 
+  const startTime = state.startTime ?? Date.now();
+  const courseId = Number(state.courseId ?? state.articleId);
+  const sessionId = Number(state.sessionId);
   const steps = state.steps ?? [];
+
   const STEP_ORDER = 3;
   const CONTENT_TYPE = "MULTIPLE_CHOICE";
 
   const currentStep = useMemo(() => {
-    return (
-      steps.find((s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE) ??
-      steps.find((s) => Number(s.stepOrder) === STEP_ORDER)
-    );
+    return steps.find((s) => Number(s.stepOrder) === STEP_ORDER);
   }, [steps]);
 
-  const [items, setItems] = useState<MCQ[]>([]);
+  const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [index, setIndex] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [choice, setChoice] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
 
   useEffect(() => {
     const contents = currentStep?.content?.contents;
-    if (!Array.isArray(contents) || contents.length === 0) {
-      setItems([]);
+    if (!Array.isArray(contents)) {
+      setQuizzes([]);
       return;
     }
 
-    const mapped: MCQ[] = contents.map((c: any) => ({
-      contentId: Number(c?.contentId ?? 0),
-      question: String(c?.question ?? ""),
-      options: Array.isArray(c?.options)
-        ? c.options.map((o: any) => ({
-            label: String(o?.label ?? ""),
-            text: String(o?.text ?? ""),
-          }))
-        : [],
-      correctAnswer: String(c?.correctAnswer ?? ""),
-      answerExplanation: String(c?.answerExplanation ?? ""),
-    }));
+    const mapped: QuizItem[] = contents
+      .map((c: any) => ({
+        contentId: Number(c?.contentId ?? c?.id ?? 0),
+        question: String(c?.question ?? ""),
+        options: Array.isArray(c?.options)
+          ? c.options.map((o: any, idx: number) => ({
+              label: String(o?.label ?? String.fromCharCode(65 + idx)),
+              text: String(o?.text ?? ""),
+            }))
+          : [],
+        correctAnswer: String(c?.correctAnswer ?? ""),
+        answerExplanation: String(c?.answerExplanation ?? ""),
+        sourceUrl: c?.sourceUrl ? String(c.sourceUrl) : undefined,
+      }))
+      .filter((x) => x.contentId && x.question);
 
-    setItems(mapped);
+    setQuizzes(mapped);
     setIndex(0);
-    setSelected(null);
+    setChoice(null);
     setConfirmed(false);
-
-    const prev = currentStep?.userAnswer;
-    // 형태가 다양할 수 있어서 최대한 복원
-    if (Array.isArray(prev) && prev[0]?.value) setSelected(String(prev[0].value));
+    setAnswers({});
   }, [currentStep]);
 
-  const q = items[index];
-  const total = items.length;
+  const q = quizzes[index];
+  const total = quizzes.length;
 
-  const cid = Number(state.courseId ?? state.articleId);
-  const sid = Number(state.sessionId);
-  const stepId = Number(currentStep?.stepId);
+  const isCorrect = !!q && !!choice && choice === q.correctAnswer;
 
-  const handlePrev = () => nav("/nie/session/I/step/002", { state: { ...state }, replace: true });
+  const submitAll = async (next: Record<number, string>) => {
+    const stepId = Number(currentStep?.stepId);
+    if (!courseId || !sessionId || !stepId || !q || !choice) return false;
 
-  const saveAnswer = async () => {
-    if (!cid || !sid || !stepId || !q || !selected) return;
-    await submitStepAnswer({
-      courseId: cid,
-      sessionId: sid,
-      stepId,
-      contentType: CONTENT_TYPE,
-      userAnswer: [{ contentId: q.contentId, value: selected }],
-    });
+    const payload = Object.entries(next).map(([contentId, value]) => ({
+      contentId: Number(contentId),
+      value,
+    }));
+
+    try {
+      await submitStepAnswer({
+        courseId,
+        sessionId,
+        stepId,
+        contentType: CONTENT_TYPE,
+        userAnswer: payload, // apiClient가 answers로 래핑해줌
+      });
+      return true;
+    } catch (e) {
+      console.error("[StepI003] submit error:", e);
+      return false;
+    }
   };
 
-  const handleNext = async () => {
-    if (!confirmed) {
-      try {
-        await saveAnswer();
-      } catch (e) {
-        console.error("[StepI003] submit answer error:", e);
-      }
-      setConfirmed(true);
-      return;
-    }
-
-    if (index < total - 1) {
-      setIndex((p) => p + 1);
-      setSelected(null);
-      setConfirmed(false);
-      return;
-    }
-
-    nav("/nie/session/I/step/004", { state: { ...state }, replace: true });
+  const checkAnswer = async () => {
+    if (!q || !choice) return;
+    const next = { ...answers, [q.contentId]: choice };
+    setAnswers(next);
+    const ok = await submitAll(next);
+    if (!ok) return;
+    setConfirmed(true);
   };
 
-  if (!q) return <div className={styles.loading}>문제가 없습니다.</div>;
+  const nextProblem = () => {
+    if (index >= total - 1) {
+      nav("/nie/session/I/step/004", { state: { ...state, startTime }, replace: true });
+      return;
+    }
+    setIndex((i) => i + 1);
+    setChoice(null);
+    setConfirmed(false);
+  };
+
+  const handlePrev = () =>
+    nav("/nie/session/I/step/002", { state: { ...state, startTime }, replace: true });
+
+  const handleQuit = async () => {
+    try {
+      if (courseId && sessionId) await quitSession({ courseId, sessionId });
+    } catch (e) {
+      console.error("[StepI003] quit error:", e);
+    }
+    nav("/learn");
+  };
+
+  if (!q) return <div className={styles.viewport}><div className={styles.container}>문제가 없습니다.</div></div>;
+
+  const sourceLink = q.sourceUrl || state.articleUrl || "";
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        <h2 className={styles.heading}>객관식 퀴즈</h2>
-
-        <div className={styles.card}>
-          <p className={styles.qNum}>
-            {index + 1} / {total}
-          </p>
-          <p className={styles.question}>{q.question}</p>
-
-          <div className={styles.options}>
-            {q.options.map((o) => {
-              const isSel = selected === o.label;
-              const isCorrect = confirmed && o.label === q.correctAnswer;
-              const isWrong = confirmed && isSel && o.label !== q.correctAnswer;
-
-              return (
-                <button
-                  key={o.label}
-                  type="button"
-                  className={`${styles.option} ${
-                    isCorrect ? styles.correct : isWrong ? styles.wrong : isSel ? styles.active : ""
-                  }`}
-                  onClick={() => !confirmed && setSelected(o.label)}
-                >
-                  <span className={styles.optionLabel}>{o.label}</span>
-                  <span className={styles.optionText}>{o.text}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {confirmed && (
-            <div className={styles.explainBox}>
-              <p className={styles.answerLine}>정답: {q.correctAnswer}</p>
-              <p className={styles.explainText}>{q.answerExplanation}</p>
-            </div>
-          )}
+        <div className={styles.progressWrap}>
+          <div className={styles.progress} style={{ width: `${((index + 1) / total) * 100}%` }} />
         </div>
 
-        <EduBottomBar onPrev={handlePrev} onNext={handleNext} disableNext={!selected && !confirmed} />
+        <p className={styles.question}>{q.question}</p>
+
+        <div className={styles.options}>
+          {q.options.map((o) => {
+            const isSel = choice === o.label;
+
+            const cls =
+              !confirmed
+                ? isSel
+                  ? styles.optionSelected
+                  : ""
+                : o.label === q.correctAnswer
+                ? styles.optionCorrect
+                : isSel
+                ? styles.optionWrong
+                : "";
+
+            return (
+              <button
+                key={o.label}
+                type="button"
+                className={`${styles.option} ${cls}`}
+                onClick={() => !confirmed && setChoice(o.label)}
+              >
+                <span className={styles.optionLabel}>{o.label}</span>
+                <span className={styles.optionText}>{o.text}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {!confirmed && (
+          <button className={styles.checkBtn} disabled={!choice} onClick={() => void checkAnswer()}>
+            정답 확인하기
+          </button>
+        )}
+
+        {confirmed && (
+          <div
+            className={`${styles.answerBox} ${
+              isCorrect ? styles.answerBoxCorrect : styles.answerBoxWrong
+            }`}
+          >
+            <div className={styles.answerHeader}>
+              <span className={styles.answerLabel}>정답: {q.correctAnswer}</span>
+              {sourceLink && (
+                <button
+                  type="button"
+                  className={styles.sourceBtn}
+                  onClick={() => window.open(sourceLink, "_blank")}
+                >
+                  원문 보기
+                </button>
+              )}
+            </div>
+            <p className={styles.answerText}>{q.answerExplanation}</p>
+          </div>
+        )}
+
+        <div className={styles.bottomSpace} />
+
+        <EduBottomBar
+          onPrev={handlePrev}
+          onNext={confirmed ? nextProblem : undefined}
+          onQuit={handleQuit}
+          disableNext={!confirmed}
+        />
       </div>
     </div>
   );

@@ -1,10 +1,12 @@
 // src/pages/article/session/I/StepI002.tsx
-
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
-import { submitStepAnswer } from "@/lib/apiClient";
 import styles from "./StepI002.module.css";
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
+
+type KeywordItem = { word: string; isTopicWord: boolean };
+type Segment = { text: string; keyword?: string };
 
 type StepMeta = {
   stepId: number;
@@ -25,24 +27,22 @@ type RouteState = {
   steps?: StepMeta[];
 };
 
-type KeywordItem = { word: string; isTopicWord: boolean };
-type SummaryReadingContent = { summary: string; keywords: KeywordItem[] };
-type Segment = { text: string; keyword?: string };
-
 export default function StepI002() {
   const nav = useNavigate();
   const location = useLocation();
-  const state = (location.state as RouteState | undefined) ?? {};
+  const state = (location.state as RouteState) || {};
 
+  const startTime = state.startTime ?? Date.now();
+  const courseId = Number(state.courseId ?? state.articleId);
+  const sessionId = Number(state.sessionId);
   const steps = state.steps ?? [];
+
   const STEP_ORDER = 2;
   const CONTENT_TYPE = "SUMMARY_READING";
 
   const currentStep = useMemo(() => {
-    return (
-      steps.find(
-        (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
-      ) ?? steps.find((s) => Number(s.stepOrder) === STEP_ORDER)
+    return steps.find(
+      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
     );
   }, [steps]);
 
@@ -58,22 +58,39 @@ export default function StepI002() {
     setLoading(true);
     setLoadError(null);
 
-    const content = (currentStep?.content ?? {}) as Partial<SummaryReadingContent>;
+    try {
+      const block = currentStep?.content?.contents?.[0] ?? currentStep?.content ?? null;
+      if (!currentStep || !block) {
+        setLoadError("요약문 데이터를 찾을 수 없어요.");
+        setLoading(false);
+        return;
+      }
 
-    if (content.summary && Array.isArray(content.keywords)) {
-      const allWords = content.keywords.map((k) => k.word);
-      const topicWords = content.keywords.filter((k) => k.isTopicWord).map((k) => k.word);
+      const summaryText = typeof block?.summary === "string" ? block.summary : "";
+      const kwArray: KeywordItem[] = Array.isArray(block?.keywords) ? block.keywords : [];
 
-      setSummary(String(content.summary));
+      if (!summaryText) {
+        setLoadError("요약문 텍스트가 없어요.");
+        setLoading(false);
+        return;
+      }
+
+      const allWords = kwArray.map((k) => String(k.word));
+      const topicWords = kwArray.filter((k) => !!k.isTopicWord).map((k) => String(k.word));
+
+      setSummary(summaryText);
       setKeywords(allWords);
       setCorrectKeywords(topicWords);
 
       const prev = currentStep?.userAnswer?.keywords;
       if (Array.isArray(prev)) setSelected(prev.map(String));
+      else setSelected([]);
 
-      setLoading(false);
-    } else {
+      setRevealed(false);
+    } catch (e) {
+      console.error("[StepI002] parse failed:", e);
       setLoadError("요약문 데이터를 불러오지 못했어요.");
+    } finally {
       setLoading(false);
     }
   }, [currentStep]);
@@ -116,32 +133,42 @@ export default function StepI002() {
     setSelected((prev) => (prev.includes(kw) ? prev.filter((w) => w !== kw) : [...prev, kw]));
   };
 
-  const handlePrev = () => nav("/nie/session/I/step/001", { state: { ...state }, replace: true });
+  const submit = async () => {
+    const stepId = Number(currentStep?.stepId);
+    if (!courseId || !sessionId || !stepId) return;
+
+    await submitStepAnswer({
+      courseId,
+      sessionId,
+      stepId,
+      contentType: CONTENT_TYPE,
+      userAnswer: { keywords: selected },
+    });
+  };
+
+  const handlePrev = () =>
+    nav("/nie/session/I/step/001", { state: { ...state, startTime }, replace: true });
 
   const handleNext = async () => {
     if (!revealed) {
       setRevealed(true);
       return;
     }
-
-    const cid = Number(state.courseId ?? state.articleId);
-    const sid = Number(state.sessionId);
-    const stepId = Number(currentStep?.stepId);
-    if (cid && sid && stepId) {
-      try {
-        await submitStepAnswer({
-          courseId: cid,
-          sessionId: sid,
-          stepId,
-          contentType: CONTENT_TYPE,
-          userAnswer: { keywords: selected },
-        });
-      } catch (e) {
-        console.error("[StepI002] submit answer error:", e);
-      }
+    try {
+      await submit();
+    } catch (e) {
+      console.error("[StepI002] submit error:", e);
     }
+    nav("/nie/session/I/step/003", { state: { ...state, startTime }, replace: true });
+  };
 
-    nav("/nie/session/I/step/003", { state: { ...state }, replace: true });
+  const handleQuit = async () => {
+    try {
+      if (courseId && sessionId) await quitSession({ courseId, sessionId });
+    } catch (e) {
+      console.error("[StepI002] quit error:", e);
+    }
+    nav("/learn");
   };
 
   const disableNext = loading || !!loadError || (!revealed && selected.length === 0);
@@ -149,13 +176,18 @@ export default function StepI002() {
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
+        <div className={styles.progressWrap}>
+          <div className={styles.progress} style={{ width: "15.38%" }} />
+        </div>
+
         <h2 className={styles.heading}>요약문 읽기</h2>
+        <p className={styles.desc}>핵심 키워드를 눌러 선택해보세요.</p>
 
         <section className={styles.summaryCard} aria-busy={loading}>
           {loading ? (
             <div className={styles.skel}>불러오는 중…</div>
           ) : loadError ? (
-            <p className={styles.errorText}>{loadError}</p>
+            <div className={styles.skel}>{loadError}</div>
           ) : (
             <p className={styles.summaryText}>
               {segments.map((seg, i) =>
@@ -184,10 +216,12 @@ export default function StepI002() {
         </section>
 
         {revealed && !loadError && (
-          <p className={styles.revealText}>정답 키워드: {correctKeywords.join(", ")}</p>
+          <div className={styles.hintBubble}>정답 키워드: {correctKeywords.join(", ")}</div>
         )}
 
-        <EduBottomBar onPrev={handlePrev} onNext={handleNext} disableNext={disableNext} />
+        <div className={styles.bottomSpace} />
+
+        <EduBottomBar onPrev={handlePrev} onNext={handleNext} onQuit={handleQuit} disableNext={disableNext} />
       </div>
     </div>
   );

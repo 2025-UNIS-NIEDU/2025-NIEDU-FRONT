@@ -31,7 +31,6 @@ export async function submitStepAnswer(args: {
   contentType: string;
   userAnswer: unknown;
 }) {
-  // ✅ 서버가 answers 래핑 형태를 기대하는 경우가 많아서 프론트에서 정규화
   const normalizeUserAnswer = (contentType: string, ua: unknown) => {
     if (ua == null) return null;
 
@@ -40,7 +39,6 @@ export async function submitStepAnswer(args: {
 
     // 배열이면 { answers: [...] }로 래핑
     if (Array.isArray(ua)) {
-      // SENTENCE_COMPLETION은 value 대신 userAnswer 키를 요구하는 케이스가 있어서 방어
       if (contentType === "SENTENCE_COMPLETION") {
         return {
           answers: ua.map((a: any) => ({
@@ -54,12 +52,10 @@ export async function submitStepAnswer(args: {
       return { answers: ua };
     }
 
-    // ✅ TERM_LEARNING 같은 케이스는 객체(JSON) 그대로가 정답인 경우가 있음
-    //    (openedTermIds/favoriteTermIds 등)
-    //    그래서 "객체"는 래핑하지 않고 그대로 보냄.
+    // TERM_LEARNING 같은 케이스는 객체(JSON) 그대로 보내기
     if (typeof ua === "object") return ua;
 
-    // 그 외(원시값)는 answers로 감싸서 방어
+    // 원시값은 answers로 감싸기
     return { answers: [ua] };
   };
 

@@ -1,81 +1,140 @@
 /* src/pages/article/session/I/StepI004.module.css */
-
 .viewport {
-  width: 100%;
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
   display: flex;
   justify-content: center;
+  align-items: stretch;
+  background: #eef0f4;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
+.viewport::-webkit-scrollbar { display: none; }
 
 .container {
-  width: 390px;
-  min-height: 100vh;
-  padding: 16px;
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  min-height: 150%;
+  margin: 0 auto;
+  background: #f4f5fa;
   box-sizing: border-box;
+  padding: 16px 20px;
+  padding-bottom: 220px;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-.loading {
-  padding: 24px;
-  font-size: 14px;
+/* 진행바 */
+.progressWrap {
+  width: 100%;
+  height: 6px;
+  background: #e6e9f5;
+  border-radius: 999px;
+  margin: 6px 0 20px;
 }
-
-.heading {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 14px;
-}
-
-.card {
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 14px;
-  background: #fff;
-}
-
-.qNum {
-  font-size: 12px;
-  color: #777;
-  margin: 0 0 10px;
+.progress {
+  height: 100%;
+  background: #4f7cff;
+  border-radius: 999px;
+  transition: width 0.25s ease;
 }
 
 .question {
-  font-size: 14px;
-  line-height: 1.45;
-  margin: 0 0 10px;
-}
-
-.textarea {
-  width: 100%;
-  min-height: 100px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  padding: 10px;
-  box-sizing: border-box;
-  font-size: 14px;
-  resize: none;
-}
-
-.explainBox {
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 10px;
-  background: #fff9e6;
-  border: 1px solid #ffe3a3;
-}
-
-.explainTitle {
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
-  margin: 0 0 6px;
+  color: #111827;
+  line-height: 1.5;
+  margin: 40px 0 22px;
 }
 
-.answerLine {
-  font-size: 13px;
-  margin: 0 0 6px;
+.input {
+  width: 100%;
+  height: 56px;
+  border-radius: 14px;
+  border: 2px solid rgba(79,124,255,0.45);
+  background: #fff;
+  padding: 0 16px;
+  font-size: 14px;
+  outline: none;
 }
 
-.explainText {
-  font-size: 13px;
-  margin: 0;
-  line-height: 1.45;
+.inputDisabled {
+  opacity: 0.7;
 }
+
+.checkBtn {
+  width: 100%;
+  height: 60px;
+  border-radius: 28px;
+  border: 1px solid #fff;
+  background: linear-gradient(90deg, #6088f8 0%, rgba(96, 136, 248, 0.5) 100%);
+  box-shadow: 0 0 2px 0 rgba(114, 114, 114, 0.5);
+  color: #fff;
+  font-size: 18px;
+  margin-top: 22px;
+}
+.checkBtn:disabled { opacity: 0.3; }
+
+/* 해설 박스 */
+.answerBox {
+  margin: 40px -20px 0;
+  padding: 18px 20px 26px;
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.answerBoxCorrect {
+  background: linear-gradient(
+    180deg,
+    rgba(122, 162, 242, 0.7) 14.35%,
+    rgba(183, 205, 248, 0.7) 63.25%,
+    rgba(255, 255, 255, 0.7) 99.83%
+  );
+}
+
+.answerBoxWrong {
+  background: linear-gradient(
+    180deg,
+    rgba(251, 174, 174, 0.7) 14.35%,
+    rgba(254, 229, 229, 0.7) 94.9%,
+    rgba(255, 255, 255, 0.7) 99.83%
+  );
+}
+
+.answerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.answerLabel {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.sourceBtn {
+  color: #000;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 2px solid rgba(191, 195, 201, 0.2);
+  background: linear-gradient(290deg, rgba(255, 255, 255, 0.7) 27.98%, rgba(255, 255, 255, 0.42) 71.7%);
+  backdrop-filter: blur(6px);
+}
+
+.answerText {
+  color: #000;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 150%;
+}
+
+.bottomSpace { height: 120px; }
