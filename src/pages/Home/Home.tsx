@@ -79,11 +79,43 @@ const normalizeCourse = (x: any): HomeCourse => {
   };
 };
 
-/** ✅ 뉴스 클릭 시 코스 상세로 가려면 courseId가 필요함 */
-const getNewsCourseId = (news: HomeNewsItem): number | null => {
-  const cid = Number(news?.courseId ?? 0);
-  if (!cid || Number.isNaN(cid)) return null;
-  return cid;
+/** ✅ 오늘자 뉴스도 어떤 키로 오든 흡수해서 쓰기 (courseId / imageUrl 문제 해결) */
+const normalizeNews = (x: any): HomeNewsItem => {
+  const newsId = Number(x?.newsId ?? x?.id ?? x?.news_id ?? 0);
+
+  const courseId = Number(
+    x?.courseId ??
+      x?.course_id ??
+      x?.courseID ??
+      x?.coursePk ??
+      x?.courseNo ??
+      x?.course?.courseId ??
+      x?.course?.id ??
+      x?.course?.course_id ??
+      0
+  );
+
+  const keywordsRaw = x?.keywords ?? x?.tags ?? x?.keywordList ?? x?.keyWords ?? [];
+  const keywords = Array.isArray(keywordsRaw) ? keywordsRaw.map(String) : [];
+
+  return {
+    newsId,
+    courseId: courseId || undefined,
+    title: String(x?.title ?? x?.headline ?? x?.name ?? ""),
+    imageUrl:
+      String(
+        x?.imageUrl ??
+          x?.thumbnailUrl ??
+          x?.thumbnail ??
+          x?.newsImageUrl ??
+          x?.imgUrl ??
+          x?.image ??
+          ""
+      ) || undefined,
+    keywords,
+    source: String(x?.source ?? x?.publisher ?? x?.press ?? ""),
+    publishedAt: String(x?.publishedAt ?? x?.date ?? x?.createdAt ?? ""),
+  };
 };
 
 export default function Home() {
@@ -119,7 +151,9 @@ export default function Home() {
     console.log("[home news] raw:", raw);
 
     if (res.data?.success && Array.isArray(raw)) {
-      setTodayNews(raw as HomeNewsItem[]);
+      const mapped = raw.map(normalizeNews).filter((n) => n.newsId > 0);
+      console.log("[home news] mapped:", mapped);
+      setTodayNews(mapped);
     } else {
       setTodayNews([]);
     }
@@ -227,12 +261,10 @@ export default function Home() {
 
           <div className={styles.newsScroll}>
             {todayNews.length === 0 && !loading ? (
-              <div style={{ fontSize: 12, opacity: 0.7, padding: "8px 0" }}>
-                오늘자 뉴스가 없어요.
-              </div>
+              <div style={{ fontSize: 12, opacity: 0.7, padding: "8px 0" }}>오늘자 뉴스가 없어요.</div>
             ) : (
               todayNews.map((news) => {
-                const courseId = getNewsCourseId(news);
+                const courseId = news.courseId;
 
                 return (
                   <button
@@ -247,11 +279,7 @@ export default function Home() {
                       goToDetail(courseId, { from: "home-today" });
                     }}
                   >
-                    <NewsCard
-  title={news.title}
-  source={news.source}
-  imageUrl={news.imageUrl}
-/>
+                    <NewsCard title={news.title} source={news.source} imageUrl={news.imageUrl} />
                   </button>
                 );
               })
