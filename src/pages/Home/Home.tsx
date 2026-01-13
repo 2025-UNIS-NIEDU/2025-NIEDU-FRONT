@@ -37,7 +37,13 @@ type HomeCourse = {
   courseId: number;
   title: string;
   thumbnailUrl?: string;
-  progressRate: number;
+
+  // ✅ 최근학습코스에는 progressRate를 안 쓰고 키워드/토픽을 쓸거라 optional
+  progressRate?: number;
+
+  topic?: string;
+  keywords?: string[];
+
   isSaved: boolean;
 };
 
@@ -52,8 +58,14 @@ const pickArray = (d: any): any[] => {
   if (Array.isArray(d?.content)) return d.content;
   if (Array.isArray(d?.list)) return d.list;
   if (Array.isArray(d?.result)) return d.result;
-  if (Array.isArray(d?.data)) return d.data; // 혹시 중첩된 케이스
+  if (Array.isArray(d?.data)) return d.data;
   return [];
+};
+
+const formatHash = (s: string) => {
+  const t = String(s ?? "").trim();
+  if (!t) return "";
+  return t.startsWith("#") ? t : `#${t}`;
 };
 
 /** ✅ 어떤 형태로 오든 courseId를 확보하기 위한 정규화 */
@@ -68,6 +80,9 @@ const normalizeCourse = (x: any): HomeCourse => {
       0
   );
 
+  const rawKeywords = x?.keywords ?? x?.subTopics ?? x?.tags ?? x?.keywordList ?? [];
+  const keywords = Array.isArray(rawKeywords) ? rawKeywords.map(String) : [];
+
   return {
     courseId,
     title: String(x?.title ?? x?.name ?? x?.headline ?? ""),
@@ -75,11 +90,13 @@ const normalizeCourse = (x: any): HomeCourse => {
     progressRate: Number(
       x?.progressRate ?? x?.progress ?? x?.completionRate ?? x?.progressPercent ?? 0
     ),
+    topic: String(x?.topic ?? x?.mainTopic ?? x?.category ?? ""),
+    keywords,
     isSaved: Boolean(x?.isSaved ?? x?.saved ?? x?.bookmarked ?? false),
   };
 };
 
-/** ✅ 오늘자 뉴스도 어떤 키로 오든 흡수해서 쓰기 (courseId / imageUrl 문제 해결) */
+/** ✅ 오늘자 뉴스도 어떤 키로 오든 흡수해서 쓰기 */
 const normalizeNews = (x: any): HomeNewsItem => {
   const newsId = Number(x?.newsId ?? x?.id ?? x?.news_id ?? 0);
 
@@ -148,12 +165,8 @@ export default function Home() {
     const res = await api.get<ApiResponse<any>>("/api/home/news");
     const raw = pickArray(res.data?.data);
 
-    console.log("[home news] raw:", raw);
-
     if (res.data?.success && Array.isArray(raw)) {
-      const mapped = raw.map(normalizeNews).filter((n) => n.newsId > 0);
-      console.log("[home news] mapped:", mapped);
-      setTodayNews(mapped);
+      setTodayNews(raw.map(normalizeNews).filter((n) => n.newsId > 0));
     } else {
       setTodayNews([]);
     }
@@ -171,9 +184,6 @@ export default function Home() {
 
     const rawRecent = pickArray(recentRes.data?.data);
     const rawSaved = pickArray(savedRes.data?.data);
-
-    console.log("[home courses] recent raw:", rawRecent);
-    console.log("[home courses] saved raw:", rawSaved);
 
     setRecentCourses(rawRecent.map(normalizeCourse).filter((c) => c.courseId > 0));
     setSavedCourses(rawSaved.map(normalizeCourse).filter((c) => c.courseId > 0));
@@ -219,7 +229,6 @@ export default function Home() {
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 헤더 */}
         <header className={styles.header}>
           <h1 className={styles.title}>홈</h1>
           <div className={styles.firebox}>
@@ -230,7 +239,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* 출석 배너 */}
         <div className={styles.banner}>
           <div className={styles.bannerContent}>
             <img
@@ -244,7 +252,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 상태 표시 */}
         {loading && (
           <div style={{ padding: "12px 0", fontSize: 12, opacity: 0.7 }}>
             홈 데이터 불러오는 중…
@@ -254,7 +261,6 @@ export default function Home() {
           <div style={{ padding: "12px 0", fontSize: 12, color: "#d33" }}>{errorMsg}</div>
         )}
 
-        {/* 오늘자 뉴스 학습하기 */}
         <section className={styles.section}>
           <h2>오늘자 뉴스 학습하기</h2>
           <p className={styles.date}>오전 8시 업데이트</p>
@@ -287,7 +293,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 최근 학습한 코스 */}
+        {/* ✅ 최근 학습한 코스: 진행률 제거 + 토픽/키워드 칩 */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>최근 학습한 코스</h2>
@@ -319,9 +325,18 @@ export default function Home() {
                 />
                 <div className={styles.courseBody}>
                   <h3 className={styles.courseTitle}>{course.title}</h3>
-                  <p className={styles.courseDesc}>진행률 {course.progressRate ?? 0}%</p>
+
                   <div className={styles.tagRow}>
-                    {course.isSaved && <span className={styles.tag}>저장됨</span>}
+                    {course.topic && <span className={styles.tag}>{course.topic}</span>}
+                    {(course.keywords ?? []).slice(0, 2).map((k, idx) => {
+                      const h = formatHash(k);
+                      if (!h) return null;
+                      return (
+                        <span key={`${course.courseId}-kw-${idx}`} className={styles.tag}>
+                          {h}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               </button>
@@ -329,7 +344,6 @@ export default function Home() {
           )}
         </section>
 
-        {/* 즐겨찾기 코스 */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2>즐겨찾기한 코스</h2>
@@ -362,9 +376,6 @@ export default function Home() {
                 <div className={styles.courseBody}>
                   <h3 className={styles.courseTitle}>{course.title}</h3>
                   <p className={styles.courseDesc}>진행률 {course.progressRate ?? 0}%</p>
-                  <div className={styles.tagRow}>
-                    {course.isSaved && <span className={styles.tag}>저장됨</span>}
-                  </div>
                 </div>
               </button>
             ))

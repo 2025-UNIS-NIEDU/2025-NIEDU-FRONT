@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN004.module.css";
-import api from "@/api/axiosInstance";
-import type { ApiResponse } from "@/types/api";
+import { submitStepAnswer } from "@/lib/apiClient"; // ✅ 추가
 
 type Props = {
   articleId?: string;
@@ -131,19 +130,22 @@ export default function StepN004({ articleId, articleUrl }: Props) {
     }
     if (!q || !choice) return false;
 
+    // ✅ 서버가 step 단위로 answers 전체를 기대할 수 있어서 누적 전송
     const userAnswer = Object.entries(nextAnswers).map(([contentId, value]) => ({
       contentId: Number(contentId),
-      value,
+      value, // "O" | "X"
     }));
 
     try {
-      await api.post<ApiResponse<null>>(
-        `/api/edu/courses/${cid}/sessions/${sid}/steps/${stepId}/answer`,
-        {
-          contentType: CONTENT_TYPE,
-          userAnswer,
-        }
-      );
+      // ✅ 핵심: apiClient.submitStepAnswer 사용
+      // -> 배열(userAnswer)을 넘기면 apiClient가 { answers: [...] } 로 정규화해서 서버에 전송함
+      await submitStepAnswer({
+        courseId: cid,
+        sessionId: sid,
+        stepId,
+        contentType: CONTENT_TYPE,
+        userAnswer,
+      });
       return true;
     } catch (e) {
       console.error("[StepN004] answer submit failed:", e);
@@ -161,6 +163,7 @@ export default function StepN004({ articleId, articleUrl }: Props) {
 
     const ok = await submitCurrentAnswer(next);
     if (!ok) return;
+
     setConfirmed(true);
   };
 

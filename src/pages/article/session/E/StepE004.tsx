@@ -111,7 +111,8 @@ export default function StepE004() {
         sessionId: sid,
         stepId,
         contentType: CONTENT_TYPE,
-        userAnswer: [{ contentId: item.contentId, value: answer }],
+        // ✅ SENTENCE_COMPLETION은 value가 아니라 userAnswer 키를 기대
+        userAnswer: [{ contentId: item.contentId, userAnswer: answer }],
       });
 
       // 2) AI 피드백 요청
