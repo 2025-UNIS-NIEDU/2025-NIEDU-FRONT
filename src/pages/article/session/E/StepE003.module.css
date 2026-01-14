@@ -84,9 +84,9 @@
 
 /* 해설 박스 */
 .answerBox {
-  margin: 84px -20px 0;
+  margin: 34px -20px 0;
   padding: 20px 20px 32px;
-  margin-top: 270px;
+  
   height: 300px;
 
   background: linear-gradient(180deg, #b9d5ff 0%, #7fa9ff 100%);

@@ -208,7 +208,7 @@ export default function StepI003() {
                   className={styles.sourceBtn}
                   onClick={() => window.open(sourceLink, "_blank")}
                 >
-                  원문 보기
+                  뉴스 원문 보기
                 </button>
               )}
             </div>

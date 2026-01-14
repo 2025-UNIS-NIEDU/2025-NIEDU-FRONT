@@ -38,7 +38,7 @@ line-height: 150%; /* 33px */
 
 /* 마스코트 이미지 */
 .mascot {
-  width: clamp(90px, 24vw, 200px);
+  width: clamp(80px, 22vw, 180px);
   height: auto;
   margin-bottom: 24px;
   margin-top: 14px;
