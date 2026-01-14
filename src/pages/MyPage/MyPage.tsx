@@ -381,7 +381,7 @@ export default function MyPage() {
                     className={styles.dayCell}
                     onClick={() => {
                       if (!hasData) return;
-                      nav(`/mypage/log?date=${encodeURIComponent(iso)}`);
+                      
                     }}
                     style={{ cursor: hasData ? "pointer" : "default" }}
                     aria-disabled={!hasData}

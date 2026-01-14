@@ -14,7 +14,7 @@
 .container {
   position: relative;
   width: 100%;
-  max-width: 430px; /* ✅ 여기 때문에 모달만 가로로 커지는 문제 해결됨 */
+  max-width: 700px; /* ✅ 여기 때문에 모달만 가로로 커지는 문제 해결됨 */
   min-height: 100%;
   margin: 0 auto;
   background: transparent;
@@ -36,9 +36,8 @@
 /* ✅ 하단바 바로 위로 붙이기 + 팝업 높이 키우기 */
 .sheet {
   position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: calc(64px + env(safe-area-inset-bottom));
+  
+  bottom: calc(78px + env(safe-area-inset-bottom));
   background: #ffffff;
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
