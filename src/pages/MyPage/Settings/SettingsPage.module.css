@@ -4,35 +4,19 @@
   inset: 0;
   display: flex;
   justify-content: center;
-  align-items: stretch;
   background: #eef0f4;
-
-  /* ✅ 세로 스크롤 허용 + 가로는 숨김 */
   overflow-y: auto;
-  overflow-x: hidden;
-
-  /* ✅ 모든 브라우저 스크롤바 숨김 */
-  -ms-overflow-style: none; /* IE / old Edge */
-  scrollbar-width: none; /* Firefox */
-}
-.viewport::-webkit-scrollbar {
-  display: none; /* Chrome / Safari / Edge */
 }
 
 .container {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-
   width: 100%;
-  max-width: 700px; /* 아이폰 기준 폭 */
-  min-height: 100vh; /* 화면 높이 이상으로는 자유롭게 커질 수 있게 */
+  max-width: 700px;
+  min-height: 100%;
   margin: 0 auto;
-  background: #fff;
-  box-sizing: border-box;
-
+  background: #ffffff;
   padding: 6vh 20px;
-  padding-bottom: 80px; /* 하단바 + 약간 여백만 남기기 */
+  padding-bottom: 90px;
+  box-sizing: border-box;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -45,13 +29,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 22px;
 }
 
 .backBtn {
   position: absolute;
-  left: 0;
-  top: 6px;
+  left: 16px;
+  top: 18px;
   width: 40px;
   height: 40px;
   border: 0;
@@ -63,69 +46,70 @@
 }
 
 .backBtn img {
-  width: 35px;
-  height: 35px;
+  width: 20px;
+  height: 20px;
 }
 
 .title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 800;
   color: #0f0f0f;
+  margin: 0;
 }
 
 .profileBlock {
-  margin-top: 8px;
-  padding: 8px 0 14px;
+  margin-top: 6px;
 }
 
 .profileText {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .profileName {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 900;
   color: #0f0f0f;
+  line-height: 1.15;
 }
 
 .profileEmail {
   font-size: 14px;
-  color: #6b6f76;
+  font-weight: 600;
+  color: rgba(15, 15, 15, 0.55);
 }
 
 .sectionLabel {
-  margin-top: 20px;
-  color: #808080;
-
-/* body-small/regular */
-font-family: Pretendard;
-font-size: 15px;
-font-style: normal;
-font-weight: 500;
-line-height: 150%; /* 22.5px */
+  margin-top: 26px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(15, 15, 15, 0.45);
 }
 
 .rowBtn {
   width: 100%;
+  height: 46px;
   border: 0;
   background: transparent;
-  padding: 14px 0;
-  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
   cursor: pointer;
 }
 
 .rowTitle {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 900;
   color: #0f0f0f;
 }
 
 .dim {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -133,56 +117,55 @@ line-height: 150%; /* 22.5px */
 }
 
 .modal {
-  width: calc(100% - 42px);
-  max-width: 340px;
+  width: calc(100% - 60px);
+  max-width: 380px;
   background: #ffffff;
-  border-radius: 18px;
-  padding: 20px 18px 16px;
+  border-radius: 16px;
+  padding: 18px 16px 14px;
   box-sizing: border-box;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
 }
 
 .modalTitle {
   font-size: 16px;
-  font-weight: 800;
-  color: #0f0f0f;
+  font-weight: 900;
   text-align: center;
+  color: #0f0f0f;
+  margin-bottom: 10px;
 }
 
 .modalDesc {
-  margin-top: 10px;
   font-size: 12px;
-  line-height: 1.45;
-  color: #6b6f76;
+  font-weight: 600;
+  color: rgba(15, 15, 15, 0.6);
   text-align: center;
+  line-height: 1.35;
+  margin-bottom: 12px;
 }
 
 .modalBtns {
-  margin-top: 14px;
   display: flex;
   gap: 10px;
 }
 
 .modalBtnGray {
   flex: 1;
-  height: 38px;
+  height: 40px;
   border-radius: 10px;
   border: 0;
-background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 9.14%, rgba(191, 195, 201, 0.10) 82.53%));
+  background: #f1f3f6;
   font-size: 14px;
-  font-weight: 700;
-  color: #0f0f0f;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .modalBtnBlue {
   flex: 1;
-  height: 38px;
+  height: 40px;
   border-radius: 10px;
   border: 0;
-background: linear-gradient(0deg, rgba(96, 136, 248, 0.80) 0%, rgba(96, 136, 248, 0.40) 192.5%);
+  background: #6f8cff;
+  color: #fff;
   font-size: 14px;
-  font-weight: 700;
-  color: #ffffff;
+  font-weight: 800;
   cursor: pointer;
 }

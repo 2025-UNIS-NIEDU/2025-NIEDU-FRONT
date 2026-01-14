@@ -164,7 +164,7 @@ export default function TermsDictionaryPage() {
       <div className={styles.container}>
         <header className={styles.topBar}>
           <button className={styles.backBtn} onClick={() => nav(-1)} aria-label="뒤로가기">
-            <img src="/icons/fluent_ios-arrow-24-filled.svg" alt="" />
+            <img src="/icons/fluent_ios-arrow.svg" alt="" />
           </button>
 
           <h1 className={styles.title}>용어사전</h1>

@@ -1,15 +1,9 @@
 // src/pages/MyPage/Settings/TermsPage.tsx
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-
-import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
 import styles from "./PolicyPage.module.css";
 
-export default function TermsPage() {
-  const nav = useNavigate();
-
-  const text = useMemo(
-    () => `[NIEdu] 서비스 이용약관
+const TERMS_TEXT = `
+[NIEdu] 서비스 이용약관
 
 제1장 총칙
 제1조 (목적): 본 약관은 [회사명] (이하 '회사')이 제공하는 [서비스명] 및 관련 서비스(이하 '서비스')의 이용 조건 및 절차에 관한 기본적인 사항을 정함을 목적으로 합니다.
@@ -34,25 +28,25 @@ export default function TermsPage() {
 제5장 손해배상 및 기타
 제13조 (손해배상): 회사가 서비스 이용과 관련하여 회원에게 발생한 손해에 대한 배상 책임 및 면책 조항을 명시합니다.
 제14조 (면책 조항): 천재지변, 통신 장애 등 회사의 귀책 사유가 아닌 경우의 책임 한계를 명시합니다.
-제15조 (재판권 및 준거법): 약관 해석 및 회원과 회사 간 분쟁 발생 시 관할 법원 및 적용될 법률을 명시합니다.`,
-    []
-  );
+제15조 (재판권 및 준거법): 약관 해석 및 회원과 회사 간 분쟁 발생 시 관할 법원 및 적용될 법률을 명시합니다.
+`.trim();
+
+export default function TermsPage() {
+  const nav = useNavigate();
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
         <div className={styles.header}>
           <button className={styles.backBtn} type="button" onClick={() => nav(-1)}>
-            <img src="/icons/icon-back.svg" alt="뒤로" />
+            <img src="/icons/fluent_ios-arrow.svg" alt="뒤로" />
           </button>
-          <h1 className={styles.title}>이용약관</h1>
+          <div className={styles.title}>이용약관</div>
         </div>
 
-        <div className={styles.card}>
-          <pre className={styles.pre}>{text}</pre>
+        <div className={styles.body}>
+          <pre className={styles.pre}>{TERMS_TEXT}</pre>
         </div>
-
-        <BottomNav activeTab="mypage" />
       </div>
     </div>
   );

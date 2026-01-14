@@ -5,9 +5,8 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
-  
   background: transparent;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .container {
@@ -18,44 +17,32 @@
   max-width: 700px;
   min-height: 100%;
   margin: 0 auto;
-  
-  box-sizing: border-box;
-  padding: 6vh 20px;
-  padding-bottom: 80px;
   background: transparent;
-  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
-}
-/* ✅ dim 뒤에 settings 배경(#F2F2F7)이 “투명으로” 보이게 */
-/* src/pages/MyPage/Settings/PushAlarmPage.module.css */
-.modalRoot {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  pointer-events: auto;
+  box-sizing: border-box;
+  padding-bottom: 80px;
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ✅ “투명”이 아니라: Settings 화면이 그대로 보이도록 dim만 덮음 */
 .dimBg {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(0, 0, 0, 0.18);
+  /* ✅ Settings 화면이 그대로 보이도록(배경 투명) */
+  background: transparent;
 }
 
-/* bottom sheet */
 .sheet {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 64px;
-  margin: 0 auto;
-  max-width: 402px;
+  /* ✅ 하단바 바로 위에 붙이기 */
+  bottom: calc(clamp(56px, 8.5vh, 78px) + env(safe-area-inset-bottom));
   background: #ffffff;
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
   padding: 12px 18px 18px;
   box-sizing: border-box;
+  z-index: 10;
 }
 
 .grabber {
@@ -69,7 +56,7 @@
 .sheetTitle {
   text-align: center;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 900;
   color: #0f0f0f;
   margin-bottom: 14px;
 }
@@ -93,7 +80,7 @@
 .time {
   flex: 1;
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 900;
   color: #6f8cff;
 }
 
@@ -107,139 +94,22 @@
   justify-content: center;
   cursor: pointer;
 }
+
 .iconBtn img {
   width: 18px;
   height: 18px;
 }
 
-.pickerInline {
-  margin-top: 12px;
-  border-radius: 16px;
-  background: rgba(242, 242, 247, 0.72); /* ✅ #F2F2F7 투명 */
-  backdrop-filter: blur(10px);
-  padding: 14px 12px 12px;
-}
-
-/* ✅ “붙어있게” (gap 거의 없음) */
-.pickerRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px; /* ← 여기 */
-  padding: 2px 0 10px;
-}
-
-.wheelCol {
-  position: relative;
-  width: 92px;
-  height: 156px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.55);
-  overflow: hidden;
-}
-
-.wheelScroll {
-  height: 100%;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.wheelScroll::-webkit-scrollbar {
-  display: none;
-}
-
-.wheelItem {
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 700;
-  color: rgba(15, 15, 15, 0.35);
-  user-select: none;
-}
-
-.wheelItemActive {
-  color: #0f0f0f;
-  font-weight: 800;
-}
-
-.wheelCenterLine {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  top: 50%;
-  height: 36px;
-  transform: translateY(-50%);
-  border-radius: 10px;
-  background: rgba(111, 140, 255, 0.1);
-  pointer-events: none;
-}
-
-.wheelFadeTop,
-.wheelFadeBottom {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 42px;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.wheelFadeTop {
-  top: 0;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
-}
-
-.wheelFadeBottom {
-  bottom: 0;
-  background: linear-gradient(to top, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
-}
-
-.pickerBtns {
-  margin-top: 10px;
-  display: flex;
-  gap: 10px;
-}
-
-.pickerCancel {
-  flex: 1;
-  height: 44px;
-  border-radius: 12px;
-  border: 0;
-  background: #ffffff;
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.pickerOk {
-  flex: 1;
-  height: 44px;
-  border-radius: 12px;
-  border: 0;
-  background: #6f8cff;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
 .saveBtn {
   margin-top: 16px;
   width: 100%;
-  height: 64px;
-  border-radius: 32px;
+  height: 56px;
+  border-radius: 28px;
   border: 0;
   background: var(--blue2_fill, linear-gradient(90deg, #6088f8 0%, rgba(96, 136, 248, 0.5) 100%));
   backdrop-filter: blur(6px);
   color: #ffffff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
   cursor: pointer;
-}
-
-.saveBtn:disabled {
-  opacity: 0.45;
-  cursor: default;
 }

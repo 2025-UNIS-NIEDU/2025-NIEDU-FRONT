@@ -95,17 +95,19 @@ export default function AppRouter() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {/* ✅ 모달 라우트: 배경이 있을 때만 PushAlarmPage를 “위에” 올림 */}
+      {/* ✅ 모달 라우트: 배경이 있을 때만 “위에” 올림 */}
       {backgroundLocation && (
         <Routes>
           <Route path="/mypage/settings/push" element={<PushAlarmPage />} />
+          <Route path="/mypage/settings/topics" element={<PreferredTopicsPage />} />
         </Routes>
       )}
 
-      {/* ✅ 직접 URL로 /push 진입했을 때도 보이게(백업) */}
+      {/* ✅ 직접 URL 진입 백업 */}
       {!backgroundLocation && (
         <Routes>
           <Route path="/mypage/settings/push" element={<PushAlarmPage />} />
+          <Route path="/mypage/settings/topics" element={<PreferredTopicsPage />} />
         </Routes>
       )}
     </>

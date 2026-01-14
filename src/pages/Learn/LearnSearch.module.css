@@ -1,41 +1,72 @@
+/* src/pages/Learn/LearnSearch.module.css */
 .viewport {
   position: fixed;
   inset: 0;
   display: flex;
   justify-content: center;
-  align-items: stretch;
   background: #eef0f4;
-
   overflow-y: auto;
-  overflow-x: hidden;
-
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.viewport::-webkit-scrollbar {
-  display: none;
 }
 
 .container {
   position: relative;
   width: 100%;
   max-width: 700px;
-  min-height: 100vh;
+  min-height: 100%;
   margin: 0 auto;
   background: #fff;
   box-sizing: border-box;
 
-  padding: 18px 20px;
+  /* ✅ Learn 페이지와 동일한 여백 톤 */
+  padding: 6vh 20px;
   padding-bottom: 90px;
-  font-family: "Pretendard", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .searchTop {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 6px;
+  gap: 10px;
+  margin-top: 0;
 }
+
+.searchWrap {
+  flex: 1;
+  height: 52px;
+  border-radius: 26px;
+  background: #f2f2f7;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  box-sizing: border-box;
+}
+
+.searchWrap img {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+}
+
+.searchInput {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cancel {
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(15, 15, 15, 0.45);
+  cursor: pointer;
+}
+
 
 .searchBar {
   flex: 1;

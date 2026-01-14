@@ -1,6 +1,6 @@
 // src/pages/MyPage/Settings/PreferredTopicsPage.tsx
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import BottomNav from "@/pages/onboarding/components/BottomNav/BottomNav";
 import styles from "./PreferredTopicsPage.module.css";
@@ -16,7 +16,7 @@ function loadSelected(): Topic[] {
     if (!raw) return [];
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    return arr.filter((t) => TOPICS.includes(t)) as Topic[];
+    return arr.filter((x) => TOPICS.includes(x));
   } catch {
     return [];
   }
@@ -24,8 +24,10 @@ function loadSelected(): Topic[] {
 
 export default function PreferredTopicsPage() {
   const nav = useNavigate();
+  const location = useLocation() as any;
+  const isModal = Boolean(location.state?.backgroundLocation);
+
   const [selected, setSelected] = useState<Topic[]>(() => loadSelected());
-  const [saved, setSaved] = useState(false);
 
   const toggle = (t: Topic) => {
     setSelected((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -33,27 +35,27 @@ export default function PreferredTopicsPage() {
 
   const save = () => {
     localStorage.setItem(LS_KEY, JSON.stringify(selected));
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1400);
+    // ✅ 저장하면 모달 닫히기
+    nav(-1);
   };
 
-  const ordered = useMemo(() => TOPICS.map((t) => ({ t, on: selected.includes(t) })), [selected]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
         <div className={styles.dimBg} />
 
-        <div className={styles.sheet}>
+        <div className={styles.sheet} role="dialog" aria-modal="true">
           <div className={styles.grabber} />
           <div className={styles.sheetTitle}>선호 토픽 설정</div>
 
           <div className={styles.chips}>
-            {ordered.map(({ t, on }) => (
+            {TOPICS.map((t) => (
               <button
                 key={t}
                 type="button"
-                className={`${styles.chip} ${on ? styles.chipOn : ""}`}
+                className={`${styles.chip} ${selectedSet.has(t) ? styles.chipOn : ""}`}
                 onClick={() => toggle(t)}
               >
                 {t}
@@ -66,10 +68,10 @@ export default function PreferredTopicsPage() {
           </button>
         </div>
 
-        {saved && <div className={styles.savedToast}>저장되었습니다</div>}
+        {/* 모달로 열렸을 땐 뒤에 Settings의 하단바가 보이니까 중복 렌더링 X */}
+        {!isModal && <BottomNav activeTab="mypage" />}
 
         <button className={styles.backTap} type="button" onClick={() => nav(-1)} aria-label="닫기" />
-        <BottomNav activeTab="mypage" />
       </div>
     </div>
   );
