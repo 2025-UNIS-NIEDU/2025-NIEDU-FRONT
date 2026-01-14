@@ -19,9 +19,9 @@ type DateNavigatorData = {
 type CalendarCourse = {
   topic?: string;
   subTopic?: string;
-  keywords?: string[];
-  progressRate?: number;
-  extra?: number;
+  keywords?: string[]; // 서버가 주면 사용
+  progressRate?: number; // 서버가 주면 0% 제외에 사용
+  extra?: number; // { extra: 2 }
 };
 
 type CalendarDay = {
@@ -97,10 +97,9 @@ export default function MyPage() {
   const [loadingNav, setLoadingNav] = useState(true);
   const [loadingCal, setLoadingCal] = useState(true);
 
-  // ✅ 날짜별 학습로그 태그 보강용
-  const [logTagMap, setLogTagMap] = useState<Record<string, { topic?: string; subTopic?: string; keywords?: string[] }>>(
-    {}
-  );
+  const [logTagMap, setLogTagMap] = useState<
+    Record<string, { topic?: string; subTopic?: string; keywords?: string[] }>
+  >({});
 
   const daysArray = useMemo(() => makeCalendarMatrix(year, month0), [year, month0]);
 
@@ -119,14 +118,19 @@ export default function MyPage() {
   };
 
   const fetchNavigator = async () => {
-    const res = await api.get<ApiResponse<DateNavigatorData>>("/api/mypage/learning-log/navigator");
+    const res = await api.get<ApiResponse<DateNavigatorData>>(
+      "/api/mypage/learning-log/navigator"
+    );
     setNavData(res.data?.data ?? null);
   };
 
   const fetchCalendar = async (y: number, m0: number) => {
-    const res = await api.get<ApiResponse<CalendarData>>("/api/mypage/learning-log/calendar", {
-      params: { year: y, month: m0 + 1 },
-    });
+    const res = await api.get<ApiResponse<CalendarData>>(
+      "/api/mypage/learning-log/calendar",
+      {
+        params: { year: y, month: m0 + 1 },
+      }
+    );
     setCalendarData(res.data?.data ?? null);
   };
 
@@ -212,7 +216,7 @@ export default function MyPage() {
       setYear(current.y);
       setMonth0(current.m);
     }
-  }, [navData]);
+  }, [navData, year, month0]);
 
   const dayToCourses = useMemo(() => {
     const map = new Map<number, CalendarCourse[]>();
@@ -325,25 +329,26 @@ export default function MyPage() {
                   return true;
                 });
 
-                const coursePairs = courses
-                  .filter((c) => c?.topic || c?.subTopic)
-                  .map((c) => ({
-                    topic: typeof c.topic === "string" ? c.topic : "",
-                    subTopic: typeof c.subTopic === "string" ? c.subTopic : "",
-                  }));
+                const topicPairs = courses.filter((c) => c?.topic || c?.subTopic);
 
-                const visibleCourses = coursePairs.slice(0, 3);
-                const extraCount = Math.max(0, coursePairs.length - visibleCourses.length);
+                const courseLabels = topicPairs
+                  .map((c) => {
+                    const t = typeof c.topic === "string" ? c.topic.trim() : "";
+                    const s = typeof c.subTopic === "string" ? c.subTopic.trim() : "";
+                    if (!t && !s) return "";
+                    return `${t}${s ? `#${s}` : ""}`;
+                  })
+                  .filter(Boolean);
 
-                const fallbackTopic = logTagMap[iso]?.topic;
-                const fallbackSubTopic = logTagMap[iso]?.subTopic;
-                const fallbackLabel =
-                  typeof fallbackTopic === "string" && fallbackTopic.length > 0
-                    ? `${fallbackTopic}${fallbackSubTopic ? `#${fallbackSubTopic}` : ""}`
-                    : null;
+                const visibleCourseLabels = courseLabels.slice(0, 3);
+                const extraCount = Math.max(0, courseLabels.length - visibleCourseLabels.length);
 
-                const hasLog = !!fallbackLabel;
-                const hasData = coursePairs.length > 0 || hasLog;
+                const hasLog =
+                  (logTagMap[iso]?.keywords?.length ?? 0) > 0 ||
+                  !!logTagMap[iso]?.topic ||
+                  !!logTagMap[iso]?.subTopic;
+
+                const hasData = courses.length > 0 || hasLog;
 
                 return (
                   <div
@@ -355,28 +360,18 @@ export default function MyPage() {
                     style={{ cursor: hasData ? "pointer" : "default" }}
                     aria-disabled={!hasData}
                   >
-                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{day}</div>
+                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>
+                      {day}
+                    </div>
 
-                    {(visibleCourses.length > 0 || !!fallbackLabel) && (
+                    {courseLabels.length > 0 && (
                       <div className={styles.tag}>
                         <span className={styles.courseLine}>
-                          {visibleCourses.length > 0
-                            ? visibleCourses.map((c, i) => {
-                                const label = `${c.topic}${c.subTopic ? `#${c.subTopic}` : ""}`;
-                                return (
-                                  <span key={`${label}-${i}`} className={styles.courseChip} title={label}>
-                                    {label}
-                                  </span>
-                                );
-                              })
-                            : fallbackLabel
-                              ? (
-                                  <span className={styles.courseChip} title={fallbackLabel}>
-                                    {fallbackLabel}
-                                  </span>
-                                )
-                              : null}
-
+                          {visibleCourseLabels.map((label, i) => (
+                            <span key={`${label}-${i}`} className={styles.courseChip} title={label}>
+                              {label}
+                            </span>
+                          ))}
                           {extraCount > 0 ? <span className={styles.courseMore}>+{extraCount}</span> : null}
                         </span>
                       </div>

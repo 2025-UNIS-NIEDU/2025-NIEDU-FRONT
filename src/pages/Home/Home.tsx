@@ -9,16 +9,19 @@ import { useGoToDetail } from "@/hooks/useGoToDetail";
 import type { ApiResponse } from "@/types/api";
 import api from "@/api/axiosInstance";
 
+// /api/user/me
 type UserProfile = {
   nickname: string;
   profileImageUrl: string;
 };
 
+// /api/attendance/streak
 type StreakData = {
   streak: number;
   todayAttended: boolean;
 };
 
+// /api/home/news
 type HomeNewsItem = {
   newsId: number;
   courseId?: number;
@@ -29,6 +32,7 @@ type HomeNewsItem = {
   publishedAt: string;
 };
 
+// /api/home/courses
 type HomeCourse = {
   courseId: number;
   title: string;
@@ -153,12 +157,6 @@ export default function Home() {
     }
   };
 
-  const fetchSavedCourses = async () => {
-    const savedRes = await api.get<ApiResponse<any>>("/api/home/courses", { params: { type: "saved", view: "preview" } });
-    const rawSaved = pickArray(savedRes.data?.data);
-    setSavedCourses(rawSaved.map(normalizeCourse).filter((c) => c.courseId > 0));
-  };
-
   const fetchHomeCourses = async () => {
     const [recentRes, savedRes] = await Promise.all([
       api.get<ApiResponse<any>>("/api/home/courses", { params: { type: "recent", view: "preview" } }),
@@ -170,6 +168,22 @@ export default function Home() {
 
     setRecentCourses(rawRecent.map(normalizeCourse).filter((c) => c.courseId > 0));
     setSavedCourses(rawSaved.map(normalizeCourse).filter((c) => c.courseId > 0));
+  };
+
+  const fetchSavedCoursesOnly = async () => {
+    try {
+      const savedRes = await api.get<ApiResponse<any>>("/api/home/courses", {
+        params: { type: "saved", view: "preview" },
+      });
+      const rawSaved = pickArray(savedRes.data?.data);
+      if (savedRes.data?.success && Array.isArray(rawSaved)) {
+        setSavedCourses(rawSaved.map(normalizeCourse).filter((c) => c.courseId > 0));
+      } else {
+        setSavedCourses([]);
+      }
+    } catch (e) {
+      console.error("[HOME] fetchSavedCoursesOnly error:", e);
+    }
   };
 
   useEffect(() => {
@@ -201,18 +215,15 @@ export default function Home() {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === SAVED_DIRTY_KEY) void fetchSavedCourses();
+      if (e.key === SAVED_DIRTY_KEY) void fetchSavedCoursesOnly();
     };
-
-    const onFocus = () => void fetchSavedCourses();
-
+    const onFocus = () => void fetchSavedCoursesOnly();
     const onVis = () => {
-      if (document.visibilityState === "visible") void fetchSavedCourses();
+      if (document.visibilityState === "visible") void fetchSavedCoursesOnly();
     };
 
     window.addEventListener("storage", onStorage);
@@ -227,146 +238,142 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading && !user) return <div className={styles.viewport}>로딩 중...</div>;
-
-  const displayName = user?.nickname ?? FALLBACK_USER.nickname;
-  const avatar = user?.profileImageUrl ?? FALLBACK_USER.profileImageUrl;
+  const handleGoDetail = (courseId?: number) => {
+    if (!courseId) return;
+    goToDetail(courseId, { from: "home" });
+  };
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {errorMsg && <p className={styles.errorMsg}>{errorMsg}</p>}
+        <div className={styles.header}>
+          <h1 className={styles.title}>홈</h1>
 
-        <header className={styles.header}>
-          <div className={styles.left}>
-            <div className={styles.avatar}>
-              {avatar ? <img src={avatar} alt="" /> : <div className={styles.avatarFallback} />}
+          <div className={styles.firebox}>
+            <div className={styles.fireIcon}>
+              <img src="/icons/solar_fire-bold-duotone.svg" alt="fire" />
+              <span>{streak ?? 0}</span>
             </div>
-            <div className={styles.hello}>
-              <div className={styles.name}>{displayName}</div>
-              <div className={styles.sub}>
-                {streak !== null ? (
-                  <>
-                    <span className={styles.badge}>{streak}일</span> 연속 학습 중!
-                  </>
-                ) : (
-                  "오늘도 학습해볼까요?"
-                )}
+          </div>
+        </div>
+
+        <div className={styles.banner}>
+          <div className={styles.bannerContent}>
+            <img
+              src="/icons/solar_fire-bold-duotone.svg"
+              alt="fire"
+              className={styles.bannerIcon}
+            />
+            <p className={styles.bannerText}>
+              {user?.nickname ?? "사용자"} 님, 오늘도 뉴스로 상식을 넓혀봐요!
+            </p>
+          </div>
+        </div>
+
+        {loading && (
+          <div style={{ padding: "12px 0", fontSize: 12, opacity: 0.7 }}>
+            홈 데이터 불러오는 중…
+          </div>
+        )}
+
+        {errorMsg && (
+          <div style={{ padding: "12px 0", fontSize: 12, color: "#b91c1c" }}>
+            {errorMsg}
+          </div>
+        )}
+
+        {/* 오늘자 뉴스 학습하기 */}
+        <section>
+          <div style={{ marginTop: 22 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+              오늘자 뉴스 학습하기
+            </h2>
+            <p style={{ margin: "6px 0 0", fontSize: 12, opacity: 0.7 }}>
+              25.10.01. 8시 업데이트
+            </p>
+          </div>
+
+          <div className={styles.newsScroll}>
+            {todayNews.slice(0, 6).map((n) => (
+              <div key={n.newsId} className={styles.newsItem} onClick={() => handleGoDetail(n.courseId)}>
+                <NewsCard title={n.title} source={n.source} imageUrl={n.imageUrl} />
               </div>
-            </div>
+            ))}
+          </div>
+        </section>
+
+        {/* 최근 학습한 코스 */}
+        <section style={{ marginTop: 26 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>최근 학습한 코스</h2>
+            <img className={styles.arrow} src="/icons/icon-chevron-right.svg" alt="more" />
           </div>
 
-          <button className={styles.mypageBtn} onClick={() => navigate("/mypage")}>
-            마이페이지
-          </button>
-        </header>
-
-        <section className={styles.section}>
-          <div className={styles.sectionTitleRow}>
-            <h2>오늘의 뉴스 학습하기</h2>
-          </div>
-
-          <div className={styles.newsRow}>
-            {todayNews.length === 0 && !loading ? (
-              <div className={styles.emptyCard}>오늘의 뉴스가 없어요.</div>
-            ) : (
-              todayNews.slice(0, 3).map((n) => (
-                <div
-                  key={n.newsId}
-                  onClick={() => n.courseId && goToDetail(n.courseId, { from: "home-news" })}
-                  style={{ cursor: n.courseId ? "pointer" : "default" }}
-                >
-                  <NewsCard title={n.title} source={n.source} imageUrl={n.imageUrl} />
+          <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            {recentCourses.slice(0, 2).map((c) => (
+              <div
+                key={c.courseId}
+                className={styles.courseCard}
+                onClick={() => handleGoDetail(c.courseId)}
+              >
+                <img
+                  className={styles.courseThumb}
+                  src={c.thumbnailUrl || FALLBACK_THUMB}
+                  alt=""
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = FALLBACK_THUMB;
+                  }}
+                />
+                <div className={styles.courseBody}>
+                  <p className={styles.courseTitle}>{c.title}</p>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {(c.keywords ?? []).slice(0, 2).map((k) => (
+                      <span key={k} style={{ fontSize: 12, color: "#3b82f6" }}>
+                        {formatHash(k)}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className={styles.section}>
-          <div className={styles.sectionTitleRow}>
-            <h2>최근 학습한 코스</h2>
-            <button className={styles.moreBtn} onClick={() => navigate("/recent-courses")}>
-              더보기
-            </button>
+        {/* 즐겨찾기한 코스 */}
+        <section style={{ marginTop: 26 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>즐겨찾기한 코스</h2>
+            <img className={styles.arrow} src="/icons/icon-chevron-right.svg" alt="more" />
           </div>
 
-          <div className={styles.courseGrid}>
-            {recentCourses.length === 0 && !loading ? (
-              <div className={styles.emptyCard}>최근 학습한 코스가 없어요.</div>
-            ) : (
-              recentCourses.slice(0, 4).map((course) => (
-                <button
-                  key={course.courseId}
-                  className={styles.courseCard}
-                  onClick={() => goToDetail(course.courseId, { from: "home-recent" })}
-                  type="button"
-                >
-                  <img
-                    className={styles.thumb}
-                    src={course.thumbnailUrl || FALLBACK_THUMB}
-                    alt=""
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = FALLBACK_THUMB;
-                    }}
-                  />
-                  <div className={styles.courseInfo}>
-                    <p className={styles.courseTitle}>{course.title}</p>
-                    <div className={styles.hashRow}>
-                      {(course.keywords ?? []).slice(0, 3).map((k) => (
-                        <span key={k} className={styles.hash}>
-                          {formatHash(k)}
-                        </span>
-                      ))}
-                    </div>
+          <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            {savedCourses.slice(0, 3).map((c) => (
+              <div
+                key={c.courseId}
+                className={styles.courseCard}
+                onClick={() => handleGoDetail(c.courseId)}
+              >
+                <img
+                  className={styles.courseThumb}
+                  src={c.thumbnailUrl || FALLBACK_THUMB}
+                  alt=""
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = FALLBACK_THUMB;
+                  }}
+                />
+                <div className={styles.courseBody}>
+                  <p className={styles.courseTitle}>{c.title}</p>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {(c.keywords ?? []).slice(0, 2).map((k) => (
+                      <span key={k} style={{ fontSize: 12, color: "#3b82f6" }}>
+                        {formatHash(k)}
+                      </span>
+                    ))}
                   </div>
-                </button>
-              ))
-            )}
+                </div>
+              </div>
+            ))}
           </div>
-        </section>
-
-        <section className={styles.section}>
-          <div className={styles.sectionTitleRow}>
-            <h2>즐겨찾기한 코스</h2>
-            <button className={styles.moreBtn} onClick={() => navigate("/saved-courses")}>
-              더보기
-            </button>
-          </div>
-
-          {savedCourses.length === 0 && !loading ? (
-            <div className={styles.emptyCard}>즐겨찾기한 코스가 없어요.</div>
-          ) : (
-            <div className={styles.courseGrid}>
-              {savedCourses.slice(0, 4).map((course) => (
-                <button
-                  key={course.courseId}
-                  className={styles.courseCard}
-                  onClick={() => goToDetail(course.courseId, { from: "home-saved" })}
-                  type="button"
-                >
-                  <img
-                    className={styles.thumb}
-                    src={course.thumbnailUrl || FALLBACK_THUMB}
-                    alt=""
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = FALLBACK_THUMB;
-                    }}
-                  />
-                  <div className={styles.courseInfo}>
-                    <p className={styles.courseTitle}>{course.title}</p>
-                    <div className={styles.hashRow}>
-                      {(course.keywords ?? []).slice(0, 3).map((k) => (
-                        <span key={k} className={styles.hash}>
-                          {formatHash(k)}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
         </section>
 
         <div className={styles.bottomSpace} />

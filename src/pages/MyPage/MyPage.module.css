@@ -240,6 +240,9 @@
   );
 }
 
+/* src/pages/MyPage/MyPage.module.css */
+
+/* ✅ 학습 로그 표기: {토픽}#{서브토픽} / 최대 3개 +n / 최대 5자(공백 포함) */
 .courseLine {
   display: inline-flex;
   align-items: center;
@@ -268,6 +271,7 @@
   font-weight: 700;
   line-height: 150%;
 }
+
 
 
 .tagStrong {
