@@ -201,13 +201,17 @@ export default function ArticlePrepare() {
     <div className={styles.viewport}>
       <div className={styles.container}>
         <header className={styles.header}>
-          <button className={styles.backBtn} onClick={() => navigate(-1)} aria-label="뒤로가기">
-            ←
-          </button>
+          <img
+            src="/icons/ep_arrow-up-bold.svg"
+            alt="back"
+            className={styles.backBtn}
+            onClick={() => navigate(-1)}
+          />
+          
         </header>
 
         <section className={styles.hero}>
-          <img className={styles.mascot} src="/icons/Frame 2 (1).svg" alt="" />
+          <img className={styles.mascot} src="/icons/prepare1.svg" alt="" />
           <h1 className={styles.title}>
             {title.split("\n").map((line, i) => (
               <span key={i}>
@@ -225,7 +229,7 @@ export default function ArticlePrepare() {
             <div style={{ fontSize: 12, opacity: 0.7 }}>세션 불러오는 중...</div>
           ) : sessions.length > 0 ? (
             <div style={{ fontSize: 12, opacity: 0.8 }}>
-              선택된 세션: <b>{selectedSessionId}</b>
+              
             </div>
           ) : null}
         </div>

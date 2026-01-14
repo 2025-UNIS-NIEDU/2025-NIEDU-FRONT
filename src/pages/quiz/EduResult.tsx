@@ -29,16 +29,19 @@ export default function EduResult() {
       <div className={styles.container}>
         {/* 헤더 */}
         <header className={styles.header}>
-          <button className={styles.backBtn} onClick={() => nav(-1)}>
-            ←
-          </button>
-          <div className={styles.headerRightSpace} />
+          <img
+            src="/icons/ep_arrow-up-bold.svg"
+            alt="back"
+            className={styles.backBtn}
+            onClick={() => nav(-1)}
+          />
+          
         </header>
 
         {/* 콘텐츠 */}
         <div className={styles.content}>
           <img
-            src="/icons/Frame 3.svg"
+            src="/icons/happybunny.svg"
             alt="결과 마스코트"
             className={styles.mascot}
           />

@@ -215,9 +215,9 @@ export default function StepN004({ articleId, articleUrl }: Props) {
               src={
                 confirmed
                   ? isCorrect
-                    ? "/icons/Frame 3.svg"
-                    : "/icons/Frame 4.svg"
-                  : "/icons/Frame 1.svg"
+                    ? "/icons/prepare1.svg"
+                    : "/icons/sadbunny.svg"
+                  : "/icons/happybunny.svg"
               }
               className={styles.character}
               alt=""
