@@ -306,7 +306,7 @@ export default function Home() {
         <section style={{ marginTop: 26 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>최근 학습한 코스</h2>
-            <img className={styles.arrow} src="/icons/icon-chevron-right.svg" alt="more" />
+            <img className={styles.arrow} src="/icons/ep_arrow-up-bold.svg" alt="more" />
           </div>
 
           <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -343,7 +343,7 @@ export default function Home() {
         <section style={{ marginTop: 26 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>즐겨찾기한 코스</h2>
-            <img className={styles.arrow} src="/icons/icon-chevron-right.svg" alt="more" />
+            <img className={styles.arrow} src="/icons/ep_arrow-up-bold.svg" alt="more" />
           </div>
 
           <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>

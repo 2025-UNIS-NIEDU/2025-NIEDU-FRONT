@@ -76,6 +76,7 @@ export default function ArticleDetail() {
   }, [articleId]);
 
   const toggleSave = async (courseIdNum: number, nextSaved: boolean) => {
+    // ✅ 즉시 UI 반영(파란 별)
     setDetail((prev) => (prev ? { ...prev, isSaved: nextSaved } : prev));
 
     const candidates: Array<() => Promise<any>> = nextSaved
@@ -106,9 +107,11 @@ export default function ArticleDetail() {
       }
       if (!ok) throw lastErr;
 
+      // ✅ 홈에서 즐겨찾기 섹션 다시 불러오도록 트리거
       localStorage.setItem(SAVED_DIRTY_KEY, String(Date.now()));
     } catch (e) {
       console.error("[ArticleDetail] toggle save failed:", e);
+      // 실패 시 원복
       setDetail((prev) => (prev ? { ...prev, isSaved: !nextSaved } : prev));
     }
   };
@@ -221,13 +224,17 @@ export default function ArticleDetail() {
           </button>
 
           <button
-            className={styles.scrapBtn}
+            className={`${styles.scrapBtn} ${detail.isSaved ? styles.scrapBtnActive : ""}`}
             type="button"
             aria-pressed={detail.isSaved}
             onClick={onClickScrap}
             disabled={saving}
           >
-            <img src="/icons/STAR.svg" alt="스크랩" />
+            <img
+              className={`${styles.scrapIcon} ${detail.isSaved ? styles.scrapIconActive : ""}`}
+              src="/icons/STAR.svg"
+              alt="스크랩"
+            />
           </button>
 
           <div className={styles.heroContent}>
