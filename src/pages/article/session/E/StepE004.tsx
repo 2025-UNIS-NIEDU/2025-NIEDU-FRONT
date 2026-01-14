@@ -205,7 +205,7 @@ export default function StepE004() {
 
   // ✅ 40점 이하/이상 토끼 분기 (요청사항 유지)
   const rabbitSrc =
-    aiScore !== null && aiScore <= 40 ? "/icons/Frame 4.svg" : "/icons/Frame 3.svg";
+    aiScore !== null && aiScore <= 40 ? "/icons/sadbunny.svg" : "/icons/happybunny.svg";
 
   return (
     <div className={styles.viewport}>

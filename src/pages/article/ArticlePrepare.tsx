@@ -202,7 +202,7 @@ export default function ArticlePrepare() {
       <div className={styles.container}>
         <header className={styles.header}>
           <img
-            src="/icons/ep_arrow-up-bold.svg"
+            src="/icons/fluent_ios-arrow.svg"
             alt="back"
             className={styles.backBtn}
             onClick={() => navigate(-1)}

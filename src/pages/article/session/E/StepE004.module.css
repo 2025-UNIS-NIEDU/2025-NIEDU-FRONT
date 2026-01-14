@@ -80,7 +80,7 @@
   color: #fff;
   font-size: 18px;
   font-weight: 600;
-  margin-top: 20px;
+  margin-top: 40px;
 }
 .submitBtn:disabled { opacity: 0.35; }
 
@@ -88,12 +88,13 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-top: 28px;
+  margin-top: 58px;
 }
 
 .rabbit {
   width: 74px;
   height: 74px;
+  margin-left: 40px;
 }
 
 .scoreText {
@@ -104,7 +105,7 @@
 
 .score {
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 700;
   color: #111;
   margin: 0;
 }
@@ -120,15 +121,18 @@
 .aiTitle {
   margin: 24px 0 12px;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: #111;
+  margin-left: 40px;
 }
 
 .feedbackCard {
   border-radius: 16px;
   border: 2px solid rgba(79, 124, 255, 0.35);
   background: #fff;
-  padding: 16px;
+  padding: 26px;
+  margin-left: 40px;
+  margin-right: 40px;
 }
 
 .section { margin-bottom: 14px; }
@@ -136,7 +140,7 @@
 .sectionTitle {
   margin: 0 0 6px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: #111;
 }
 

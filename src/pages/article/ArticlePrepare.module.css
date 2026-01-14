@@ -23,10 +23,11 @@
 .backBtn{
   width:40px; height:40px; border:none; background:transparent; cursor:pointer;
   font-size:18px; color:#222; border-radius:10px;
+  /*회전*/
 }
 
 /* 히어로 */
-.hero{ margin-top:98px; text-align:center; }
+.hero{ margin-top:90px; text-align:center; }
 .mascot{ width: clamp(120px, 24vw, 330px); height:auto; margin:22px auto 10px; display:block; }
 .title{
   margin: 0 auto; max-width: 300px;

@@ -30,7 +30,7 @@ export default function EduResult() {
         {/* 헤더 */}
         <header className={styles.header}>
           <img
-            src="/icons/ep_arrow-up-bold.svg"
+            src="/icons/fluent_ios-arrow.svg"
             alt="back"
             className={styles.backBtn}
             onClick={() => nav(-1)}

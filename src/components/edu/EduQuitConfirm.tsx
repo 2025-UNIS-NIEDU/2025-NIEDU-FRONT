@@ -13,7 +13,7 @@ export default function EduQuitConfirm({
         <p className={styles.title}>정말로 학습을 종료하시겠어요?</p>
 
         <img
-          src="/icons/Frame 4.svg"
+          src="/icons/sadbunny.svg"
           alt="슬픈 캐릭터"
           className={styles.mascot}
         />
