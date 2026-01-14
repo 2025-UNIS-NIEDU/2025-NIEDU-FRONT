@@ -9,12 +9,11 @@
   overflow: hidden;
 }
 
+/* ✅ “앱 화면 폭”으로 고정: 하단바 폭이랑 동일하게 맞추기 */
 .container {
   position: relative;
-  display: flex;
-  flex-direction: column;
   width: 100%;
-  max-width: 700px;
+  max-width: 430px; /* ✅ 여기 때문에 모달만 가로로 커지는 문제 해결됨 */
   min-height: 100%;
   margin: 0 auto;
   background: transparent;
@@ -23,24 +22,26 @@
   font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* ✅ settings 보이게: dim은 투명 + 탭하면 닫힘 */
 .dimBg {
   position: absolute;
   inset: 0;
   border: 0;
-  /* ✅ Settings 화면이 그대로 보이도록(배경 투명) */
   background: transparent;
+  z-index: 1;
+  cursor: pointer;
 }
 
+/* ✅ 하단바 바로 위 / 폭은 하단바와 동일하게 (20px 패딩 기준) */
 .sheet {
   position: absolute;
-  left: 0;
-  right: 0;
-  /* ✅ 하단바 바로 위에 붙이기 */
-  bottom: calc(clamp(56px, 8.5vh, 78px) + env(safe-area-inset-bottom));
+  left: 20px;
+  right: 20px;
+  bottom: calc(64px + env(safe-area-inset-bottom));
   background: #ffffff;
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
-  padding: 12px 18px 18px;
+  padding: 12px 16px 16px;
   box-sizing: border-box;
   z-index: 10;
 }
@@ -64,14 +65,14 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .row {
-  height: 42px;
-  border-radius: 10px;
+  height: 46px;
+  border-radius: 12px;
   background: #f1f3f6;
-  padding: 0 10px 0 14px;
+  padding: 0 12px 0 16px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -85,8 +86,8 @@
 }
 
 .iconBtn {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border: 0;
   background: transparent;
   display: flex;
@@ -98,6 +99,127 @@
 .iconBtn img {
   width: 18px;
   height: 18px;
+}
+
+/* ✅ 세번째 스샷처럼: 펼쳐진 휠 영역 카드 */
+.pickerCard {
+  margin-top: 12px;
+  border-radius: 14px;
+  background: #f2f2f7;
+  padding: 16px;
+}
+
+.pickerInner {
+  border-radius: 14px;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.06), transparent 70%);
+  padding: 16px;
+}
+
+/* ✅ 휠 3개가 “붙어서” 보이게 */
+.wheelWrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  justify-items: center;
+}
+
+.wheelCol {
+  position: relative;
+  width: 100%;
+  height: 210px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  overflow: hidden;
+}
+
+.wheelList {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+}
+
+.wheelItem {
+  scroll-snap-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(15, 15, 15, 0.35);
+  user-select: none;
+}
+
+.wheelItemOn {
+  color: #0f0f0f;
+}
+
+/* 가운데 하이라이트 라인 */
+.wheelCenterLine {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(111, 140, 255, 0.12);
+  pointer-events: none;
+}
+
+/* 상/하 페이드 마스크 */
+.wheelMaskTop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(242, 242, 247, 0.95), rgba(242, 242, 247, 0));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wheelMaskBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 60px;
+  background: linear-gradient(to top, rgba(242, 242, 247, 0.95), rgba(242, 242, 247, 0));
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 취소/적용 버튼 영역 (스샷 하단) */
+.pickerBtns {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+}
+
+.pickerCancel {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  border: 0;
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pickerOk {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  border: 0;
+  background: #6f8cff;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 .saveBtn {
@@ -112,4 +234,9 @@
   font-size: 16px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.saveBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }

@@ -27,8 +27,11 @@
 .dimBg {
   position: absolute;
   inset: 0;
+  border: 0;
+  /* ✅ Settings 화면이 그대로 보이도록(배경 투명) */
   background: transparent;
 }
+
 
 /* ✅ 하단바 바로 위로 붙이기 + 팝업 높이 키우기 */
 .sheet {
