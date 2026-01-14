@@ -1,5 +1,5 @@
 // src/pages/ArticleDetail/ArticleDetail.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import styles from "./ArticleDetail.module.css";
 import { useGoToPrepare } from "@/hooks/useGoToPrepare";
@@ -13,6 +13,7 @@ type CourseDetailData = {
   topic: string | null;
   progress: number; // 0~100
   description: string;
+  isSaved: boolean;
 };
 
 type SessionData = {
@@ -25,8 +26,8 @@ type SessionData = {
 };
 
 const KEYWORDS = ["#미래", "#전환", "#협력"];
+const SAVED_DIRTY_KEY = "niedu_saved_courses_dirty";
 
-// ✅ 서버가 어떤 키로 진행률을 주든 흡수하는 함수
 function pickProgress(d: any): number {
   const candidates = [
     d?.progress,
@@ -53,10 +54,7 @@ function pickProgress(d: any): number {
 
   if (!Number.isFinite(n)) return 0;
 
-  // 혹시 0~1로 주는 서버면 0~100으로 변환(방어)
   const pct = n <= 1 && n > 0 ? Math.round(n * 100) : Math.round(n);
-
-  // 0~100 클램프
   return Math.max(0, Math.min(100, pct));
 }
 
@@ -70,11 +68,54 @@ export default function ArticleDetail() {
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const courseId = useMemo(() => {
+    const n = Number(articleId);
+    return Number.isFinite(n) ? n : NaN;
+  }, [articleId]);
+
+  const toggleSave = async (courseIdNum: number, nextSaved: boolean) => {
+    setDetail((prev) => (prev ? { ...prev, isSaved: nextSaved } : prev));
+
+    const candidates: Array<() => Promise<any>> = nextSaved
+      ? [
+          () => api.post(`/api/edu/courses/${courseIdNum}/save`),
+          () => api.post(`/api/edu/courses/${courseIdNum}/saved`),
+          () => api.post(`/api/edu/courses/${courseIdNum}/bookmark`),
+          () => api.post(`/api/edu/courses/${courseIdNum}/like`),
+        ]
+      : [
+          () => api.delete(`/api/edu/courses/${courseIdNum}/save`),
+          () => api.delete(`/api/edu/courses/${courseIdNum}/saved`),
+          () => api.delete(`/api/edu/courses/${courseIdNum}/bookmark`),
+          () => api.delete(`/api/edu/courses/${courseIdNum}/like`),
+        ];
+
+    try {
+      let ok = false;
+      let lastErr: any = null;
+      for (const call of candidates) {
+        try {
+          await call();
+          ok = true;
+          break;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      if (!ok) throw lastErr;
+
+      localStorage.setItem(SAVED_DIRTY_KEY, String(Date.now()));
+    } catch (e) {
+      console.error("[ArticleDetail] toggle save failed:", e);
+      setDetail((prev) => (prev ? { ...prev, isSaved: !nextSaved } : prev));
+    }
+  };
 
   useEffect(() => {
     if (!articleId) return;
 
-    const courseId = Number(articleId);
     if (Number.isNaN(courseId)) {
       setErrorMsg("잘못된 코스 ID 입니다.");
       setDetail(null);
@@ -89,7 +130,6 @@ export default function ArticleDetail() {
       setLoadingDetail(true);
       setLoadingSessions(true);
 
-      // 코스 상세
       try {
         const detailRes = await api.get<ApiResponse<any>>(`/api/edu/courses/${courseId}`);
         const d = detailRes.data?.data ?? {};
@@ -98,9 +138,9 @@ export default function ArticleDetail() {
           thumbnailUrl: String(d.thumbnailUrl ?? ""),
           title: String(d.title ?? ""),
           topic: d.topic ?? null,
-          // ✅ 여기! progress 키 다양하게 흡수
           progress: pickProgress(d),
           description: String(d.description ?? ""),
+          isSaved: Boolean(d?.isSaved ?? d?.saved ?? d?.bookmarked ?? d?.isBookmarked ?? false),
         });
       } catch (e) {
         console.error("[ArticleDetail] detail error:", e);
@@ -110,7 +150,6 @@ export default function ArticleDetail() {
         setLoadingDetail(false);
       }
 
-      // 세션 리스트
       try {
         const sesRes = await api.get<ApiResponse<any[]>>(`/api/edu/courses/${courseId}/sessions`);
         const raw = Array.isArray(sesRes.data?.data) ? sesRes.data.data : [];
@@ -140,7 +179,7 @@ export default function ArticleDetail() {
     };
 
     void run();
-  }, [articleId]);
+  }, [articleId, courseId]);
 
   if (loadingDetail && !detail) return <div className={styles.viewport}>로딩 중...</div>;
   if (!detail) return <div className={styles.viewport}>코스를 찾을 수 없습니다.</div>;
@@ -158,23 +197,36 @@ export default function ArticleDetail() {
     });
   };
 
+  const onClickScrap = async () => {
+    if (saving) return;
+    if (!Number.isFinite(courseId)) return;
+    setSaving(true);
+    try {
+      await toggleSave(courseId, !detail.isSaved);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
         {errorMsg && <p className={styles.errorMsg}>{errorMsg}</p>}
 
         <div className={styles.hero}>
-          <img
-            src={detail.thumbnailUrl || "/sample-news.png"}
-            alt=""
-            className={styles.heroImg}
-          />
+          <img src={detail.thumbnailUrl || "/sample-news.png"} alt="" className={styles.heroImg} />
 
           <button className={styles.backOnHero} onClick={() => navigate(-1)}>
             <img src="/icons/fluent_ios-arrow-24-filled.svg" alt="뒤로가기" />
           </button>
 
-          <button className={styles.scrapBtn} type="button">
+          <button
+            className={styles.scrapBtn}
+            type="button"
+            aria-pressed={detail.isSaved}
+            onClick={onClickScrap}
+            disabled={saving}
+          >
             <img src="/icons/STAR.svg" alt="스크랩" />
           </button>
 
@@ -234,9 +286,7 @@ export default function ArticleDetail() {
                   }
                 >
                   <div className={styles.sessionThumb}>
-                    {s.thumbnailUrl && (
-                      <img src={s.thumbnailUrl} alt="" className={styles.sessionThumbImg} />
-                    )}
+                    {s.thumbnailUrl && <img src={s.thumbnailUrl} alt="" className={styles.sessionThumbImg} />}
                   </div>
 
                   <div className={styles.sessionText}>
@@ -246,11 +296,7 @@ export default function ArticleDetail() {
                     </p>
                   </div>
 
-                  <img
-                    src="/icons/icon-chevron-right.svg"
-                    alt=""
-                    className={styles.sessionArrow}
-                  />
+                  <img src="/icons/icon-chevron-right.svg" alt="" className={styles.sessionArrow} />
                 </button>
               ))
             )}

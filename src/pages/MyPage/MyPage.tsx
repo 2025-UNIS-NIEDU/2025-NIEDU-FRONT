@@ -19,9 +19,9 @@ type DateNavigatorData = {
 type CalendarCourse = {
   topic?: string;
   subTopic?: string;
-  keywords?: string[]; // 서버가 주면 사용
-  progressRate?: number; // 서버가 주면 0% 제외에 사용
-  extra?: number; // { extra: 2 }
+  keywords?: string[];
+  progressRate?: number;
+  extra?: number;
 };
 
 type CalendarDay = {
@@ -40,303 +40,271 @@ type MeData = {
   profileImageUrl?: string;
 };
 
-type StreakData = {
-  streak?: number;
-  streakDays?: number;
-  attendanceStreak?: number;
-  todayAttended?: boolean;
-};
+function toISODate(year: number, month0: number, day: number) {
+  const m = String(month0 + 1).padStart(2, "0");
+  const d = String(day).padStart(2, "0");
+  return `${year}-${m}-${d}`;
+}
 
-type LogTag = {
-  keywords: string[];
-  topic?: string;
-  subTopic?: string;
-};
+function parseISODate(iso: string) {
+  const [y, m, d] = iso.split("-").map((x) => Number(x));
+  if (!y || !m || !d) return null;
+  return { y, m: m - 1, d };
+}
 
-const toISODate = (y: number, m0: number, d: number) => {
-  const mm = String(m0 + 1).padStart(2, "0");
-  const dd = String(d).padStart(2, "0");
-  return `${y}-${mm}-${dd}`;
-};
+function isSameYM(a: { y: number; m: number }, b: { y: number; m: number }) {
+  return a.y === b.y && a.m === b.m;
+}
+
+function clampMonth(y: number, m0: number) {
+  let y2 = y;
+  let m2 = m0;
+  while (m2 < 0) {
+    y2 -= 1;
+    m2 += 12;
+  }
+  while (m2 > 11) {
+    y2 += 1;
+    m2 -= 12;
+  }
+  return { y: y2, m: m2 };
+}
+
+function makeCalendarMatrix(year: number, month0: number) {
+  const first = new Date(year, month0, 1);
+  const startDay = first.getDay(); // 0(일)~6(토)
+  const lastDate = new Date(year, month0 + 1, 0).getDate();
+
+  const cells: Array<number | null> = [];
+  for (let i = 0; i < startDay; i++) cells.push(null);
+  for (let d = 1; d <= lastDate; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
 
 export default function MyPage() {
   const nav = useNavigate();
 
-  const today = useMemo(() => new Date(), []);
-  const todayYear = today.getFullYear();
-  const todayMonth0 = today.getMonth();
-  const todayDate = today.getDate();
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month0, setMonth0] = useState(today.getMonth());
 
-  // user
-  const [nickname, setNickname] = useState("사용자 님");
-  const [streak, setStreak] = useState<number | null>(null);
-  const [serverProfileUrl, setServerProfileUrl] = useState<string | null>(null);
+  const [me, setMe] = useState<MeData | null>(null);
 
-  // calendar state
-  const [year, setYear] = useState(todayYear);
-  const [month0, setMonth0] = useState(todayMonth0);
-
-  // API states
   const [navData, setNavData] = useState<DateNavigatorData | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
 
   const [loadingNav, setLoadingNav] = useState(true);
   const [loadingCal, setLoadingCal] = useState(true);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // ✅ 날짜별 학습로그 태그 보강용
-  const [logTagMap, setLogTagMap] = useState<Record<string, LogTag>>({});
+  const [logTagMap, setLogTagMap] = useState<Record<string, { topic?: string; subTopic?: string; keywords?: string[] }>>(
+    {}
+  );
 
-  const monthForApi = month0 + 1;
+  const daysArray = useMemo(() => makeCalendarMatrix(year, month0), [year, month0]);
 
-  // ✅ 유저 프로필 + 출석 streak (필드명 여러 케이스 대응)
-  useEffect(() => {
-    const run = async () => {
-      setLoadingUser(true);
-      try {
-        const [meRes, streakRes] = await Promise.all([
-          api.get<ApiResponse<MeData>>("/api/user/me"),
-          api.get<ApiResponse<StreakData>>("/api/attendance/streak"),
-        ]);
+  const isThisMonthToday = year === today.getFullYear() && month0 === today.getMonth();
+  const todayDate = today.getDate();
 
-        const me = meRes.data?.data;
-        const st = streakRes.data?.data;
+  const monthLabel = `${year}년 ${month0 + 1}월`;
 
-        if (me?.nickname) setNickname(`${me.nickname} 님`);
-        if (me?.profileImageUrl) setServerProfileUrl(me.profileImageUrl);
+  const fetchMe = async () => {
+    try {
+      const res = await api.get<ApiResponse<MeData>>("/api/user/me");
+      setMe(res.data?.data ?? null);
+    } catch {
+      setMe(null);
+    }
+  };
 
-        const s =
-          (typeof st?.streak === "number" && st.streak) ||
-          (typeof st?.streakDays === "number" && st.streakDays) ||
-          (typeof st?.attendanceStreak === "number" && st.attendanceStreak);
+  const fetchNavigator = async () => {
+    const res = await api.get<ApiResponse<DateNavigatorData>>("/api/mypage/learning-log/navigator");
+    setNavData(res.data?.data ?? null);
+  };
 
-        if (typeof s === "number") setStreak(s);
-        else setStreak(0);
-      } catch (e) {
-        console.error("[MyPage] user/streak error:", e);
-      } finally {
-        setLoadingUser(false);
+  const fetchCalendar = async (y: number, m0: number) => {
+    const res = await api.get<ApiResponse<CalendarData>>("/api/mypage/learning-log/calendar", {
+      params: { year: y, month: m0 + 1 },
+    });
+    setCalendarData(res.data?.data ?? null);
+  };
+
+  const fetchTags = async (y: number, m0: number) => {
+    try {
+      const start = new Date(y, m0, 1);
+      const end = new Date(y, m0 + 1, 0);
+
+      const s = toISODate(start.getFullYear(), start.getMonth(), 1);
+      const e = toISODate(end.getFullYear(), end.getMonth(), end.getDate());
+
+      const res = await api.get<ApiResponse<any>>("/api/mypage/learning-log/tags", {
+        params: { startDate: s, endDate: e },
+      });
+
+      const raw = res.data?.data;
+      const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.days) ? raw.days : [];
+
+      const map: Record<string, { topic?: string; subTopic?: string; keywords?: string[] }> = {};
+      for (const it of arr) {
+        const date = String(it?.date ?? it?.learningDate ?? "");
+        if (!date) continue;
+
+        const topic = typeof it?.topic === "string" ? it.topic : undefined;
+        const subTopic = typeof it?.subTopic === "string" ? it.subTopic : undefined;
+
+        const kwsRaw = it?.keywords ?? it?.tags ?? it?.keywordList ?? [];
+        const keywords = Array.isArray(kwsRaw) ? kwsRaw.map(String).filter(Boolean) : undefined;
+
+        map[date] = { topic, subTopic, keywords };
       }
-    };
+      setLogTagMap(map);
+    } catch {
+      setLogTagMap({});
+    }
+  };
 
-    void run();
-  }, []);
-
-  // 날짜 네비게이터
   useEffect(() => {
-    const run = async () => {
-      setLoadingNav(true);
-      setErrorMsg(null);
-      try {
-        const res = await api.get<ApiResponse<DateNavigatorData>>("/api/my/date-navigator");
-        const d = res.data?.data;
+    let alive = true;
 
-        if (d?.currentYear && d?.currentMonth) {
-          setNavData(d);
-          setYear(d.currentYear);
-          setMonth0(Math.max(0, Math.min(11, d.currentMonth - 1)));
-        }
-      } catch (e) {
-        console.error("[MyPage] date-navigator error:", e);
-        setErrorMsg("마이페이지 정보를 불러오지 못했어요. (로그인/토큰 확인)");
+    (async () => {
+      try {
+        setLoadingNav(true);
+        setLoadingCal(true);
+
+        await Promise.all([fetchMe(), fetchNavigator(), fetchCalendar(year, month0), fetchTags(year, month0)]);
       } finally {
+        if (!alive) return;
         setLoadingNav(false);
-      }
-    };
-
-    void run();
-  }, []);
-
-  // 캘린더 (calendar API)
-  useEffect(() => {
-    const run = async () => {
-      setLoadingCal(true);
-      setErrorMsg(null);
-      try {
-        const res = await api.get<ApiResponse<CalendarData>>(
-          `/api/my/calendar?year=${year}&month=${monthForApi}`
-        );
-        setCalendarData(res.data?.data ?? null);
-      } catch (e) {
-        console.error("[MyPage] calendar error:", e);
-        setErrorMsg("캘린더를 불러오지 못했어요. (로그인/토큰 확인)");
-        setCalendarData(null);
-      } finally {
         setLoadingCal(false);
       }
+    })();
+
+    return () => {
+      alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    void run();
-  }, [year, monthForApi]);
-
-  // ✅ 캘린더 월 데이터가 바뀌면: 해당 월의 days 기준으로 learning-log를 추가로 호출해 태그 보강
   useEffect(() => {
-    if (!calendarData?.days?.length) {
-      setLogTagMap({});
-      return;
-    }
+    let alive = true;
 
-    const run = async () => {
-      const next: Record<string, LogTag> = {};
+    (async () => {
+      try {
+        setLoadingCal(true);
+        await Promise.all([fetchCalendar(year, month0), fetchTags(year, month0)]);
+      } finally {
+        if (!alive) return;
+        setLoadingCal(false);
+      }
+    })();
 
-      await Promise.all(
-        calendarData.days.map(async (d) => {
-          try {
-            const res = await api.get<ApiResponse<any>>(
-              `/api/my/learning-log?date=${encodeURIComponent(d.date)}`
-            );
-
-            const sessions = res.data?.data?.sessions ?? res.data?.data ?? [];
-            if (!Array.isArray(sessions) || sessions.length === 0) return;
-
-            const keywords: string[] = Array.from(
-              new Set(
-                sessions
-                  .flatMap((s: any) => (Array.isArray(s?.keywords) ? s.keywords : []))
-                  .filter((v: unknown): v is string => typeof v === "string" && v.length > 0)
-              )
-            );
-
-            const topic = sessions.find((s: any) => typeof s?.topic === "string")?.topic;
-            const subTopic = sessions.find((s: any) => typeof s?.subTopic === "string")?.subTopic;
-
-            next[d.date] = { keywords, topic, subTopic };
-          } catch {
-            // ignore
-          }
-        })
-      );
-
-      setLogTagMap(next);
+    return () => {
+      alive = false;
     };
+  }, [year, month0]);
 
-    void run();
-  }, [calendarData]);
+  useEffect(() => {
+    if (!navData) return;
 
-  // local calendar grid
-  const firstDay = new Date(year, month0, 1).getDay();
-  const lastDate = new Date(year, month0 + 1, 0).getDate();
+    const current = { y: navData.currentYear, m: navData.currentMonth - 1 };
+    if (!isSameYM({ y: year, m: month0 }, current)) {
+      setYear(current.y);
+      setMonth0(current.m);
+    }
+  }, [navData]);
 
-  const daysArray: (number | null)[] = [];
-  for (let i = 0; i < firstDay; i++) daysArray.push(null);
-  for (let d = 1; d <= lastDate; d++) daysArray.push(d);
-
-  // day -> courses map
   const dayToCourses = useMemo(() => {
     const map = new Map<number, CalendarCourse[]>();
-    const days = calendarData?.days ?? [];
+    if (!calendarData?.days) return map;
 
-    for (const item of days) {
-      const dt = new Date(item.date);
-      const dayNum = Number.isNaN(dt.getTime())
-        ? Number(String(item.date).slice(8, 10))
-        : dt.getDate();
+    for (const d of calendarData.days) {
+      const parsed = parseISODate(d.date);
+      if (!parsed) continue;
+      if (parsed.y !== year || parsed.m !== month0) continue;
 
-      const courses = Array.isArray(item.courses) ? item.courses : [];
-      if (!Number.isNaN(dayNum)) map.set(dayNum, courses);
+      map.set(parsed.d, Array.isArray(d.courses) ? d.courses : []);
     }
     return map;
-  }, [calendarData]);
+  }, [calendarData, year, month0]);
 
-  // month nav
-  const handlePrevMonth = () => {
-    setMonth0((prev) => {
-      if (prev === 0) {
-        setYear((y) => y - 1);
-        return 11;
-      }
-      return prev - 1;
-    });
+  const canGoPrev = useMemo(() => {
+    if (!navData?.earliestLearning) return true;
+    const p = parseISODate(navData.earliestLearning);
+    if (!p) return true;
+    const earliest = { y: p.y, m: p.m };
+    const current = { y: year, m: month0 };
+    if (current.y < earliest.y) return false;
+    if (current.y === earliest.y && current.m <= earliest.m) return false;
+    return true;
+  }, [navData, year, month0]);
+
+  const canGoNext = useMemo(() => {
+    if (!navData?.latestLearning) return true;
+    const p = parseISODate(navData.latestLearning);
+    if (!p) return true;
+    const latest = { y: p.y, m: p.m };
+    const current = { y: year, m: month0 };
+    if (current.y > latest.y) return false;
+    if (current.y === latest.y && current.m >= latest.m) return false;
+    return true;
+  }, [navData, year, month0]);
+
+  const goPrevMonth = () => {
+    if (!canGoPrev) return;
+    const next = clampMonth(year, month0 - 1);
+    setYear(next.y);
+    setMonth0(next.m);
   };
 
-  const handleNextMonth = () => {
-    setMonth0((prev) => {
-      if (prev === 11) {
-        setYear((y) => y + 1);
-        return 0;
-      }
-      return prev + 1;
-    });
+  const goNextMonth = () => {
+    if (!canGoNext) return;
+    const next = clampMonth(year, month0 + 1);
+    setYear(next.y);
+    setMonth0(next.m);
   };
 
-  const isThisMonthToday = month0 === todayMonth0 && year === todayYear;
+  const nickname = me?.nickname ?? "사용자";
+  const profileImageUrl = me?.profileImageUrl ?? "";
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 상단 */}
-        <div className={styles.topBar}>
-          <h1 className={styles.title}>마이페이지</h1>
-          <button
-            type="button"
-            className={styles.settingsButton}
-            onClick={() => nav("/mypage/settings")}
-          >
-            <img src="/icons/icon-settings.svg" alt="" className={styles.settingsIcon} />
-            <span>설정</span>
-          </button>
-        </div>
-
-        {errorMsg && <p className={styles.errorMsg}>{errorMsg}</p>}
-
-        {/* 프로필 영역 */}
-        <div className={styles.profileBox}>
-          <div className={styles.profileImageWrapper}>
-            <img src="/icons/Ellipse 25.svg" alt="프로필 프레임" className={styles.profileFrame} />
-            {serverProfileUrl && (
-              <img src={serverProfileUrl} alt="프로필" className={styles.profilePhoto} />
-            )}
+        <div className={styles.header}>
+          <div className={styles.profile}>
+            <div className={styles.avatar}>
+              {profileImageUrl ? <img src={profileImageUrl} alt="" /> : <div className={styles.avatarFallback} />}
+            </div>
+            <div>
+              <div className={styles.name}>{nickname}</div>
+              <button className={styles.settingsBtn} onClick={() => nav("/mypage/settings")}>
+                설정
+              </button>
+            </div>
           </div>
 
-          <div>
-            <p className={styles.name}>{loadingUser ? "불러오는 중..." : nickname}</p>
-            <p className={styles.streak}>
-              {streak === null ? "출석 정보를 불러오는 중..." : `${streak}일 연속 출석하셨어요!`}
-            </p>
+          <div className={styles.menuRow}>
+            <button className={styles.menuBtn} onClick={() => nav("/mypage/log")}>
+              학습 로그
+            </button>
+            <button className={styles.menuBtn} onClick={() => nav("/mypage/review-notes")}>
+              복습 노트
+            </button>
+            <button className={styles.menuBtn} onClick={() => nav("/mypage/terms")}>
+              용어 사전
+            </button>
           </div>
         </div>
 
-        {/* 용어 사전 */}
-        <div
-          className={styles.sectionTitle}
-          role="button"
-          tabIndex={0}
-          onClick={() => nav("/mypage/terms")}
-          onKeyDown={(e) => e.key === "Enter" && nav("/mypage/terms")}
-        >
-          <img src="/icons/majesticons_book.svg" alt="" className={styles.sectionIcon} />
-          <span>용어 사전</span>
-        </div>
-
-        {/* 복습 노트 */}
-        <div
-          className={styles.sectionTitle}
-          role="button"
-          tabIndex={0}
-          onClick={() => nav("/mypage/review-notes")}
-          onKeyDown={(e) => e.key === "Enter" && nav("/mypage/review-notes")}
-        >
-          <img src="/icons/fluent_note-24-filled.svg" alt="" className={styles.sectionIcon} />
-          <span>복습 노트</span>
-        </div>
-
-        {/* 달력 */}
-        <div className={styles.calendarBox}>
-          <div className={styles.monthHeader}>
-            <button className={styles.monthArrow} type="button" onClick={handlePrevMonth}>
-              <img
-                src="/icons/Polygon 4.svg"
-                alt="이전 달"
-                className={`${styles.monthArrowIcon} ${styles.monthArrowLeft}`}
-              />
+        <div className={styles.calendarWrap}>
+          <div className={styles.monthRow}>
+            <button className={styles.monthArrow} onClick={goPrevMonth} disabled={!canGoPrev} aria-label="이전 달">
+              <img src="/icons/Polygon 3.svg" alt="이전 달" className={styles.monthArrowIcon} />
             </button>
 
-            <span className={styles.monthLabel}>
-              {year}년 {month0 + 1}월
-            </span>
+            <div className={styles.monthLabel}>{loadingNav ? "..." : monthLabel}</div>
 
-            <button className={styles.monthArrow} type="button" onClick={handleNextMonth}>
+            <button className={styles.monthArrow} onClick={goNextMonth} disabled={!canGoNext} aria-label="다음 달">
               <img src="/icons/Polygon 4.svg" alt="다음 달" className={styles.monthArrowIcon} />
             </button>
           </div>
@@ -352,28 +320,30 @@ export default function MyPage() {
                 const iso = toISODate(year, month0, day);
 
                 const coursesRaw = dayToCourses.get(day) ?? [];
-
                 const courses = coursesRaw.filter((c) => {
                   if (typeof c.progressRate === "number") return c.progressRate > 0;
                   return true;
                 });
 
-                const logKeywords = logTagMap[iso]?.keywords ?? [];
-                const flatKeywords = courses
-                  .flatMap((c) => (Array.isArray(c.keywords) ? c.keywords : []))
-                  .filter((x): x is string => typeof x === "string" && x.length > 0);
+                const coursePairs = courses
+                  .filter((c) => c?.topic || c?.subTopic)
+                  .map((c) => ({
+                    topic: typeof c.topic === "string" ? c.topic : "",
+                    subTopic: typeof c.subTopic === "string" ? c.subTopic : "",
+                  }));
 
-                const mergedKeywords = logKeywords.length > 0 ? logKeywords : flatKeywords;
-                const uniqueKeywords = Array.from(new Set(mergedKeywords)).slice(0, 2);
+                const visibleCourses = coursePairs.slice(0, 3);
+                const extraCount = Math.max(0, coursePairs.length - visibleCourses.length);
 
-                const topicPairs = courses.filter((c) => c?.topic || c?.subTopic).slice(0, 1);
+                const fallbackTopic = logTagMap[iso]?.topic;
+                const fallbackSubTopic = logTagMap[iso]?.subTopic;
+                const fallbackLabel =
+                  typeof fallbackTopic === "string" && fallbackTopic.length > 0
+                    ? `${fallbackTopic}${fallbackSubTopic ? `#${fallbackSubTopic}` : ""}`
+                    : null;
 
-                const hasLog =
-                  (logTagMap[iso]?.keywords?.length ?? 0) > 0 ||
-                  !!logTagMap[iso]?.topic ||
-                  !!logTagMap[iso]?.subTopic;
-
-                const hasData = courses.length > 0 || hasLog;
+                const hasLog = !!fallbackLabel;
+                const hasData = coursePairs.length > 0 || hasLog;
 
                 return (
                   <div
@@ -381,33 +351,34 @@ export default function MyPage() {
                     className={styles.dayCell}
                     onClick={() => {
                       if (!hasData) return;
-                      
                     }}
                     style={{ cursor: hasData ? "pointer" : "default" }}
                     aria-disabled={!hasData}
                   >
-                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>
-                      {day}
-                    </div>
+                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{day}</div>
 
-                    {(uniqueKeywords.length > 0 || topicPairs.length > 0) && (
+                    {(visibleCourses.length > 0 || !!fallbackLabel) && (
                       <div className={styles.tag}>
-                        {uniqueKeywords.length > 0 ? (
-                          uniqueKeywords.map((k, i) => (
-                            <span key={`${k}-${i}`} className={styles.tagWeak}>
-                              #{k}
-                            </span>
-                          ))
-                        ) : (
-                          topicPairs.map((c, i) => (
-                            <span key={i} className={styles.tagChunk}>
-                              {c.topic ? <span className={styles.tagStrong}>{c.topic}</span> : null}
-                              {c.subTopic ? (
-                                <span className={styles.tagWeak}>#{c.subTopic}</span>
-                              ) : null}
-                            </span>
-                          ))
-                        )}
+                        <span className={styles.courseLine}>
+                          {visibleCourses.length > 0
+                            ? visibleCourses.map((c, i) => {
+                                const label = `${c.topic}${c.subTopic ? `#${c.subTopic}` : ""}`;
+                                return (
+                                  <span key={`${label}-${i}`} className={styles.courseChip} title={label}>
+                                    {label}
+                                  </span>
+                                );
+                              })
+                            : fallbackLabel
+                              ? (
+                                  <span className={styles.courseChip} title={fallbackLabel}>
+                                    {fallbackLabel}
+                                  </span>
+                                )
+                              : null}
+
+                          {extraCount > 0 ? <span className={styles.courseMore}>+{extraCount}</span> : null}
+                        </span>
                       </div>
                     )}
                   </div>

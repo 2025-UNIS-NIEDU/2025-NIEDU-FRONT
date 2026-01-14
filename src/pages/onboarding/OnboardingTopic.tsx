@@ -1,8 +1,13 @@
 // src/pages/onboarding/OnboardingTopic.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./OnboardingTopic.module.css";
 import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
+
+type MeData = {
+  nickname?: string;
+};
 
 const ALL_TOPICS = ["정치", "경제", "사회", "국제"];
 
@@ -14,12 +19,25 @@ export default function OnboardingTopic() {
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [nickname, setNickname] = useState<string>("");
+
+  // ✅ 로그인 정보 기반 닉네임 표시
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await api.get<ApiResponse<MeData>>("/api/user/me");
+        const name = res.data?.data?.nickname;
+        if (typeof name === "string" && name.trim().length > 0) setNickname(name.trim());
+      } catch {
+        // ignore
+      }
+    };
+    void run();
+  }, []);
 
   const toggle = (t: string) => {
     setError("");
-    setSelected((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]
-    );
+    setSelected((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
   };
 
   const goNext = (topics: string[]) => {
@@ -48,7 +66,6 @@ export default function OnboardingTopic() {
       goNext(selectedTopics);
     } catch (e) {
       console.error("[OnboardingTopic] post topics error:", e);
-      // ✅ 실패해도 다음으로 이동
       goNext(selectedTopics);
     } finally {
       setSubmitting(false);
@@ -60,7 +77,7 @@ export default function OnboardingTopic() {
       <div className={styles.container}>
         <div className={styles.topicHeader}>
           <h1 className={styles.topicTitle}>
-            안녕하세요 이화연 님,
+            {nickname ? `안녕하세요 ${nickname} 님,` : "안녕하세요,"}
             <br />
             관심이 가는 토픽을 선택해주세요.
           </h1>
@@ -89,11 +106,7 @@ export default function OnboardingTopic() {
         </div>
 
         {error && (
-          <div
-            className={`${styles.noticeBox} ${styles.noticeError}`}
-            role="status"
-            aria-live="polite"
-          >
+          <div className={`${styles.noticeBox} ${styles.noticeError}`} role="status" aria-live="polite">
             <span className={styles.noticeIcon} aria-hidden>
               ⓘ
             </span>
