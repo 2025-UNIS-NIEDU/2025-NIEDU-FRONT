@@ -19,9 +19,9 @@ type DateNavigatorData = {
 type CalendarCourse = {
   topic?: string;
   subTopic?: string;
-  keywords?: string[]; // 서버가 주면 사용
-  progressRate?: number; // 서버가 주면 0% 제외에 사용
-  extra?: number; // { extra: 2 }
+  keywords?: string[];
+  progressRate?: number;
+  extra?: number;
 };
 
 type CalendarDay = {
@@ -72,7 +72,7 @@ function clampMonth(y: number, m0: number) {
 
 function makeCalendarMatrix(year: number, month0: number) {
   const first = new Date(year, month0, 1);
-  const startDay = first.getDay(); // 0(일)~6(토)
+  const startDay = first.getDay();
   const lastDate = new Date(year, month0 + 1, 0).getDate();
 
   const cells: Array<number | null> = [];
@@ -82,6 +82,12 @@ function makeCalendarMatrix(year: number, month0: number) {
   return cells;
 }
 
+/** ✅ 공백 포함 최대 5자 */
+const shorten5 = (s: string) => {
+  const t = String(s ?? "").replace(/\s+/g, " ").trim();
+  return t.length > 5 ? t.slice(0, 5) : t;
+};
+
 export default function MyPage() {
   const nav = useNavigate();
 
@@ -90,7 +96,6 @@ export default function MyPage() {
   const [month0, setMonth0] = useState(today.getMonth());
 
   const [me, setMe] = useState<MeData | null>(null);
-
   const [navData, setNavData] = useState<DateNavigatorData | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
 
@@ -102,7 +107,6 @@ export default function MyPage() {
   >({});
 
   const daysArray = useMemo(() => makeCalendarMatrix(year, month0), [year, month0]);
-
   const isThisMonthToday = year === today.getFullYear() && month0 === today.getMonth();
   const todayDate = today.getDate();
 
@@ -127,9 +131,7 @@ export default function MyPage() {
   const fetchCalendar = async (y: number, m0: number) => {
     const res = await api.get<ApiResponse<CalendarData>>(
       "/api/mypage/learning-log/calendar",
-      {
-        params: { year: y, month: m0 + 1 },
-      }
+      { params: { year: y, month: m0 + 1 } }
     );
     setCalendarData(res.data?.data ?? null);
   };
@@ -175,7 +177,6 @@ export default function MyPage() {
       try {
         setLoadingNav(true);
         setLoadingCal(true);
-
         await Promise.all([fetchMe(), fetchNavigator(), fetchCalendar(year, month0), fetchTags(year, month0)]);
       } finally {
         if (!alive) return;
@@ -210,7 +211,6 @@ export default function MyPage() {
 
   useEffect(() => {
     if (!navData) return;
-
     const current = { y: navData.currentYear, m: navData.currentMonth - 1 };
     if (!isSameYM({ y: year, m: month0 }, current)) {
       setYear(current.y);
@@ -226,7 +226,6 @@ export default function MyPage() {
       const parsed = parseISODate(d.date);
       if (!parsed) continue;
       if (parsed.y !== year || parsed.m !== month0) continue;
-
       map.set(parsed.d, Array.isArray(d.courses) ? d.courses : []);
     }
     return map;
@@ -270,34 +269,45 @@ export default function MyPage() {
 
   const nickname = me?.nickname ?? "사용자";
   const profileImageUrl = me?.profileImageUrl ?? "";
+  const streakText = "2일 연속 출석하셨어요!";
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        <div className={styles.header}>
-          <div className={styles.profile}>
-            <div className={styles.avatar}>
-              {profileImageUrl ? <img src={profileImageUrl} alt="" /> : <div className={styles.avatarFallback} />}
-            </div>
-            <div>
-              <div className={styles.name}>{nickname}</div>
-              <button className={styles.settingsBtn} onClick={() => nav("/mypage/settings")}>
-                설정
-              </button>
-            </div>
+        <div className={styles.topRow}>
+          <div className={styles.pageTitle}>마이페이지</div>
+
+          <button className={styles.settingsButton} onClick={() => nav("/mypage/settings")}>
+            <img className={styles.settingsIcon} src="/icons/icon-settings.svg" alt="" />
+            설정
+          </button>
+        </div>
+
+        <div className={styles.profileRow}>
+          <div className={styles.avatar}>
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt="" />
+            ) : (
+              <div className={styles.avatarFallback} />
+            )}
           </div>
 
-          <div className={styles.menuRow}>
-            <button className={styles.menuBtn} onClick={() => nav("/mypage/log")}>
-              학습 로그
-            </button>
-            <button className={styles.menuBtn} onClick={() => nav("/mypage/review-notes")}>
-              복습 노트
-            </button>
-            <button className={styles.menuBtn} onClick={() => nav("/mypage/terms")}>
-              용어 사전
-            </button>
+          <div className={styles.profileText}>
+            <div className={styles.nick}>{nickname} 님</div>
+            <div className={styles.streak}>{streakText}</div>
           </div>
+        </div>
+
+        <div className={styles.list}>
+          <button className={styles.listItem} onClick={() => nav("/mypage/terms")}>
+            <img className={styles.listIcon} src="/icons/majesticons_book.svg" alt="" />
+            <span>용어 사전</span>
+          </button>
+
+          <button className={styles.listItem} onClick={() => nav("/mypage/review-notes")}>
+            <img className={styles.listIcon} src="/icons/fluent_note-24-filled.svg" alt="" />
+            <span>복습 노트</span>
+          </button>
         </div>
 
         <div className={styles.calendarWrap}>
@@ -314,7 +324,7 @@ export default function MyPage() {
           </div>
 
           {loadingCal && !calendarData ? (
-            <p style={{ padding: 12, opacity: 0.7 }}>캘린더 불러오는 중...</p>
+            <p className={styles.loading}>캘린더 불러오는 중...</p>
           ) : (
             <div className={styles.grid}>
               {daysArray.map((day, idx) => {
@@ -331,43 +341,34 @@ export default function MyPage() {
 
                 const topicPairs = courses.filter((c) => c?.topic || c?.subTopic);
 
-                const courseLabels = topicPairs
+                const labels = topicPairs
                   .map((c) => {
                     const t = typeof c.topic === "string" ? c.topic.trim() : "";
                     const s = typeof c.subTopic === "string" ? c.subTopic.trim() : "";
                     if (!t && !s) return "";
-                    return `${t}${s ? `#${s}` : ""}`;
+                    const merged = `${t}${s ? `#${s}` : ""}`;
+                    return shorten5(merged);
                   })
                   .filter(Boolean);
 
-                const visibleCourseLabels = courseLabels.slice(0, 3);
-                const extraCount = Math.max(0, courseLabels.length - visibleCourseLabels.length);
+                const visible = labels.slice(0, 3);
+                const extraCount = Math.max(0, labels.length - visible.length);
 
                 const hasLog =
                   (logTagMap[iso]?.keywords?.length ?? 0) > 0 ||
                   !!logTagMap[iso]?.topic ||
                   !!logTagMap[iso]?.subTopic;
 
-                const hasData = courses.length > 0 || hasLog;
+                const hasData = labels.length > 0 || hasLog;
 
                 return (
-                  <div
-                    key={idx}
-                    className={styles.dayCell}
-                    onClick={() => {
-                      if (!hasData) return;
-                    }}
-                    style={{ cursor: hasData ? "pointer" : "default" }}
-                    aria-disabled={!hasData}
-                  >
-                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>
-                      {day}
-                    </div>
+                  <div key={idx} className={styles.dayCell} style={{ cursor: hasData ? "pointer" : "default" }}>
+                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{day}</div>
 
-                    {courseLabels.length > 0 && (
+                    {labels.length > 0 && (
                       <div className={styles.tag}>
                         <span className={styles.courseLine}>
-                          {visibleCourseLabels.map((label, i) => (
+                          {visible.map((label, i) => (
                             <span key={`${label}-${i}`} className={styles.courseChip} title={label}>
                               {label}
                             </span>
@@ -382,6 +383,8 @@ export default function MyPage() {
             </div>
           )}
         </div>
+
+        <div className={styles.bottomPad} />
       </div>
 
       <BottomNav activeTab="mypage" />
