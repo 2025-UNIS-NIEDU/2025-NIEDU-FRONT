@@ -36,7 +36,8 @@
 /* ✅ 하단바 바로 위로 붙이기 + 팝업 높이 키우기 */
 .sheet {
   position: absolute;
-  
+  left: 20px;
+  right: 20px;
   bottom: calc(78px + env(safe-area-inset-bottom));
   background: #ffffff;
   border-top-left-radius: 22px;
