@@ -71,7 +71,7 @@ npm run build
 빌드 스크립트는 TypeScript project build 후 Vite build를 실행합니다.
 
 ## Links
-
+- [Live Demo]([https://실제-배포주소.vercel.app](https://2025-niedu-front-git-main-dlgpflas-projects.vercel.app/))
 - [Portfolio Summary](docs/portfolio.md)
 - [Frontend Architecture](docs/architecture.md)
 - [API Integration](docs/api-integration.md)
