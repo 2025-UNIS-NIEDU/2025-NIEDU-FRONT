@@ -1,0 +1,398 @@
+/* src/pages/Learn/LearnSearch.module.css */
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  background: #eef0f4;
+  overflow-y: auto;
+}
+
+.container {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  min-height: 100%;
+  margin: 0 auto;
+  background: #fff;
+  box-sizing: border-box;
+
+  /* ✅ Learn 페이지와 동일한 여백 톤 */
+  padding: 6vh 20px;
+  padding-bottom: 90px;
+
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.searchTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 0;
+}
+
+.searchWrap {
+  flex: 1;
+  height: 52px;
+  border-radius: 26px;
+  background: #f2f2f7;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  box-sizing: border-box;
+}
+
+.searchWrap img {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+}
+
+.searchInput {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cancel {
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(15, 15, 15, 0.45);
+  cursor: pointer;
+}
+
+
+.searchBar {
+  flex: 1;
+  height: 58px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+}
+
+.searchIcon {
+  width: 21px;
+  height: 21px;
+  opacity: 0.55;
+}
+
+.input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #111;
+}
+
+.input::placeholder {
+color: #84868A;
+}
+
+.clearBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: #d8dbe0;
+  color: #4b5563;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 16px;
+}
+
+.cancelBtn {
+  border: none;
+  background: transparent;
+  color: #9aa0a6;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.searchingOverlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 86px;
+  bottom: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 3px solid #dbeafe;
+  border-top-color: #3b82f6;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.searchingText {
+  font-size: 14px;
+  color: #5b78ff;
+}
+
+.idleWrap {
+  margin-top: 22px;
+}
+
+.block {
+  margin-top: 18px;
+}
+
+.blockHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.blockTitle {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.muted {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: #9aa0a6;
+}
+
+.chipWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chipGray {
+  border-radius: 20px;
+border: 2px solid var(--gray1_stroke, rgba(191, 195, 201, 0.20));
+background: var(--gray1_fill, linear-gradient(292deg, rgba(191, 195, 201, 0.20) 9.14%, rgba(191, 195, 201, 0.10) 82.53%));
+  color: #7D7E81;
+  
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.historyList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.historyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.historyKeyword {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #111;
+  cursor: pointer;
+  padding: 0;
+}
+
+.historyDelete {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #c0c4cc;
+  cursor: pointer;
+}
+
+.autoWrap {
+  margin-top: 38px;
+}
+
+.autoList {
+  list-style: none;
+  margin: 12px;
+  padding: 0;
+}
+
+.autoItem {
+  padding: 12px 0;
+  border-bottom: 1px solid #eef0f4;
+}
+
+.autoBtn {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #111;
+  cursor: pointer;
+  padding: 0;
+}
+
+.resultWrap {
+  margin-top: 18px;
+}
+
+.resultCount {
+  margin: 14px 0 10px 0;
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+.sortTabs {
+  width: 100%;
+  height: 38px;
+  border: 1px solid #cfe0ff;
+  border-radius: 9px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #fff;
+}
+
+.sortTab {
+  border: none;
+  background: #fff;
+  font-size: 14px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.sortActive {
+  background: #e9f0ff;
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.error {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #ef4444;
+}
+
+.emptyWrap {
+  margin-top: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.emptyText {
+  font-size: 15px;
+  color: #5b78ff;
+}
+
+.emptyChips {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.resultList {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.resultRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.thumb {
+  width: 90px;
+  height: 90px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #f3f4f6;
+  flex: 0 0 auto;
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowTitle {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+
+.tagRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tagBlue {
+  font-size: 12px;
+  color: #5b78ff;
+  border: 1px solid #cfe0ff;
+  background: #eef5ff;
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.starBtn {
+  border: none;
+  background: transparent;
+  color: #5b78ff;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 6px;
+  flex: 0 0 auto;
+}
+
+.moreBtn {
+  width: 100%;
+  margin-top: 18px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bottomSpace {
+  height: 18px;
+}

@@ -1,152 +1,104 @@
 // src/pages/article/session/I/StepI003.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
-import { submitStepAnswer } from "@/lib/apiClient";
 import styles from "./StepI003.module.css";
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
 
-import iPackage from "@/data/economy_2025-11-24_package.json";
-
-type Props = { articleId?: string; articleUrl?: string };
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
+};
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
-  courseId?: string;
-  sessionId?: string;
-  stepId?: number;
-  stepMeta?: any;
+  startTime?: number;
+  courseId?: number | string;
+  sessionId?: number | string | null;
+  level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
 type QuizItem = {
   contentId: number;
   question: string;
-  options: {
-    label: string;
-    text: string;
-  }[];
-  correctAnswer: string;
+  options: { label: string; text: string }[];
+  correctAnswer: string; // A~D
   answerExplanation: string;
+  sourceUrl?: string;
 };
 
-type StepI003Content = {
-  sourceUrl: string;
-  contents: QuizItem[];
-};
-
-const CONTENT_TYPE = "MULTIPLE_CHOICE";
-
-// 🔍 JSON 어디에 있든 contentType === "MULTIPLE_CHOICE" 인 블록 찾아오기
-function findMultipleChoice(node: any): StepI003Content | undefined {
-  if (!node) return undefined;
-
-  // 1) 배열이면 각 요소 순회
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      const found = findMultipleChoice(item);
-      if (found) return found;
-    }
-    return undefined;
-  }
-
-  // 2) 객체이면 우선 자기 자신 검사
-  if (typeof node === "object") {
-    if (
-      node.contentType === "MULTIPLE_CHOICE" &&
-      Array.isArray(node.contents)
-    ) {
-      const sourceUrl =
-        node.sourceUrl ??
-        node.contents[0]?.sourceUrl ??
-        "";
-
-      return {
-        sourceUrl,
-        contents: node.contents as QuizItem[],
-      };
-    }
-
-    // 3) 프로퍼티들 안으로 재귀
-    for (const key of Object.keys(node)) {
-      const value = (node as any)[key];
-      const found = findMultipleChoice(value);
-      if (found) return found;
-    }
-  }
-
-  return undefined;
-}
-
-// JSON 전체에서 한 번만 찾아서 캐싱
-const MULTIPLE_FROM_PACKAGE: StepI003Content | undefined =
-  findMultipleChoice(iPackage as any);
-
-export default function StepI003({ articleId, articleUrl }: Props) {
+export default function StepI003() {
   const nav = useNavigate();
   const location = useLocation();
+  const state = (location.state as RouteState) || {};
 
-  const {
-    articleId: sArticleId,
-    articleUrl: sArticleUrl,
-    courseId,
-    sessionId,
-    stepId,
-    stepMeta,
-  } = (location.state as RouteState) || {};
+  const startTime = state.startTime ?? Date.now();
+  const courseId = Number(state.courseId ?? state.articleId);
+  const sessionId = Number(state.sessionId);
+  const steps = state.steps ?? [];
 
-  const aId = sArticleId ?? articleId;
-  const aUrl = sArticleUrl ?? articleUrl;
+  const STEP_ORDER = 3;
+  const CONTENT_TYPE = "MULTIPLE_CHOICE";
+
+  const currentStep = useMemo(() => {
+    return steps.find((s) => Number(s.stepOrder) === STEP_ORDER);
+  }, [steps]);
 
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
-
   const [index, setIndex] = useState(0);
-  const [choiceLabel, setChoiceLabel] = useState<string | null>(null);
+  const [choice, setChoice] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    // 1순위: 백엔드 stepMeta.content
-    const fromMeta = stepMeta?.content as StepI003Content | undefined;
-    const content = fromMeta ?? MULTIPLE_FROM_PACKAGE;
-
-    if (content && Array.isArray(content.contents)) {
-      setQuizzes(content.contents);
-      setSourceUrl(content.sourceUrl || null);
-    } else {
-      console.warn("StepI003: MULTIPLE_CHOICE 데이터를 찾을 수 없음", {
-        stepMeta,
-        MULTIPLE_FROM_PACKAGE,
-        rawPkg: iPackage,
-      });
-    }
-  }, [stepMeta]);
-
-  const q = quizzes[index];
-  const total = quizzes.length;
-  const isCorrect = q && choiceLabel === q.correctAnswer;
-
-  const selectOption = (label: string) => {
-    if (confirmed) return;
-    setChoiceLabel(label);
-  };
-
-  const confirmAnswer = () => {
-    if (!choiceLabel) return;
-    setConfirmed(true);
-  };
-
-  const sendAnswer = async () => {
-    if (!courseId || !sessionId || !stepId || !q) {
-      console.warn("StepI003: courseId/sessionId/stepId/q 없음 → API 스킵");
+    const contents = currentStep?.content?.contents;
+    if (!Array.isArray(contents)) {
+      setQuizzes([]);
       return;
     }
 
-    const userAnswer = [
-      {
-        contentId: q.contentId,
-        value: choiceLabel,
-      },
-    ];
+    const mapped: QuizItem[] = contents
+      .map((c: any) => ({
+        contentId: Number(c?.contentId ?? c?.id ?? 0),
+        question: String(c?.question ?? ""),
+        options: Array.isArray(c?.options)
+          ? c.options.map((o: any, idx: number) => ({
+              label: String(o?.label ?? String.fromCharCode(65 + idx)),
+              text: String(o?.text ?? ""),
+            }))
+          : [],
+        correctAnswer: String(c?.correctAnswer ?? ""),
+        answerExplanation: String(c?.answerExplanation ?? ""),
+        sourceUrl: c?.sourceUrl ? String(c.sourceUrl) : undefined,
+      }))
+      .filter((x) => x.contentId && x.question);
+
+    setQuizzes(mapped);
+    setIndex(0);
+    setChoice(null);
+    setConfirmed(false);
+    setAnswers({});
+  }, [currentStep]);
+
+  const q = quizzes[index];
+  const total = quizzes.length;
+
+  const isCorrect = !!q && !!choice && choice === q.correctAnswer;
+
+  const submitAll = async (next: Record<number, string>) => {
+    const stepId = Number(currentStep?.stepId);
+    if (!courseId || !sessionId || !stepId || !q || !choice) return false;
+
+    const payload = Object.entries(next).map(([contentId, value]) => ({
+      contentId: Number(contentId),
+      value,
+    }));
 
     try {
       await submitStepAnswer({
@@ -154,101 +106,94 @@ export default function StepI003({ articleId, articleUrl }: Props) {
         sessionId,
         stepId,
         contentType: CONTENT_TYPE,
-        userAnswer,
+        userAnswer: payload, // apiClient가 answers로 래핑해줌
       });
+      return true;
     } catch (e) {
-      console.error("🔥 StepI003 답안 저장 실패:", e);
+      console.error("[StepI003] submit error:", e);
+      return false;
     }
   };
 
-  const nextProblem = async () => {
-    await sendAnswer();
+  const checkAnswer = async () => {
+    if (!q || !choice) return;
+    const next = { ...answers, [q.contentId]: choice };
+    setAnswers(next);
+    const ok = await submitAll(next);
+    if (!ok) return;
+    setConfirmed(true);
+  };
 
-    if (index < total - 1) {
-      setIndex((i) => i + 1);
-      setChoiceLabel(null);
-      setConfirmed(false);
+  const nextProblem = () => {
+    if (index >= total - 1) {
+      nav("/nie/session/I/step/004", { state: { ...state, startTime }, replace: true });
       return;
     }
-
-nav("/nie/session/I/step/004", {
-  state: {
-    level: "I",          // ✅ 요거 추가
-    articleId: aId,
-    articleUrl: aUrl,
-    courseId,
-    sessionId,
-  },
-});
-
+    setIndex((i) => i + 1);
+    setChoice(null);
+    setConfirmed(false);
   };
 
-  const goPrev = () => nav(-1);
+  const handlePrev = () =>
+    nav("/nie/session/I/step/002", { state: { ...state, startTime }, replace: true });
 
-  if (!q) {
-    // JSON 탐색 실패했을 때 여기 걸림
-    return <div className={styles.loading}>불러오는 중…</div>;
-  }
+  const handleQuit = async () => {
+    try {
+      if (courseId && sessionId) await quitSession({ courseId, sessionId });
+    } catch (e) {
+      console.error("[StepI003] quit error:", e);
+    }
+    nav("/learn");
+  };
+
+  if (!q) return <div className={styles.viewport}><div className={styles.container}>문제가 없습니다.</div></div>;
+
+  const sourceLink = q.sourceUrl || state.articleUrl || "";
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행바 */}
         <div className={styles.progressWrap}>
-          <div
-            className={styles.progress}
-            style={{ width: `${((index + 1) / total) * 100}%` }}
-          />
+          <div className={styles.progress} style={{ width: `${((index + 1) / total) * 100}%` }} />
         </div>
 
-        <h2 className={styles.question}>{q.question}</h2>
+        <p className={styles.question}>{q.question}</p>
 
-        {/* 보기 리스트 */}
         <div className={styles.options}>
-          {q.options.map((opt) => {
-            const selected = choiceLabel === opt.label;
+          {q.options.map((o) => {
+            const isSel = choice === o.label;
 
-            let cls = styles.option;
-
-            if (!confirmed && selected) {
-              cls += " " + styles.optionSelected;
-            }
-
-            if (confirmed) {
-              if (opt.label === q.correctAnswer) {
-                cls += " " + styles.optionCorrect;
-              } else if (selected && opt.label !== q.correctAnswer) {
-                cls += " " + styles.optionWrong;
-              }
-            }
+            const cls =
+              !confirmed
+                ? isSel
+                  ? styles.optionSelected
+                  : ""
+                : o.label === q.correctAnswer
+                ? styles.optionCorrect
+                : isSel
+                ? styles.optionWrong
+                : "";
 
             return (
               <button
-                key={opt.label}
-                className={cls}
+                key={o.label}
                 type="button"
-                onClick={() => selectOption(opt.label)}
+                className={`${styles.option} ${cls}`}
+                onClick={() => !confirmed && setChoice(o.label)}
               >
-                <span className={styles.optionLabel}>{opt.label}.</span>
-                <span className={styles.optionText}>{opt.text}</span>
+                <span className={styles.optionLabel}>{o.label}</span>
+                <span className={styles.optionText}>{o.text}</span>
               </button>
             );
           })}
         </div>
 
-        {/* 정답 확인 버튼 */}
         {!confirmed && (
-          <button
-            className={styles.checkBtn}
-            type="button"
-            disabled={!choiceLabel}
-            onClick={confirmAnswer}
-          >
+          <button className={styles.checkBtn} disabled={!choice} onClick={() => void checkAnswer()}>
             정답 확인하기
           </button>
         )}
 
-        {/* 정답/오답 해설 */}
         {confirmed && (
           <div
             className={`${styles.answerBox} ${
@@ -256,34 +201,30 @@ nav("/nie/session/I/step/004", {
             }`}
           >
             <div className={styles.answerHeader}>
-              <span className={styles.answerLabel}>
-                정답: {q.correctAnswer}
-              </span>
-              <button
-                className={styles.sourceBtn}
-                type="button"
-                disabled={!sourceUrl}
-                onClick={() => {
-                  if (sourceUrl) window.open(sourceUrl, "_blank");
-                }}
-              >
-                뉴스 원문 보기
-              </button>
+              <span className={styles.answerLabel}>정답: {q.correctAnswer}</span>
+              {sourceLink && (
+                <button
+                  type="button"
+                  className={styles.sourceBtn}
+                  onClick={() => window.open(sourceLink, "_blank")}
+                >
+                  뉴스 원문 보기
+                </button>
+              )}
             </div>
             <p className={styles.answerText}>{q.answerExplanation}</p>
           </div>
         )}
 
         <div className={styles.bottomSpace} />
-      </div>
 
-      <EduBottomBar
-        onPrev={goPrev}
-        onQuit={() => nav("/learn")}
-        onNext={confirmed ? nextProblem : undefined}
-        disablePrev={false}
-        disableNext={!confirmed}
-      />
+        <EduBottomBar
+          onPrev={handlePrev}
+          onNext={confirmed ? nextProblem : undefined}
+          onQuit={handleQuit}
+          disableNext={!confirmed}
+        />
+      </div>
     </div>
   );
 }

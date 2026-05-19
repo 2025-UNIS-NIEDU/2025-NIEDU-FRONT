@@ -1,51 +1,57 @@
-// src/pages/article/session/N/StepN001.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN001.module.css";
-
-// 🔹 로컬 JSON 데이터
-import economyPackage from "@/data/economy_2025-11-24_package.json";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
 type KeywordItem = {
   word: string;
   isTopicWord: boolean;
 };
 
-type SummaryReadingContent = {
-  summary: string;
-  keywords: KeywordItem[];
-};
-
-type Props = {
-  articleId?: string;
-  articleUrl?: string;
-  courseId?: string;
-  sessionId?: string;
-};
-
 type Segment = { text: string; keyword?: string };
 
-// ArticlePrepare에서 넘어올 수도 있어서 한 번 받아 둠
-type LocState = {
-  articleId?: string;
-  sessionId?: number | null;
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
 };
 
-export default function StepN001({
-  articleId: propArticleId,
-  articleUrl,
-  courseId: propCourseId,
-  sessionId: propSessionId,
-}: Props) {
+type RouteState = {
+  articleId?: string;
+  articleUrl?: string;
+  startTime?: number;
+  courseId?: number | string;
+  sessionId?: number | string;
+  level?: "N" | "E" | "I";
+  steps?: StepMeta[];
+};
+
+export default function StepN001() {
   const nav = useNavigate();
   const location = useLocation();
-  const locState = (location.state as LocState) || {};
+  const state = (location.state as RouteState) || {};
 
-  // ▲ 우선순위: props → location.state → 없으면 1번 코스 / 1번 세션
-  const articleId = propArticleId ?? String(locState.articleId ?? "1");
-  const sessionId = Number(propSessionId ?? locState.sessionId ?? 1);
-  const courseId = propCourseId ?? articleId;
+  const articleId = state.articleId;
+  const articleUrl = state.articleUrl;
+  const startTime = state.startTime ?? Date.now(); // 없으면 fallback
+  const courseId = state.courseId;
+  const sessionId = state.sessionId;
+  const steps = state.steps ?? [];
+
+  const STEP_ORDER = 1;
+  const CONTENT_TYPE = "SUMMARY_READING";
+
+  const currentStep = useMemo(() => {
+    // stepOrder=1 + contentType
+    return steps.find(
+      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+    );
+  }, [steps]);
 
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState("");
@@ -54,68 +60,34 @@ export default function StepN001({
   const [selected, setSelected] = useState<string[]>([]);
   const [revealed, setRevealed] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitErr, setSubmitErr] = useState<string>("");
 
-  const [startTime] = useState(() => Date.now());
-
-  // 🔸 로컬 JSON에서 summary / keywords만 뽑기
+  // ✅ step.content에서 summary/keywords 파싱
   useEffect(() => {
     setLoading(true);
     setLoadError(null);
+    setSubmitErr("");
 
     try {
-      const pkg: any = economyPackage;
+      // 서버 구조 예상:
+      // step.content.contents[0] = { summary: string, keywords: [{word,isTopicWord}, ...] }
+      const block =
+        currentStep?.content?.contents?.[0] ??
+        // 혹시 contents 없이 바로 오는 경우 방어
+        currentStep?.content ??
+        null;
 
-      const cid = Number(articleId);
-      const course =
-        pkg.courses?.find((c: any) => c.courseId === cid) ?? pkg.courses?.[0];
-
-      if (!course) {
-        setLoadError("코스 데이터를 찾을 수 없어요.");
+      if (!currentStep || !block) {
+        setLoadError("요약문 데이터를 찾을 수 없어요.");
+        setSummary("");
+        setKeywords([]);
+        setCorrectKeywords([]);
         setLoading(false);
         return;
       }
 
-      const session =
-        course.sessions?.find((s: any) => s.sessionId === sessionId) ??
-        course.sessions?.[0];
-
-      if (!session) {
-        setLoadError("세션 데이터를 찾을 수 없어요.");
-        setLoading(false);
-        return;
-      }
-
-      // N단계 퀴즈 블럭 찾기
-      const quizN =
-        session.quizzes?.find((q: any) => q.level === "N") ??
-        session.quizzes?.[0];
-
-      if (!quizN) {
-        setLoadError("N 단계 퀴즈 데이터를 찾을 수 없어요.");
-        setLoading(false);
-        return;
-      }
-
-      const step1 =
-        quizN.steps?.find((s: any) => s.stepOrder === 1) ??
-        quizN.steps?.[0];
-
-      if (!step1) {
-        setLoadError("요약문 단계 데이터를 찾을 수 없어요.");
-        setLoading(false);
-        return;
-      }
-
-      const block = step1.contents?.[0];
-
-      // ✅ summary가 숫자로 와도 걸러내기
-      let summaryText = "";
-      if (block && typeof block.summary === "string") {
-        summaryText = block.summary;
-      } else if (typeof session.summary === "string") {
-        // 혹시 contents.summary가 엉뚱하면 세션 요약으로 대체
-        summaryText = session.summary;
-      }
+      const summaryText =
+        typeof block?.summary === "string" ? block.summary : "";
 
       const kwArray: KeywordItem[] = Array.isArray(block?.keywords)
         ? (block.keywords as KeywordItem[])
@@ -123,25 +95,35 @@ export default function StepN001({
 
       if (!summaryText) {
         setLoadError("요약문 텍스트가 없어요.");
+        setSummary("");
+        setKeywords([]);
+        setCorrectKeywords([]);
         setLoading(false);
         return;
       }
 
-      const allWords = kwArray.map((k) => k.word);
+      const allWords = kwArray.map((k) => String(k.word));
       const topicWords = kwArray
-        .filter((k) => k.isTopicWord)
-        .map((k) => k.word);
+        .filter((k) => !!k.isTopicWord)
+        .map((k) => String(k.word));
 
       setSummary(summaryText);
       setKeywords(allWords);
       setCorrectKeywords(topicWords);
-      setLoading(false);
+
+      // 초기화
+      setSelected([]);
+      setRevealed(false);
     } catch (e) {
-      console.error("[StepN001] 로컬 JSON 파싱 실패", e);
+      console.error("[StepN001] parse failed:", e);
       setLoadError("요약문 데이터를 불러오지 못했어요.");
+      setSummary("");
+      setKeywords([]);
+      setCorrectKeywords([]);
+    } finally {
       setLoading(false);
     }
-  }, [articleId, sessionId]);
+  }, [currentStep]);
 
   // ✅ 요약문을 일반 텍스트 / 키워드 조각으로 나누기
   const segments: Segment[] = useMemo(() => {
@@ -149,16 +131,16 @@ export default function StepN001({
 
     const text = summary;
     const segs: Segment[] = [];
-    let index = 0;
+    let idx = 0;
 
     const sortedKeywords = [...keywords].sort((a, b) => b.length - a.length);
 
-    while (index < text.length) {
+    while (idx < text.length) {
       let foundKw: string | null = null;
       let foundPos = text.length;
 
       for (const kw of sortedKeywords) {
-        const pos = text.indexOf(kw, index);
+        const pos = text.indexOf(kw, idx);
         if (pos !== -1 && pos < foundPos) {
           foundPos = pos;
           foundKw = kw;
@@ -166,16 +148,14 @@ export default function StepN001({
       }
 
       if (!foundKw) {
-        segs.push({ text: text.slice(index) });
+        segs.push({ text: text.slice(idx) });
         break;
       }
 
-      if (foundPos > index) {
-        segs.push({ text: text.slice(index, foundPos) });
-      }
+      if (foundPos > idx) segs.push({ text: text.slice(idx, foundPos) });
 
       segs.push({ text: foundKw, keyword: foundKw });
-      index = foundPos + foundKw.length;
+      idx = foundPos + foundKw.length;
     }
 
     return segs;
@@ -188,13 +168,54 @@ export default function StepN001({
     );
   };
 
+  // ✅ answer 저장 (정답 공개 시점에 1번만 저장)
+  const submitAnswer = async () => {
+    setSubmitErr("");
+
+    const cid = Number(courseId ?? articleId);
+    const sid = Number(sessionId);
+    const stepId = Number(currentStep?.stepId);
+
+    if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
+      console.warn("[StepN001] missing courseId/sessionId/stepId -> skip submit");
+      return true;
+    }
+
+    // 서버가 원하는 포맷 확정 전이라 "안전한 범용 형태"로 보냄
+    // 필요하면 백에서 정해준 스키마로 바로 바꿔줄게.
+    const userAnswer = {
+      selectedKeywords: selected,
+      revealed: true,
+    };
+
+    try {
+      await api.post<ApiResponse<null>>(
+        `/api/edu/courses/${cid}/sessions/${sid}/steps/${stepId}/answer`,
+        {
+          contentType: CONTENT_TYPE,
+          userAnswer,
+        }
+      );
+      return true;
+    } catch (e) {
+      console.error("[StepN001] submit failed:", e);
+      setSubmitErr("답안 저장에 실패했어요. 네트워크/로그인 상태를 확인해주세요.");
+      return false;
+    }
+  };
+
   const handleNext = async () => {
-    // 지금은 백에 답안 안 보내고, 그냥 플로우만 이어감
+    if (loading || loadError) return;
+
+    // 1) 아직 정답 공개 전이면: 공개 + 답 저장
     if (!revealed) {
+      const ok = await submitAnswer();
+      if (!ok) return; // 저장 실패 시 막고 싶으면 유지. 싫으면 지워도 됨.
       setRevealed(true);
       return;
     }
 
+    // 2) 공개 후 다음으로 이동
     nav("/nie/session/N/step/002", {
       state: {
         articleId,
@@ -202,7 +223,8 @@ export default function StepN001({
         startTime,
         courseId,
         sessionId,
-        level: "N",  
+        level: "N",
+        steps, // ✅ 유지
       },
     });
   };
@@ -224,6 +246,8 @@ export default function StepN001({
           주제라고 생각되는 키워드를 클릭해보세요.
         </p>
 
+        {submitErr && <div className={styles.skel}>{submitErr}</div>}
+
         <section className={styles.summaryCard} aria-busy={loading}>
           {loading ? (
             <div className={styles.skel}>불러오는 중…</div>
@@ -232,9 +256,7 @@ export default function StepN001({
           ) : (
             <p className={styles.summaryText}>
               {segments.map((seg, i) => {
-                if (!seg.keyword) {
-                  return <span key={i}>{seg.text}</span>;
-                }
+                if (!seg.keyword) return <span key={i}>{seg.text}</span>;
 
                 const isSelected = selected.includes(seg.keyword);
                 const isCorrectKw = correctKeywords.includes(seg.keyword);

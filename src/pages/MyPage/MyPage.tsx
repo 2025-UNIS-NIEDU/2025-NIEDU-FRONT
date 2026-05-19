@@ -1,188 +1,392 @@
-import { useState } from "react";
-import type { ChangeEvent } from "react";
+// src/pages/MyPage/MyPage.tsx
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
 import styles from "./MyPage.module.css";
 
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
+
+type DateNavigatorData = {
+  currentYear: number;
+  currentMonth: number; // 1~12
+  range?: { start: string; end: string };
+  earliestLearning?: string;
+  latestLearning?: string;
+};
+
+type CalendarCourse = {
+  topic?: string;
+  subTopic?: string;
+  keywords?: string[];
+  progressRate?: number;
+  extra?: number;
+};
+
+type CalendarDay = {
+  date: string;
+  courses: CalendarCourse[];
+};
+
+type CalendarData = {
+  year: number;
+  month: number;
+  days: CalendarDay[];
+};
+
+type MeData = {
+  nickname?: string;
+  profileImageUrl?: string;
+};
+
+function toISODate(year: number, month0: number, day: number) {
+  const m = String(month0 + 1).padStart(2, "0");
+  const d = String(day).padStart(2, "0");
+  return `${year}-${m}-${d}`;
+}
+
+function parseISODate(iso: string) {
+  const [y, m, d] = iso.split("-").map((x) => Number(x));
+  if (!y || !m || !d) return null;
+  return { y, m: m - 1, d };
+}
+
+function isSameYM(a: { y: number; m: number }, b: { y: number; m: number }) {
+  return a.y === b.y && a.m === b.m;
+}
+
+function clampMonth(y: number, m0: number) {
+  let y2 = y;
+  let m2 = m0;
+  while (m2 < 0) {
+    y2 -= 1;
+    m2 += 12;
+  }
+  while (m2 > 11) {
+    y2 += 1;
+    m2 -= 12;
+  }
+  return { y: y2, m: m2 };
+}
+
+function makeCalendarMatrix(year: number, month0: number) {
+  const first = new Date(year, month0, 1);
+  const startDay = first.getDay();
+  const lastDate = new Date(year, month0 + 1, 0).getDate();
+
+  const cells: Array<number | null> = [];
+  for (let i = 0; i < startDay; i++) cells.push(null);
+  for (let d = 1; d <= lastDate; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+/** ✅ 공백 포함 최대 5자 */
+const shorten5 = (s: string) => {
+  const t = String(s ?? "").replace(/\s+/g, " ").trim();
+  return t.length > 5 ? t.slice(0, 5) : t;
+};
+
 export default function MyPage() {
+  const nav = useNavigate();
+
   const today = new Date();
-  const todayYear = today.getFullYear();
-  const todayMonth = today.getMonth(); // 0~11
+  const [year, setYear] = useState(today.getFullYear());
+  const [month0, setMonth0] = useState(today.getMonth());
+
+  const [me, setMe] = useState<MeData | null>(null);
+  const [navData, setNavData] = useState<DateNavigatorData | null>(null);
+  const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
+
+  const [loadingNav, setLoadingNav] = useState(true);
+  const [loadingCal, setLoadingCal] = useState(true);
+
+  const [logTagMap, setLogTagMap] = useState<
+    Record<string, { topic?: string; subTopic?: string; keywords?: string[] }>
+  >({});
+
+  const daysArray = useMemo(() => makeCalendarMatrix(year, month0), [year, month0]);
+  const isThisMonthToday = year === today.getFullYear() && month0 === today.getMonth();
   const todayDate = today.getDate();
 
-  // 프로필 이미지 (업로드한 사진 미리보기)
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const monthLabel = `${year}년 ${month0 + 1}월`;
 
-  // 캘린더에 표시할 연/월 상태
-  const [year, setYear] = useState(todayYear);
-  const [month, setMonth] = useState(todayMonth); // 0 = 1월
-
-  const firstDay = new Date(year, month, 1).getDay();
-  const lastDate = new Date(year, month + 1, 0).getDate();
-
-  const daysArray: (number | null)[] = [];
-  for (let i = 0; i < firstDay; i++) daysArray.push(null);
-  for (let d = 1; d <= lastDate; d++) daysArray.push(d);
-
-  const handlePrevMonth = () => {
-    setMonth((prev) => {
-      if (prev === 0) {
-        setYear((y) => y - 1);
-        return 11;
-      }
-      return prev - 1;
-    });
+  const fetchMe = async () => {
+    try {
+      const res = await api.get<ApiResponse<MeData>>("/api/user/me");
+      setMe(res.data?.data ?? null);
+    } catch {
+      setMe(null);
+    }
   };
 
-  const handleNextMonth = () => {
-    setMonth((prev) => {
-      if (prev === 11) {
-        setYear((y) => y + 1);
-        return 0;
-      }
-      return prev + 1;
-    });
+  const fetchNavigator = async () => {
+    const res = await api.get<ApiResponse<DateNavigatorData>>(
+      "/api/mypage/learning-log/navigator"
+    );
+    setNavData(res.data?.data ?? null);
   };
 
-  // 프로필 사진 업로드 핸들러
-  const handleProfileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const fetchCalendar = async (y: number, m0: number) => {
+    const res = await api.get<ApiResponse<CalendarData>>(
+      "/api/mypage/learning-log/calendar",
+      { params: { year: y, month: m0 + 1 } }
+    );
+    setCalendarData(res.data?.data ?? null);
+  };
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setProfileImage(reader.result);
+  const fetchTags = async (y: number, m0: number) => {
+    try {
+      const start = new Date(y, m0, 1);
+      const end = new Date(y, m0 + 1, 0);
+
+      const s = toISODate(start.getFullYear(), start.getMonth(), 1);
+      const e = toISODate(end.getFullYear(), end.getMonth(), end.getDate());
+
+      const res = await api.get<ApiResponse<any>>("/api/mypage/learning-log/tags", {
+        params: { startDate: s, endDate: e },
+      });
+
+      const raw = res.data?.data;
+      const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.days) ? raw.days : [];
+
+      const map: Record<string, { topic?: string; subTopic?: string; keywords?: string[] }> = {};
+      for (const it of arr) {
+        const date = String(it?.date ?? it?.learningDate ?? "");
+        if (!date) continue;
+
+        const topic = typeof it?.topic === "string" ? it.topic : undefined;
+        const subTopic = typeof it?.subTopic === "string" ? it.subTopic : undefined;
+
+        const kwsRaw = it?.keywords ?? it?.tags ?? it?.keywordList ?? [];
+        const keywords = Array.isArray(kwsRaw) ? kwsRaw.map(String).filter(Boolean) : undefined;
+
+        map[date] = { topic, subTopic, keywords };
       }
+      setLogTagMap(map);
+    } catch {
+      setLogTagMap({});
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoadingNav(true);
+        setLoadingCal(true);
+        await Promise.all([fetchMe(), fetchNavigator(), fetchCalendar(year, month0), fetchTags(year, month0)]);
+      } finally {
+        if (!alive) return;
+        setLoadingNav(false);
+        setLoadingCal(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
     };
-    reader.readAsDataURL(file);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoadingCal(true);
+        await Promise.all([fetchCalendar(year, month0), fetchTags(year, month0)]);
+      } finally {
+        if (!alive) return;
+        setLoadingCal(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [year, month0]);
+
+  useEffect(() => {
+    if (!navData) return;
+    const current = { y: navData.currentYear, m: navData.currentMonth - 1 };
+    if (!isSameYM({ y: year, m: month0 }, current)) {
+      setYear(current.y);
+      setMonth0(current.m);
+    }
+  }, [navData, year, month0]);
+
+  const dayToCourses = useMemo(() => {
+    const map = new Map<number, CalendarCourse[]>();
+    if (!calendarData?.days) return map;
+
+    for (const d of calendarData.days) {
+      const parsed = parseISODate(d.date);
+      if (!parsed) continue;
+      if (parsed.y !== year || parsed.m !== month0) continue;
+      map.set(parsed.d, Array.isArray(d.courses) ? d.courses : []);
+    }
+    return map;
+  }, [calendarData, year, month0]);
+
+  const canGoPrev = useMemo(() => {
+    if (!navData?.earliestLearning) return true;
+    const p = parseISODate(navData.earliestLearning);
+    if (!p) return true;
+    const earliest = { y: p.y, m: p.m };
+    const current = { y: year, m: month0 };
+    if (current.y < earliest.y) return false;
+    if (current.y === earliest.y && current.m <= earliest.m) return false;
+    return true;
+  }, [navData, year, month0]);
+
+  const canGoNext = useMemo(() => {
+    if (!navData?.latestLearning) return true;
+    const p = parseISODate(navData.latestLearning);
+    if (!p) return true;
+    const latest = { y: p.y, m: p.m };
+    const current = { y: year, m: month0 };
+    if (current.y > latest.y) return false;
+    if (current.y === latest.y && current.m >= latest.m) return false;
+    return true;
+  }, [navData, year, month0]);
+
+  const goPrevMonth = () => {
+    if (!canGoPrev) return;
+    const next = clampMonth(year, month0 - 1);
+    setYear(next.y);
+    setMonth0(next.m);
   };
+
+  const goNextMonth = () => {
+    if (!canGoNext) return;
+    const next = clampMonth(year, month0 + 1);
+    setYear(next.y);
+    setMonth0(next.m);
+  };
+
+  const nickname = me?.nickname ?? "사용자";
+  const profileImageUrl = me?.profileImageUrl ?? "";
+  const streakText = "2일 연속 출석하셨어요!";
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 상단 타이틀 + 설정 버튼 */}
-        <div className={styles.topBar}>
-          <h1 className={styles.title}>마이페이지</h1>
-          <button type="button" className={styles.settingsButton}>
-            <img
-              src="/icons/icon-settings.svg"
-              alt=""
-              className={styles.settingsIcon}
-            />
-            <span>설정</span>
+        <div className={styles.topRow}>
+          <div className={styles.pageTitle}>마이페이지</div>
+
+          <button className={styles.settingsButton} onClick={() => nav("/mypage/settings")}>
+            <img className={styles.settingsIcon} src="/icons/icon-settings.svg" alt="" />
+            설정
           </button>
         </div>
 
-        {/* 프로필 영역 */}
-        <div className={styles.profileBox}>
-          <div className={styles.profileImageWrapper}>
-            {/* 기본 배경 프레임 (Ellipse 25) */}
-            <img
-              src="/icons/Ellipse 25.svg"
-              alt="프로필 프레임"
-              className={styles.profileFrame}
-            />
-
-            {/* 업로드한 사진이 있으면 표시 */}
-            {profileImage && (
-              <img
-                src={profileImage}
-                alt="프로필"
-                className={styles.profilePhoto}
-              />
+        <div className={styles.profileRow}>
+          <div className={styles.avatar}>
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt="" />
+            ) : (
+              <div className={styles.avatarFallback} />
             )}
-
-            {/* 사진 추가 버튼 (라벨 + 숨겨진 input) */}
-            <label className={styles.profileUploadButton}>
-              +
-              <input
-                type="file"
-                accept="image/*"
-                className={styles.profileUploadInput}
-                onChange={handleProfileChange}
-              />
-            </label>
           </div>
 
-          <div>
-            <p className={styles.name}>이화연 님</p>
-            <p className={styles.streak}>2일 연속 출석하셨어요!</p>
+          <div className={styles.profileText}>
+            <div className={styles.nick}>{nickname} 님</div>
+            <div className={styles.streak}>{streakText}</div>
           </div>
         </div>
 
-        {/* 용어 사전 섹션 타이틀 */}
-        <div className={styles.sectionTitle}>
-          <img
-            src="/icons/majesticons_book.svg"
-            alt="1"
-            className={styles.sectionIcon}
-          />
-          <span>용어 사전</span>
+        <div className={styles.list}>
+          <button className={styles.listItem} onClick={() => nav("/mypage/terms")}>
+            <img className={styles.listIcon} src="/icons/majesticons_book.svg" alt="" />
+            <span>용어 사전</span>
+          </button>
+
+          <button className={styles.listItem} onClick={() => nav("/mypage/review-notes")}>
+            <img className={styles.listIcon} src="/icons/fluent_note-24-filled.svg" alt="" />
+            <span>복습 노트</span>
+          </button>
         </div>
 
-        {/* 달력 전체 박스 */}
-        <div className={styles.calendarBox}>
-          <div className={styles.monthHeader}>
-            <button
-              className={styles.monthArrow}
-              type="button"
-              onClick={handlePrevMonth}
-            >
-              <img
-                src="/icons/Polygon 4.svg"
-                alt="이전 달"
-                className={`${styles.monthArrowIcon} ${styles.monthArrowLeft}`}
-              />
+        <div className={styles.calendarWrap}>
+          <div className={styles.monthRow}>
+            <button className={styles.monthArrow} onClick={goPrevMonth} disabled={!canGoPrev} aria-label="이전 달">
+              <img src="/icons/Polygon 3.svg" alt="이전 달" className={styles.monthArrowIcon} />
             </button>
-            <span className={styles.monthLabel}>
-              {year}년 {month + 1}월
-            </span>
-            <button
-              className={styles.monthArrow}
-              type="button"
-              onClick={handleNextMonth}
-            >
-              <img
-                src="/icons/Polygon 4.svg"
-                alt="다음 달"
-                className={styles.monthArrowIcon}
-              />
+
+            <div className={styles.monthLabel}>{loadingNav ? "..." : monthLabel}</div>
+
+            <button className={styles.monthArrow} onClick={goNextMonth} disabled={!canGoNext} aria-label="다음 달">
+              <img src="/icons/Polygon 4.svg" alt="다음 달" className={styles.monthArrowIcon} />
             </button>
           </div>
 
-          <div className={styles.grid}>
-            {daysArray.map((day, idx) => {
-              if (day === null)
-                return <div key={idx} className={styles.emptyCell} />;
+          {loadingCal && !calendarData ? (
+            <p className={styles.loading}>캘린더 불러오는 중...</p>
+          ) : (
+            <div className={styles.grid}>
+              {daysArray.map((day, idx) => {
+                if (day === null) return <div key={idx} className={styles.emptyCell} />;
 
-              const isToday =
-                day === todayDate &&
-                month === todayMonth &&
-                year === todayYear;
+                const isToday = isThisMonthToday && day === todayDate;
+                const iso = toISODate(year, month0, day);
 
-              return (
-                <div key={idx} className={styles.dayCell}>
-                  <div
-                    className={`${styles.dayNumber} ${
-                      isToday ? styles.today : ""
-                    }`}
-                  >
-                    {day}
+                const coursesRaw = dayToCourses.get(day) ?? [];
+                const courses = coursesRaw.filter((c) => {
+                  if (typeof c.progressRate === "number") return c.progressRate > 0;
+                  return true;
+                });
+
+                const topicPairs = courses.filter((c) => c?.topic || c?.subTopic);
+
+                const labels = topicPairs
+                  .map((c) => {
+                    const t = typeof c.topic === "string" ? c.topic.trim() : "";
+                    const s = typeof c.subTopic === "string" ? c.subTopic.trim() : "";
+                    if (!t && !s) return "";
+                    const merged = `${t}${s ? `#${s}` : ""}`;
+                    return shorten5(merged);
+                  })
+                  .filter(Boolean);
+
+                const visible = labels.slice(0, 3);
+                const extraCount = Math.max(0, labels.length - visible.length);
+
+                const hasLog =
+                  (logTagMap[iso]?.keywords?.length ?? 0) > 0 ||
+                  !!logTagMap[iso]?.topic ||
+                  !!logTagMap[iso]?.subTopic;
+
+                const hasData = labels.length > 0 || hasLog;
+
+                return (
+                  <div key={idx} className={styles.dayCell} style={{ cursor: hasData ? "pointer" : "default" }}>
+                    <div className={`${styles.dayNumber} ${isToday ? styles.today : ""}`}>{day}</div>
+
+                    {labels.length > 0 && (
+                      <div className={styles.tag}>
+                        <span className={styles.courseLine}>
+                          {visible.map((label, i) => (
+                            <span key={`${label}-${i}`} className={styles.courseChip} title={label}>
+                              {label}
+                            </span>
+                          ))}
+                          {extraCount > 0 ? <span className={styles.courseMore}>+{extraCount}</span> : null}
+                        </span>
+                      </div>
+                    )}
                   </div>
-               {isToday && (
-  <div className={styles.tag}>
-    <span className={styles.tagStrong}>경제</span>
-    <span className={styles.tagWeak}>#코인</span>
-  </div>
-)}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+
+        <div className={styles.bottomPad} />
       </div>
 
-      {/* 하단바 */}
       <BottomNav activeTab="mypage" />
     </div>
   );

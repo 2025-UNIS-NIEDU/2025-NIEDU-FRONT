@@ -1,87 +1,140 @@
+// src/pages/Home/RecentCourses.tsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./RecentCourses.module.css";
 import BottomNav from "../onboarding/components/BottomNav/BottomNav";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
+import { useGoToDetail } from "@/hooks/useGoToDetail";
 
-type Course = {
-  id: number;
+type HomeCourse = {
+  courseId: number;
   title: string;
-  tags: string[];
-  thumbnail?: string;
+  thumbnailUrl?: string;
+  progressRate: number;
+  isSaved: boolean;
+  topic?: string | null;
+  subTopic?: string | null;
+  keywords?: string[];
+};
+
+/** ✅ 응답이 뭐로 오든 courseId 확보 + 키워드/토픽 확보 */
+const normalizeCourse = (x: any): HomeCourse | null => {
+  const courseId = Number(
+    x?.courseId ??
+      x?.id ??
+      x?.courseID ??
+      x?.course_id ??
+      x?.coursePk ??
+      x?.courseNo ??
+      0
+  );
+  const title = String(x?.title ?? x?.name ?? x?.headline ?? "");
+  if (!courseId || !title) return null;
+
+  const thumb = x?.thumbnailUrl ?? x?.thumbnail ?? x?.imageUrl ?? x?.thumbUrl;
+
+  const rawKeywords = x?.keywords ?? x?.keywordList ?? x?.tags ?? x?.hashTags;
+  const keywords = Array.isArray(rawKeywords)
+    ? rawKeywords.map((k: any) => String(k)).filter(Boolean)
+    : [];
+
+  return {
+    courseId,
+    title,
+    thumbnailUrl: thumb ? String(thumb) : undefined,
+    progressRate: Number(
+      x?.progressRate ?? x?.progress ?? x?.completionRate ?? x?.progressPercent ?? 0
+    ),
+    isSaved: Boolean(x?.isSaved ?? x?.saved ?? x?.bookmarked ?? false),
+    topic: x?.topic ?? null,
+    subTopic: x?.subTopic ?? null,
+    keywords,
+  };
 };
 
 export default function RecentCourses() {
   const navigate = useNavigate();
+  const goToDetail = useGoToDetail();
+  const [courses, setCourses] = useState<HomeCourse[]>([]);
 
-  // ✅ API 자리: 나중에 fetch로 교체
-  const [courses, setCourses] = useState<Course[]>([
-    {
-      id: 1,
-      title: "한-싱가포르 협력: 외교전 전환",
-      tags: ["정치", "#외교"],
-      thumbnail: "/sample-news.png",
-    },
-    {
-      id: 2,
-      title: "코스명",
-      tags: ["토픽", "#서브토픽"],
-      thumbnail: "/sample-news.png",
-    },
-    {
-      id: 3,
-      title: "코스명",
-      tags: ["토픽", "#서브토픽"],
-      thumbnail: "/sample-news.png",
-    },
-  ]);
-
-  // 예시
-  // useEffect(() => {
-  //   fetch("/api/courses/recent") // 백엔드에서 최근학습한 코스 반환
-  //     .then((r) => r.json())
-  //     .then((data: Course[]) => setCourses(data))
-  //     .catch(console.error);
-  // }, []);
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await api.get<ApiResponse<any>>("/api/home/courses", {
+          params: { type: "recent", view: "all" },
+        });
+        const raw = Array.isArray(res.data.data) ? res.data.data : [];
+        setCourses(raw.map(normalizeCourse).filter(Boolean) as HomeCourse[]);
+      } catch (e) {
+        console.error("[RecentCourses] fetch error:", e);
+        setCourses([]);
+      }
+    };
+    void run();
+  }, []);
 
   return (
     <div className={styles.viewport}>
-    <div className={styles.container}>
-      {/* 상단 헤더 */}
-      <header className={styles.header}>
-        <img
-          src="/icons/ep_arrow-up-bold.svg"
-          alt="back"
-          className={styles.backArrow}
-          onClick={() => navigate(-1)}
-        />
-        <h1 className={styles.title}>최근 학습한 코스</h1>
-      </header>
+      <div className={styles.container}>
+        <header className={styles.header}>
+          <img
+            src="/icons/ep_arrow-up-bold.svg"
+            alt="back"
+            className={styles.backArrow}
+            onClick={() => navigate(-1)}
+          />
+          <h1 className={styles.title}>최근 학습한 코스</h1>
+        </header>
 
-      {/* 리스트 */}
-      <main className={styles.list}>
-        {courses.map((c) => (
-          <article key={c.id} className={styles.item}>
-            <img
-              src={c.thumbnail || "/sample-news.png"}
-              alt={c.title}
-              className={styles.thumb}
-            />
-            <div className={styles.body}>
-              <h2 className={styles.itemTitle}>{c.title}</h2>
-              <div className={styles.tagRow}>
-                {c.tags.map((t, i) => (
-                  <span key={i} className={styles.tag}>
-                    {t}
-                  </span>
-                ))}
+        <main className={styles.list}>
+          {courses.map((c) => (
+            <button
+              key={c.courseId}
+              type="button"
+              className={styles.item}
+              onClick={() => goToDetail(c.courseId, { from: "recent-list" })}
+            >
+              <img
+                src={c.thumbnailUrl || "/sample-news.png"}
+                alt={c.title}
+                className={styles.thumb}
+              />
+
+              <div className={styles.body}>
+                <h2 className={styles.itemTitle}>{c.title}</h2>
+
+                {/* ✅ 진행률 대신: 토픽 + 키워드 칩 여러 개 (두 번째 스샷 느낌) */}
+                <div className={styles.tagRow}>
+                  <span className={styles.tag}>{c.topic || "토픽"}</span>
+
+                  {(() => {
+                    const raw = [
+                      c.subTopic,
+                      ...(Array.isArray(c.keywords) ? c.keywords : []),
+                    ].filter(Boolean) as string[];
+
+                    // 중복 제거 + 2개까지만
+                    const uniq = Array.from(new Set(raw)).slice(0, 2);
+                    const chips = uniq.length ? uniq : ["서브토픽"];
+
+                    return chips.map((kw) => {
+                      const label = kw.startsWith("#") ? kw : `#${kw}`;
+                      return (
+                        <span key={label} className={styles.tag}>
+                          {label}
+                        </span>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
-      </main>
+            </button>
+          ))}
+        </main>
 
-      <BottomNav />
-    </div>
+        <BottomNav />
+      </div>
     </div>
   );
 }

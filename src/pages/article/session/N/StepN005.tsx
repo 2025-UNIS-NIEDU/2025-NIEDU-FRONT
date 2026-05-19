@@ -1,270 +1,256 @@
 // src/pages/article/session/N/StepN005.tsx
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
+import { submitStepAnswer, getSessionSummary, quitSession } from "@/lib/apiClient";
 import styles from "./StepN005.module.css";
 
-// 🔹 mock JSON (economy 패키지)
-import economyPackage from "@/data/economy_2025-11-24_package.json";
-
-type Props = { articleId?: string; articleUrl?: string };
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
+};
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
-  startTime?: number; // StepN001에서 넘어온 전체 세션 시작 시간
-  courseId?: string;
-  sessionId?: string;
+  startTime?: number;
+  courseId?: number | string;
+  sessionId?: number | string | null;
   level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
-// JSON에서 뽑아온 뒤 화면에서 쓸 타입
 type QuizItem = {
-  id: number;
+  contentId: number;
   question: string;
-  options: string[];
-  answerIndex: number; // 0~3 (A~D)
-  explanation: string;
+  options: { label: string; text: string }[];
+  correctAnswer: string;
+  answerExplanation: string;
 };
 
-export default function StepN005({ articleId, articleUrl }: Props) {
+export default function StepN005() {
   const nav = useNavigate();
   const location = useLocation();
+  const state = (location.state as RouteState | undefined) ?? {};
 
-  // ⭐ 이전 스텝들에서 넘어온 값
-  const state = (location.state as RouteState) || {};
-  const aId = state.articleId ?? articleId;
-  const aUrl = state.articleUrl ?? articleUrl;
-  const startTime = state.startTime;
-  const courseId = state.courseId;
-  const sessionId = state.sessionId;
+  const steps = state.steps ?? [];
+  const STEP_ORDER = 5;
+  const CONTENT_TYPE = "MULTIPLE_CHOICE";
 
-  const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
+  const currentStep = useMemo(() => {
+    return (
+      steps.find((s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE) ??
+      steps.find((s) => Number(s.stepOrder) === STEP_ORDER)
+    );
+  }, [steps]);
+
+  const [items, setItems] = useState<QuizItem[]>([]);
   const [index, setIndex] = useState(0);
-  const [choice, setChoice] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // 🔹 economy JSON → N단계, stepOrder 5, MULTIPLE_CHOICE 문제로 파싱
+  // ✅ 누적 답안
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+
+  const startTime = state.startTime;
+
+  const cid = Number(state.courseId ?? state.articleId);
+  const sid = Number(state.sessionId);
+  const stepId = Number(currentStep?.stepId);
+
   useEffect(() => {
-    setLoading(true);
+    const contents = currentStep?.content?.contents;
+    if (!Array.isArray(contents) || contents.length === 0) {
+      setItems([]);
+      return;
+    }
+    const mapped: QuizItem[] = contents.map((c: any) => ({
+      contentId: Number(c?.contentId ?? 0),
+      question: String(c?.question ?? ""),
+      options: Array.isArray(c?.options)
+        ? c.options.map((o: any) => ({ label: String(o?.label ?? ""), text: String(o?.text ?? "") }))
+        : [],
+      correctAnswer: String(c?.correctAnswer ?? ""),
+      answerExplanation: String(c?.answerExplanation ?? ""),
+    }));
+    setItems(mapped);
+    setIndex(0);
+    setSelected(null);
+    setConfirmed(false);
+    setAnswers({});
+  }, [currentStep]);
 
-    try {
-      const pkg: any = economyPackage;
+  const q = items[index];
+  const total = items.length;
 
-      const course =
-        pkg.courses?.find(
-          (c: any) =>
-            String(c.courseId) === String(courseId ?? aId ?? 1)
-        ) ?? pkg.courses?.[0];
+  const handlePrev = () => nav(-1);
 
-      const session =
-        course?.sessions?.find(
-          (s: any) =>
-            String(s.sessionId) === String(sessionId ?? 1)
-        ) ?? course?.sessions?.[0];
-
-      const quizN = session?.quizzes?.find(
-        (q: any) => q.level === "N"
-      );
-
-      const step5 = quizN?.steps?.find(
-        (s: any) =>
-          s.stepOrder === 5 && s.contentType === "MULTIPLE_CHOICE"
-      );
-
-      if (step5 && Array.isArray(step5.contents)) {
-        const mapped: QuizItem[] = step5.contents.map((c: any) => ({
-          id: c.contentId,
-          question: c.question,
-          options: (c.options ?? []).map(
-            (o: any) => o.text as string
-          ),
-          // "A" → 0, "B" → 1 ...
-          answerIndex: Math.max(
-            0,
-            (c.correctAnswer?.charCodeAt(0) ?? 65) - 65
-          ),
-          explanation: c.answerExplanation,
-        }));
-
-        setQuizzes(mapped);
-      } else {
-        console.warn(
-          "[StepN005] mock JSON에서 MULTIPLE_CHOICE(stepOrder=5)를 찾지 못했어요.",
-          { course, session, quizN, step5 }
-        );
-        setQuizzes([]);
+  const handleQuit = async () => {
+    if (cid && sid) {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepN005] quit failed:", e);
       }
-    } catch (e) {
-      console.error("[StepN005] mock JSON 파싱 실패:", e);
-      setQuizzes([]);
+    }
+    nav("/learn", { replace: true });
+  };
+
+  const formatDuration = (ms: number) => {
+    const totalSec = Math.max(0, Math.floor(ms / 1000));
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    if (min <= 0) return `${sec}초`;
+    return `${min}분 ${sec}초`;
+  };
+
+  const saveAnswer = async (nextAnswers: Record<number, string>) => {
+    if (!cid || !sid || !stepId) return;
+    const userAnswer = Object.entries(nextAnswers).map(([contentId, value]) => ({
+      contentId: Number(contentId),
+      value,
+    }));
+
+    await submitStepAnswer({
+      courseId: cid,
+      sessionId: sid,
+      stepId,
+      contentType: CONTENT_TYPE,
+      userAnswer,
+    });
+  };
+
+  const handleNext = async () => {
+    if (!confirmed) {
+      try {
+        if (!q || !selected) {
+          setConfirmed(true);
+          return;
+        }
+
+        const next = { ...answers, [q.contentId]: selected };
+        setAnswers(next);
+        await saveAnswer(next);
+      } catch (e) {
+        console.error("[StepN005] submit error:", e);
+      }
+      setConfirmed(true);
+      return;
     }
 
-    setIndex(0);
-    setChoice(null);
-    setConfirmed(false);
-    setLoading(false);
-  }, [aId, courseId, sessionId]);
-
-  const q = quizzes[index];
-  const total = quizzes.length;
-
-  const selectOption = (i: number) => {
-    if (confirmed) return;
-    setChoice(i);
-  };
-
-  const confirmAnswer = () => {
-    if (choice === null) return;
-    setConfirmed(true);
-  };
-
-  // ✅ 마지막 문제에서 전체 학습 시간 계산 후 결과 페이지로 이동
-  const goNextProblem = () => {
     if (index < total - 1) {
-      setIndex((prev) => prev + 1);
-      setChoice(null);
+      setIndex((p) => p + 1);
+      setSelected(null);
       setConfirmed(false);
-    } else {
-      // 세션 전체 소요 시간 계산
-      let durationLabel = "0분 0초";
+      return;
+    }
 
-      if (startTime) {
-        const diffSec = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(diffSec / 60);
-        const seconds = diffSec % 60;
-        durationLabel = `${minutes}분 ${seconds}초`;
+    // ✅ 마지막이면 (1) 세션 종료 집계 → (2) summary
+    try {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepN005] quit on finish failed:", e);
       }
 
-      nav("/nie/session/N/result", {
+      const summary = await getSessionSummary({ courseId: cid, sessionId: sid });
+      const learningMs =
+        Number(summary?.data?.learningTime ?? 0) || (startTime ? Date.now() - startTime : 0);
+
+      nav("/article/result", {
         state: {
-          streak: 2, // 일단 더미 값 (나중에 진짜 연속일수로 교체)
-          durationLabel,
+          level: "N",
+          streak: summary?.data?.streak ?? 0,
+          durationLabel: formatDuration(learningMs),
         },
+        replace: true,
+      });
+    } catch (e) {
+      console.error("[StepN005] summary error:", e);
+      const learningMs = startTime ? Date.now() - startTime : 0;
+      nav("/article/result", {
+        state: { level: "N", streak: 0, durationLabel: formatDuration(learningMs) },
+        replace: true,
       });
     }
   };
 
-  const goPrev = () => {
-    nav("/nie/session/N/step/004", {
-      state: {
-        articleId: aId,
-        articleUrl: aUrl,
-        startTime,
-        courseId,
-        sessionId,
-        level: "N",
-      },
-    });
-  };
+  if (!q) return <div className={styles.loading}>문제가 없습니다.</div>;
 
-  if (loading) {
-    return <div className={styles.loading}>불러오는 중…</div>;
-  }
-
-  if (!q) {
-    return <div className={styles.loading}>퀴즈가 준비되지 않았어요.</div>;
-  }
-
-  const isCorrect = choice !== null && choice === q.answerIndex;
+  const totalSteps = Math.max(1, total);
+  const progressPct = `${((index + 1) / totalSteps) * 100}%`;
+  const isCorrectPick = confirmed && selected === q.correctAnswer;
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행바 */}
         <div className={styles.progressWrap}>
-          <div
-            className={styles.progress}
-            style={{ width: `${((index + 1) / total) * 100}%` }}
-          />
+          <div className={styles.progress} style={{ width: progressPct }} />
         </div>
 
-        <h2 className={styles.question}>{q.question}</h2>
+        <p className={styles.question}>{q.question}</p>
 
-        {/* 보기 리스트 */}
         <div className={styles.options}>
-          {q.options.map((opt, i) => {
-            const isSelected = choice === i;
-
-            let optionClass = styles.option;
-
-            if (!confirmed && isSelected) {
-              optionClass += " " + styles.optionSelected; // 파랑
-            }
-
-            if (confirmed) {
-              if (i === q.answerIndex) {
-                optionClass += " " + styles.optionCorrect; // 정답(파랑)
-              } else if (isSelected && i !== q.answerIndex) {
-                optionClass += " " + styles.optionWrong; // 오답(빨강)
-              }
-            }
-
-            const label = String.fromCharCode(65 + i); // A B C D
+          {q.options.map((o) => {
+            const isSel = selected === o.label;
+            const isCorrect = confirmed && o.label === q.correctAnswer;
+            const isWrong = confirmed && isSel && o.label !== q.correctAnswer;
 
             return (
               <button
-                key={i}
-                className={optionClass}
-                onClick={() => selectOption(i)}
+                key={o.label}
+                type="button"
+                className={`${styles.option} ${
+                  isCorrect
+                    ? styles.optionCorrect
+                    : isWrong
+                      ? styles.optionWrong
+                      : isSel
+                        ? styles.optionSelected
+                        : ""
+                }`}
+                onClick={() => !confirmed && setSelected(o.label)}
               >
-                <span className={styles.optionLabel}>{label}.</span>
-                <span className={styles.optionText}>{opt}</span>
+                <span className={styles.optionLabel}>{o.label}</span>
+                <span className={styles.optionText}>{o.text}</span>
               </button>
             );
           })}
         </div>
 
-        {/* 정답 확인 버튼 */}
-        {!confirmed && (
-          <button
-            className={styles.checkBtn}
-            disabled={choice === null}
-            onClick={confirmAnswer}
-          >
-            정답 확인하기
-          </button>
-        )}
-
-        {/* 정답/오답 해설 박스 */}
         {confirmed && (
           <div
             className={`${styles.answerBox} ${
-              isCorrect ? styles.answerBoxCorrect : styles.answerBoxWrong
+              isCorrectPick ? styles.answerBoxCorrect : styles.answerBoxWrong
             }`}
           >
             <div className={styles.answerHeader}>
-              <span className={styles.answerLabel}>
-                정답: {String.fromCharCode(65 + q.answerIndex)}
-              </span>
-
-              <button
-                className={styles.sourceBtn}
-                type="button"
-                onClick={() => {
-                  if (aUrl) window.open(aUrl, "_blank");
-                }}
-                disabled={!aUrl}
-              >
-                뉴스 원문 보기
-              </button>
+              <span className={styles.answerLabel}>정답: {q.correctAnswer}</span>
+              {state.articleUrl ? (
+                <button
+                  type="button"
+                  className={styles.sourceBtn}
+                  onClick={() => window.open(state.articleUrl!, "_blank", "noopener,noreferrer")}
+                >
+                  뉴스 원문 보기
+                </button>
+              ) : null}
             </div>
-
-            <p className={styles.answerText}>{q.explanation}</p>
+            <p className={styles.answerText}>{q.answerExplanation}</p>
           </div>
         )}
 
-        <div className={styles.bottomSpace} />
+        <EduBottomBar
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onQuit={() => void handleQuit()}
+          disableNext={!selected && !confirmed}
+        />
       </div>
-
-      <EduBottomBar
-        onPrev={goPrev}
-        onQuit={() => nav("/learn")}
-        onNext={confirmed ? goNextProblem : undefined}
-        disablePrev={false}
-        disableNext={!confirmed}
-      />
     </div>
   );
 }

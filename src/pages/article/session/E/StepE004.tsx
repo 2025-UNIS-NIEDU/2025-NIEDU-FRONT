@@ -1,138 +1,267 @@
 // src/pages/article/session/E/StepE004.tsx
 
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
+import { submitForFeedback, getSessionSummary, quitSession } from "@/lib/apiClient";
 import styles from "./StepE004.module.css";
 
-type Props = { articleId?: string; articleUrl?: string };
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
+};
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
-  level?: "N" | "E" | "I";
+  startTime?: number; // ✅ 시작시간 받아서 결과 시간 fallback 계산
   durationLabel?: string;
-
-  // 🔹 AI 채점 결과 (백엔드 연동 시 여기 채워서 넘기면 됨)
-  aiScore?: number; // 0~100
-  aiComment?: string;
-  aiFeedback?: {
-    meaning: string;
-    context: string;
-    wording: string;
-  };
-  userAnswer?: string;
+  courseId?: number | string;
+  sessionId?: number | string | null;
+  level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
-export default function StepE004({ articleId, articleUrl }: Props) {
+type SentenceItem = {
+  contentId: number;
+  prompt: string;
+  reference?: string;
+};
+
+function formatDuration(ms: number) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}분 ${s}초`;
+}
+
+export default function StepE004() {
   const nav = useNavigate();
-  const { state } = useLocation() as { state?: RouteState };
+  const location = useLocation();
+  const state = (location.state as RouteState | undefined) ?? {};
 
-  const effectiveArticleId = state?.articleId ?? articleId;
-  const effectiveArticleUrl = state?.articleUrl ?? articleUrl;
+  const steps = state.steps ?? [];
+  const STEP_ORDER = 4;
+  const CONTENT_TYPE = "SENTENCE_COMPLETION";
 
-  // 🔹 점수 / 한줄 코멘트
-  const score = state?.aiScore ?? 10;
+  const currentStep = useMemo(() => {
+    return (
+      steps.find(
+        (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+      ) ?? steps.find((s) => Number(s.stepOrder) === STEP_ORDER)
+    );
+  }, [steps]);
 
-  const comment =
-    state?.aiComment ??
-    (score < 40
-      ? "좀더 생각해봐요."
-      : score < 80
-      ? "좋아요, 이 부분만 보완해 보면 좋겠어요."
-      : "오늘도 너무 잘했어요!");
+  const [items, setItems] = useState<SentenceItem[]>([]);
+  const [index, setIndex] = useState(0);
+  const [answer, setAnswer] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
-  // 🔹 피드백(의미/맥락/문법) – state 없으면 예시 문구 사용
-  const feedback = state?.aiFeedback ?? {
-    meaning:
-      "핵심 의미가 완전히 반대입니다. ‘전략적 동반자 관계 수립’은 긍정적 관계 형성을 의미하지만, ‘긴밀한 관계를 끊음’은 부정적 관계 단절을 나타냅니다.",
-    context:
-      "문맥 흐름이 완전히 단절되었습니다. 전략적 동반자 관계 수립과 긴밀한 관계 단절은 서로 반대 의미입니다.",
-    wording:
-      "문장이 간결하고 명확합니다. 그러나 ‘끊었습니다’ 대신 ‘끊어졌습니다’로 표현하면 더 자연스럽습니다.",
+  const [aiScore, setAiScore] = useState<number | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<string>("");
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const cid = Number(state.courseId ?? state.articleId);
+  const sid = Number(state.sessionId);
+  const stepId = Number(currentStep?.stepId);
+
+  const startTime = state.startTime ?? Date.now(); // ✅ 없으면 현재로라도
+
+  useEffect(() => {
+    setLoading(true);
+    setLoadError(null);
+
+    try {
+      const contents = currentStep?.content?.contents;
+      if (!Array.isArray(contents) || contents.length === 0) {
+        setItems([]);
+        setLoadError("문항 데이터를 불러오지 못했어요.");
+      } else {
+        const mapped: SentenceItem[] = contents.map((c: any) => ({
+          contentId: Number(c?.contentId ?? 0),
+          prompt: String(c?.question ?? c?.prompt ?? c?.sentence ?? ""),
+          reference: c?.reference ? String(c.reference) : undefined,
+        }));
+        setItems(mapped);
+      }
+    } catch (e) {
+      console.error("[StepE004] parse failed:", e);
+      setItems([]);
+      setLoadError("문항 데이터를 불러오지 못했어요.");
+    }
+
+    setIndex(0);
+    setAnswer("");
+    setSubmitted(false);
+    setAiScore(null);
+    setAiFeedback("");
+    setLoading(false);
+  }, [currentStep]);
+
+  const item = items[index];
+  const total = items.length;
+
+  const handlePrev = () => {
+    nav("/nie/session/E/step/003", { state: { ...state, startTime }, replace: true });
   };
 
-  const userAnswer =
-    state?.userAnswer ?? "긴밀한 관계를 끊었습니다.";
+  // ✅ 종료 버튼 (E단계도 안 눌리던 문제 같이 해결)
+  const handleQuit = async () => {
+    try {
+      if (cid && sid) await quitSession({ courseId: cid, sessionId: sid });
+    } catch (e) {
+      console.error("[StepE004] quit failed:", e);
+    }
+    nav("/learn", { replace: true });
+  };
 
-  // 🔹 점수 구간 라벨 (~40점, 41~79점, 80점 이상)
-  const scoreBandLabel =
-    score < 40 ? "~40점" : score < 80 ? "41~79점" : "80점 이상";
+  // ✅ API 문서 기준: submit-for-feedback 한 번으로 "답안 제출 + 점수/피드백 반환"
+  const handleSubmit = async () => {
+    if (!cid || !sid || !stepId || !item) return;
 
-  // 🔹 점수에 따른 마스코트
-  const mascotSrc =
-    score < 40
-      ? "/mascots/edu-sad.png"
-      : score < 80
-      ? "/mascots/edu-normal.png"
-      : "/mascots/edu-happy.png";
+    try {
+      const fb = await submitForFeedback({
+        courseId: cid,
+        sessionId: sid,
+        stepId,
+        contentId: item.contentId,
+        userAnswer: answer,
+      });
+
+      setAiScore(fb?.data?.AIScore ?? null);
+      setAiFeedback(String(fb?.data?.AIFeedback ?? ""));
+      setSubmitted(true);
+    } catch (e) {
+      console.error("[StepE004] submit-for-feedback error:", e);
+      setSubmitted(true);
+      setAiScore(null);
+      setAiFeedback("피드백을 불러오지 못했어요. (서버/로그인 확인)");
+    }
+  };
+
+  const handleNext = async () => {
+    if (!submitted) {
+      await handleSubmit();
+      return;
+    }
+
+    // 다음 문항
+    if (index < total - 1) {
+      setIndex((p) => p + 1);
+      setAnswer("");
+      setSubmitted(false);
+      setAiScore(null);
+      setAiFeedback("");
+      return;
+    }
+
+    // ✅ 마지막: (1) quit로 집계 트리거 → (2) summary → (3) durationLabel 계산해서 result로
+    try {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepE004] quit on finish failed:", e);
+      }
+
+      const summary = await getSessionSummary({ courseId: cid, sessionId: sid });
+
+      // summary.learningTime이 ms든 sec든 불명확해서 안전하게 처리:
+      // - 숫자가 크면 ms로 간주, 작으면 sec로 간주 (보수적으로)
+      const raw = Number(summary?.data?.learningTime ?? 0);
+      const ms =
+        raw >= 1000 * 60 * 5
+          ? raw // 5분 이상이면 ms일 가능성 높음
+          : raw > 0
+          ? raw * 1000 // 짧은 수치면 sec일 가능성
+          : Date.now() - startTime; // 서버가 안주면 fallback
+
+      nav("/article/result", {
+        state: {
+          level: "E",
+          streak: summary?.data?.streak ?? 0,
+          durationLabel: formatDuration(ms),
+        },
+        replace: true,
+      });
+    } catch (e) {
+      console.error("[StepE004] summary error:", e);
+      const ms = Date.now() - startTime;
+      nav("/article/result", {
+        state: { level: "E", streak: 0, durationLabel: formatDuration(ms) },
+        replace: true,
+      });
+    }
+  };
+
+  if (loading) return <div className={styles.loading}>불러오는 중…</div>;
+  if (loadError || !item)
+    return <div className={styles.loading}>{loadError ?? "문항이 없습니다."}</div>;
+
+  // ✅ 40점 이하/이상 토끼 분기 (요청사항 유지)
+  const rabbitSrc =
+    aiScore !== null && aiScore <= 40 ? "/icons/sadbunny.svg" : "/icons/happybunny.svg";
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행 바 (E단계 마지막이니 거의 꽉 찬 느낌으로) */}
         <div className={styles.progressWrap}>
-          <div className={styles.progress} />
+          <div className={styles.progress} style={{ width: "100%" }} />
         </div>
 
-        {/* 상단 점수 영역 */}
-        <div className={styles.scoreBox}>
-          <img src={mascotSrc} alt="" className={styles.mascot} />
-          <div className={styles.scoreTexts}>
-            <p className={styles.score}>{score}점</p>
-            <p className={styles.scoreComment}>{comment}</p>
-          </div>
-        </div>
+        {!submitted ? (
+          <>
+            <p className={styles.prompt}>{item.prompt}</p>
 
-        {/* AI 피드백 타이틀 */}
-        <p className={styles.sectionTitle}>AI 피드백</p>
+            <textarea
+              className={styles.textarea}
+              placeholder="답안을 작성하세요."
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+            />
 
-        {/* 피드백 카드 */}
-        <section className={styles.feedbackCard}>
-          <div className={styles.feedbackBlock}>
-            <h3 className={styles.feedbackHeading}>의미</h3>
-            <p className={styles.feedbackText}>{feedback.meaning}</p>
-          </div>
+            <button
+              type="button"
+              className={styles.submitBtn}
+              onClick={handleSubmit}
+              disabled={answer.trim().length === 0}
+            >
+              답안 제출하기
+            </button>
+          </>
+        ) : (
+          <>
+            <div className={styles.scoreRow}>
+              <img className={styles.rabbit} src={rabbitSrc} alt="" />
+              <div className={styles.scoreText}>
+                <p className={styles.score}>{aiScore !== null ? `${aiScore}점` : "점수"}</p>
+                <p className={styles.scoreSub}>좀더 생각해봐요.</p>
+              </div>
+            </div>
 
-          <div className={styles.feedbackDivider} />
+            <p className={styles.aiTitle}>AI 피드백</p>
 
-          <div className={styles.feedbackBlock}>
-            <h3 className={styles.feedbackHeading}>맥락</h3>
-            <p className={styles.feedbackText}>{feedback.context}</p>
-          </div>
-
-          <div className={styles.feedbackDivider} />
-
-          <div className={styles.feedbackBlock}>
-            <h3 className={styles.feedbackHeading}>문법</h3>
-            <p className={styles.feedbackText}>{feedback.wording}</p>
-          </div>
-        </section>
-
-        {/* 하단 점수 구간 + userAnswer 표시 (피그마 하단 영역 느낌) */}
-        <div className={styles.metaBox}>
-          <span className={styles.scoreBand}>{scoreBandLabel}</span>
-          <span className={styles.userAnswerLabel}>
-            "userAnswer": "{userAnswer}"
-          </span>
-        </div>
+            <div className={styles.feedbackCard}>
+              <p className={styles.sectionText} style={{ whiteSpace: "pre-wrap" }}>
+                {aiFeedback}
+              </p>
+            </div>
+          </>
+        )}
 
         <div className={styles.bottomSpace} />
       </div>
 
       <EduBottomBar
-        onPrev={() => nav(-1)}
-        onQuit={() => nav("/learn")}
-        onNext={() =>
-          nav("/learn", {
-            state: {
-              articleId: effectiveArticleId,
-              articleUrl: effectiveArticleUrl,
-              level: "E",
-            },
-          })
-        }
-        disablePrev={false}
-        disableNext={false}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onQuit={handleQuit}              // ✅ E단계 종료 버튼 연결
+        disableNext={!submitted && answer.trim().length === 0}
       />
     </div>
   );

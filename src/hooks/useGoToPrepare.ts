@@ -1,9 +1,10 @@
 // src/hooks/useGoToPrepare.ts
 import { useNavigate } from "react-router-dom";
 
-type PrepareOptions = {
+export type PrepareOptions = {
   sessionId?: number;
   title?: string;
+  articleUrl?: string; // ✅ 추가
 };
 
 export function useGoToPrepare() {
@@ -14,6 +15,7 @@ export function useGoToPrepare() {
       state: {
         sessionId: opts?.sessionId,
         articleTitle: opts?.title,
+        articleUrl: opts?.articleUrl, // ✅ 전달
       },
     });
   };

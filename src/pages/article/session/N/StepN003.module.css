@@ -8,7 +8,7 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
- background: #eef0f4;
+  background: #eef0f4;
 
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -47,7 +47,6 @@
 }
 .progress {
   height: 100%;
-  width: 7.69%*3; 
   background: #4f7cff;
   border-radius: 999px;
   transition: width 0.25s ease;

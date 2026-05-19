@@ -1,151 +1,112 @@
 // src/pages/article/session/N/StepN004.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { submitStepAnswer } from "@/lib/apiClient";
 import EduBottomBar from "@/components/edu/EduBottomBar";
-import type { StepMeta } from "@/pages/article/ArticlePrepare";
 import styles from "./StepN004.module.css";
-
-// 🔹 mock JSON (economy 패키지) – backend 없을 때 사용
-import economyPackage from "@/data/economy_2025-11-24_package.json";
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
 
 type Props = {
   articleId?: string;
   articleUrl?: string;
+};
 
-  // StepRunner 쪽에서 내려줄 수도 있는 값들(있으면 사용)
-  courseId?: string;
-  sessionId?: string;
-  stepMeta?: StepMeta;
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
 };
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
   startTime?: number;
-  courseId?: string;
-  sessionId?: string;
+  courseId?: number | string;
+  sessionId?: number | string;
   level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
-// 🔹 백엔드 content JSON 타입
-type QuizContentItemFromApi = {
+type QuizItem = {
   contentId: number;
   question: string;
   correctAnswer: "O" | "X";
   answerExplanation: string;
-  sourceUrl: string;
+  sourceUrl?: string;
 };
 
-// 🔹 화면에서 쓸 타입
-type QuizItem = QuizContentItemFromApi;
-
-export default function StepN004({
-  articleId,
-  articleUrl,
-  courseId,
-  sessionId,
-  stepMeta,
-}: Props) {
+export default function StepN004({ articleId, articleUrl }: Props) {
   const nav = useNavigate();
   const location = useLocation();
 
-  // StepN003 → 넘어온 값
-  const {
-    articleId: sArticleId,
-    articleUrl: sArticleUrl,
-    startTime,
-    courseId: sCourseId,
-    sessionId: sSessionId,
-  } = (location.state as RouteState) || {};
+  const state = (location.state as RouteState) || {};
 
-  const aId = sArticleId ?? articleId;
-  const aUrl = sArticleUrl ?? articleUrl;
-  const aCourseId = sCourseId ?? courseId;
-  const aSessionId = sSessionId ?? sessionId;
+  const aId = state.articleId ?? articleId;
+  const aUrl = state.articleUrl ?? articleUrl;
+  const startTime = state.startTime;
+  const courseId = state.courseId;
+  const sessionId = state.sessionId;
+  const steps = state.steps ?? [];
+
+  const STEP_ORDER = 4;
+  const CONTENT_TYPE = "OX_QUIZ";
+
+  const currentStep = useMemo(() => {
+    return steps.find(
+      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+    );
+  }, [steps]);
 
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [index, setIndex] = useState(0);
   const [choice, setChoice] = useState<"O" | "X" | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // 🔹 stepMeta.content / mock JSON 둘 다 지원하는 파서
+  // ✅ 누적 답안 (서버가 step 단위 전체 저장 기대)
+  const [answers, setAnswers] = useState<Record<number, "O" | "X">>({});
+
+  const [loading, setLoading] = useState(true);
+  const [submitErr, setSubmitErr] = useState("");
+
   useEffect(() => {
     setLoading(true);
+    setSubmitErr("");
 
-    // 1) 백엔드에서 넘어온 stepMeta.content 우선 사용
-    const raw = stepMeta?.content as any;
-    let parsed: QuizItem[] | null = null;
+    try {
+      const contents = currentStep?.content?.contents;
 
-    if (raw) {
-      try {
-        let obj = raw;
+      if (currentStep && Array.isArray(contents)) {
+        const mapped: QuizItem[] = contents
+          .map((c: any) => ({
+            contentId: Number(c?.contentId ?? c?.id ?? 0),
+            question: String(c?.question ?? ""),
+            correctAnswer: (c?.correctAnswer ?? "O") as "O" | "X",
+            answerExplanation: String(c?.answerExplanation ?? ""),
+            sourceUrl: c?.sourceUrl ? String(c.sourceUrl) : undefined,
+          }))
+          .filter((x: QuizItem) => x.contentId && x.question);
 
-        // 문자열이면 JSON 파싱
-        if (typeof raw === "string") {
-          obj = JSON.parse(raw);
-        }
-
-        if (obj && Array.isArray(obj.contents)) {
-          parsed = obj.contents as QuizItem[];
-        }
-      } catch (e) {
-        console.warn("[StepN004] stepMeta.content 파싱 실패", e, raw);
+        setQuizzes(mapped);
+      } else {
+        console.warn("[StepN004] step contents not found", { currentStep });
+        setQuizzes([]);
       }
-    }
-
-    // 2) stepMeta 없거나 파싱 실패 → mock JSON(economy)에서 읽기
-    if (!parsed) {
-      try {
-        const pkg: any = economyPackage;
-
-        const course =
-          pkg.courses?.find(
-            (c: any) =>
-              String(c.courseId) === String(aCourseId ?? aId ?? 1),
-          ) ?? pkg.courses?.[0];
-
-        const session =
-          course?.sessions?.find(
-            (s: any) =>
-              String(s.sessionId) === String(aSessionId ?? 1),
-          ) ?? course?.sessions?.[0];
-
-        const quizN = session?.quizzes?.find(
-          (q: any) => q.level === "N",
-        );
-        const step4 = quizN?.steps?.find(
-          (s: any) => s.stepOrder === 4 && s.contentType === "OX_QUIZ",
-        );
-
-        if (step4 && Array.isArray(step4.contents)) {
-          parsed = step4.contents as QuizItem[];
-        } else {
-          console.warn(
-            "[StepN004] mock JSON에서 OX_QUIZ(stepOrder=4)를 찾지 못했어요.",
-            { course, session, quizN, step4 },
-          );
-        }
-      } catch (e) {
-        console.error("[StepN004] mock JSON 파싱 실패", e);
-      }
-    }
-
-    if (parsed) {
-      setQuizzes(parsed);
-    } else {
+    } catch (e) {
+      console.error("[StepN004] parse failed:", e);
       setQuizzes([]);
     }
 
     setIndex(0);
     setChoice(null);
     setConfirmed(false);
+    setAnswers({});
     setLoading(false);
-  }, [aId, aCourseId, aSessionId, stepMeta]);
+  }, [currentStep]);
 
   const q = quizzes[index];
-  const sourceLink = q?.sourceUrl || aUrl || ""; // 🔹 원문 링크(퀴즈 > 기사 순)
+  const sourceLink = q?.sourceUrl || aUrl || "";
   const isCorrect = !!q && choice === q.correctAnswer;
 
   const select = (val: "O" | "X") => {
@@ -153,104 +114,110 @@ export default function StepN004({
     setChoice(val);
   };
 
-  const checkAnswer = () => {
-    if (!choice) return;
+  const submitCurrentAnswer = async (nextAnswers: Record<number, "O" | "X">) => {
+    setSubmitErr("");
+
+    const cid = Number(courseId ?? aId);
+    const sid = Number(sessionId);
+    const stepId = Number(currentStep?.stepId);
+
+    if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
+      setSubmitErr("세션 정보가 없어서 답안을 저장할 수 없어요. (courseId/sessionId/stepId)");
+      return false;
+    }
+    if (!q || !choice) return false;
+
+    const userAnswer = Object.entries(nextAnswers).map(([contentId, value]) => ({
+      contentId: Number(contentId),
+      value,
+    }));
+
+    try {
+      await submitStepAnswer({
+        courseId: cid,
+        sessionId: sid,
+        stepId,
+        contentType: CONTENT_TYPE,
+        userAnswer,
+      });
+      return true;
+    } catch (e) {
+      console.error("[StepN004] answer submit failed:", e);
+      setSubmitErr("답안 저장에 실패했어요. 네트워크/로그인 상태를 확인해주세요.");
+      return false;
+    }
+  };
+
+  const checkAnswer = async () => {
+    if (!q || !choice) return;
+
+    const next = { ...answers, [q.contentId]: choice };
+    setAnswers(next);
+
+    const ok = await submitCurrentAnswer(next);
+    if (!ok) return;
     setConfirmed(true);
   };
 
-  // ⭐ 한 문제씩 답안 저장
-  const sendAnswer = async () => {
-    if (!aCourseId || !aSessionId || !q || !choice) {
-      console.warn(
-        "StepN004: courseId/sessionId/문제/선택값 부족 → answer API 스킵",
-      );
-      return;
-    }
-
-    try {
-      const userAnswer = [
-        {
-          contentId: q.contentId,
-          value: choice, // "O" or "X"
-        },
-      ];
-
-      // stepMeta가 있으면 거기 stepId 사용, 없으면 스킵
-      if (!stepMeta?.stepId) {
-        console.warn(
-          "StepN004: stepId 없음 → answer API 스킵(네비게이션만)",
-        );
-        return;
-      }
-
-      await submitStepAnswer({
-        courseId: String(aCourseId),
-        sessionId: String(aSessionId),
-        stepId: stepMeta.stepId,
-        contentType: stepMeta.contentType ?? "OX_QUIZ",
-        userAnswer,
-      });
-    } catch (e) {
-      console.error("🔥 StepN004 answer 저장 실패:", e);
-    }
-  };
-
   const nextProblem = async () => {
-    // 현재 문제 답안 서버 전송(있으면)
-    await sendAnswer();
-
-    // 마지막 문제면 StepN005로 이동
     if (index >= quizzes.length - 1) {
       nav("/nie/session/N/step/005", {
         state: {
           articleId: aId,
           articleUrl: aUrl,
           startTime,
-          courseId: aCourseId,
-          sessionId: aSessionId,
+          courseId,
+          sessionId,
           level: "N",
+          steps,
         },
       });
       return;
     }
 
-    // 다음 문제로
     setIndex((i) => i + 1);
     setChoice(null);
     setConfirmed(false);
+    setSubmitErr("");
   };
 
-  if (loading) {
-    return <div className={styles.loading}>불러오는 중…</div>;
-  }
+  // ✅ 종료 = quit API 호출(진행률/복습노트 집계) 후 이동
+  const handleQuit = async () => {
+    const cid = Number(courseId ?? aId);
+    const sid = Number(sessionId);
 
-  if (!q) {
-    return <div className={styles.loading}>퀴즈가 준비되지 않았어요.</div>;
-  }
+    if (cid && sid) {
+      try {
+        await quitSession({ courseId: cid, sessionId: sid });
+      } catch (e) {
+        console.error("[StepN004] quit failed:", e);
+      }
+    }
+    nav("/learn", { replace: true });
+  };
+
+  if (loading) return <div className={styles.loading}>불러오는 중…</div>;
+  if (!q) return <div className={styles.loading}>퀴즈가 준비되지 않았어요.</div>;
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 위쪽 메인 영역 (문제/캐릭터/OX/버튼) */}
         <div className={styles.main}>
           <div className={styles.progressWrap}>
             <div
               className={styles.progress}
-              style={{
-                width: `${((index + 1) / quizzes.length) * 100}%`,
-              }}
+              style={{ width: `${((index + 1) / quizzes.length) * 100}%` }}
             />
           </div>
 
-          {/* ✅ 캐릭터 고정 박스 안에 넣기 */}
           <div className={styles.characterBox}>
             <img
               src={
                 confirmed
                   ? isCorrect
-                    ? "/icons/Frame 3.svg"
-                    : "/icons/Frame 4.svg"
-                  : "/icons/Frame 1.svg"
+                    ? "/icons/prepare1.svg"
+                    : "/icons/sadbunny.svg"
+                  : "/icons/happybunny.svg"
               }
               className={styles.character}
               alt=""
@@ -261,42 +228,35 @@ export default function StepN004({
 
           <div className={styles.oxWrap}>
             <button
-              className={`${styles.oxBtn} ${
-                choice === "O" ? styles.selected : ""
-              }`}
+              className={`${styles.oxBtn} ${choice === "O" ? styles.selected : ""}`}
               onClick={() => select("O")}
             >
               O
             </button>
 
             <button
-              className={`${styles.oxBtn} ${
-                choice === "X" ? styles.selected : ""
-              }`}
+              className={`${styles.oxBtn} ${choice === "X" ? styles.selected : ""}`}
               onClick={() => select("X")}
             >
               X
             </button>
           </div>
 
+          {submitErr && <div className={styles.loading}>{submitErr}</div>}
+
           {!confirmed && (
             <button
               className={styles.checkBtn}
               disabled={!choice}
-              onClick={checkAnswer}
+              onClick={() => void checkAnswer()}
             >
               정답 확인하기
             </button>
           )}
 
-          {/* ✅ 항상 자리만 차지하는 영역, 안에서만 토글 */}
           <div className={styles.answerRegion}>
             {confirmed && (
-              <div
-                className={`${styles.answerBox} ${
-                  isCorrect ? styles.ok : styles.wrong
-                }`}
-              >
+              <div className={`${styles.answerBox} ${isCorrect ? styles.ok : styles.wrong}`}>
                 <div className={styles.answerTitle}>
                   <span>정답: {q.correctAnswer}</span>
 
@@ -311,9 +271,7 @@ export default function StepN004({
                   )}
                 </div>
 
-                <p className={styles.explanation}>
-                  {q.answerExplanation}
-                </p>
+                <p className={styles.explanation}>{q.answerExplanation}</p>
               </div>
             )}
           </div>
@@ -327,13 +285,14 @@ export default function StepN004({
               articleId: aId,
               articleUrl: aUrl,
               startTime,
-              courseId: aCourseId,
-              sessionId: aSessionId,
+              courseId,
+              sessionId,
               level: "N",
+              steps,
             },
           })
         }
-        onQuit={() => nav("/learn")}
+        onQuit={() => void handleQuit()}
         onNext={confirmed ? nextProblem : undefined}
         disablePrev={false}
         disableNext={!confirmed}

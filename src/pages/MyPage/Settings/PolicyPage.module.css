@@ -1,0 +1,92 @@
+/* src/pages/MyPage/Settings/PolicyPage.module.css */
+/* 뷰포트가 스크롤을 담당 */
+.viewport {
+  position: fixed;          /* ✅ 화면에 고정 */
+  inset: 0;
+  overflow-y: auto;         /* ✅ 세로 스크롤 받는 주체 */
+  -webkit-overflow-scrolling: touch; /* iOS 부드러운 스크롤 */
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+ background: #eef0f4;
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.viewport::-webkit-scrollbar { display: none; }
+
+/* 콘텐츠는 자연스럽게 늘어나게 */
+.container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* justify-content: space-between;  ⛔ 제거 (컨텐츠를 위아래로 벌려 스크롤 막힘 유발) */
+
+  width: 100%;
+  max-width: 700px;
+  min-height: 1000%;         /* ✅ max-height 대신 min-height */
+  /* max-height: 100%;       ⛔ 제거 */
+
+  margin: 0 auto;
+  background: #fff;
+  box-sizing: border-box;
+
+  padding: 16px 20px;
+  padding-bottom: 220px;     /* ✅ BottomNav 높이만큼 여유 */
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #ffffff;
+  padding: 8px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backBtn {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.backBtn img {
+  width: 20px;
+  height: 20px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f0f0f;
+}
+
+.card {
+  margin-top: 10px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 14px 14px;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #0f0f0f;
+}

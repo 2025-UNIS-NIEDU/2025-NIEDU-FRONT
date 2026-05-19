@@ -1,21 +1,4 @@
-# NIEdu Frontend
 
-## Overview
-
-NIEdu Frontend는 뉴스 기반 학습 경험을 제공하는 React PWA 프론트엔드입니다. 사용자는 온보딩과 Kakao OAuth 로그인을 거쳐 홈, 코스 목록, 코스 상세, 학습 준비, 단계별 학습 화면으로 이동할 수 있습니다.
-
-이 저장소는 포트폴리오 제출을 위해 프론트엔드 관점에서 라우팅, 인증 요청, 상태 관리, 학습 플로우, PWA 설정을 문서화했습니다.
-
-## Tech Stack
-
-- React 19
-- TypeScript
-- Vite
-- React Router
-- Axios
-- Zustand
-- vite-plugin-pwa
-- CSS Modules
 
 ## Key Features
 

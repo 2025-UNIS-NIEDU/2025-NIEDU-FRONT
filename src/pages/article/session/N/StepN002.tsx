@@ -1,214 +1,296 @@
 // src/pages/article/session/N/StepN002.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { submitStepAnswer } from "@/lib/apiClient";
 import EduBottomBar from "@/components/edu/EduBottomBar";
 import styles from "./StepN002.module.css";
+import api from "@/api/axiosInstance";
+import type { ApiResponse } from "@/types/api";
 
-// 🔹 로컬 JSON 데이터
-import economyPackage from "@/data/economy_2025-11-24_package.json";
+type Term = {
+  id: string; // termId
+  term: string; // name
+  definition: string;
+  example: string; // exampleSentence
+  extra: string; // additionalExplanation
+};
 
-type StepState = {
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
+};
+
+type RouteState = {
   articleId?: string;
   articleUrl?: string;
   startTime: number;
-  courseId?: string;
-  sessionId?: string | number;
-  stepId?: number;
+  courseId?: number | string;
+  sessionId?: number | string;
+  level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
-type Term = {
-  id: string;        // termId → string
-  term: string;      // name
+// ✅ 로컬 용어사전 저장소(프론트-only)
+type StoredTerm = {
+  termId: string;
+  term: string;
   definition: string;
-  example: string;   // exampleSentence
-  extra: string;     // additionalExplanation
+  exampleSentence: string;
+  additionalExplanation: string;
+
+  createdAt: number; // 처음 저장된 시각 (최신순 기준)
+  lastSeenAt: number; // 최근 열어본 시각(옵션)
+  isFavorite: boolean; // 즐겨찾기 여부
+  favoritedAt: number; // 즐겨찾기 누른 시각(즐겨찾기 최신순)
 };
+
+const TERM_STORE_KEY = "NIEDU_TERM_DICTIONARY_V1";
+
+function safeParse<T>(raw: string | null, fallback: T): T {
+  try {
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function readTermStore(): StoredTerm[] {
+  return safeParse<StoredTerm[]>(localStorage.getItem(TERM_STORE_KEY), []);
+}
+
+function writeTermStore(list: StoredTerm[]) {
+  localStorage.setItem(TERM_STORE_KEY, JSON.stringify(list));
+}
+
+// ✅ terms 배열을 누적 저장(merge)
+// - 동일 termId 있으면 텍스트는 최신값으로 덮고
+// - createdAt/isFavorite/favoritedAt/lastSeenAt은 유지
+function upsertTermsToStore(terms: Term[]) {
+  const now = Date.now();
+  const prev = readTermStore();
+  const map = new Map<string, StoredTerm>();
+
+  for (const t of prev) map.set(t.termId, t);
+
+  for (const t of terms) {
+    const exist = map.get(t.id);
+
+    if (!exist) {
+      map.set(t.id, {
+        termId: t.id,
+        term: t.term,
+        definition: t.definition,
+        exampleSentence: t.example,
+        additionalExplanation: t.extra,
+        createdAt: now,
+        lastSeenAt: 0,
+        isFavorite: false,
+        favoritedAt: 0,
+      });
+    } else {
+      map.set(t.id, {
+        ...exist,
+        term: t.term,
+        definition: t.definition,
+        exampleSentence: t.example,
+        additionalExplanation: t.extra,
+      });
+    }
+  }
+
+  writeTermStore(Array.from(map.values()));
+}
+
+// ✅ “최근 열어본” 갱신(옵션)
+function touchTerm(termId: string) {
+  const now = Date.now();
+  const prev = readTermStore();
+  const next = prev.map((t) =>
+    t.termId === termId ? { ...t, lastSeenAt: now } : t
+  );
+  writeTermStore(next);
+}
+
+// ✅ 즐겨찾기 토글 + 저장
+function toggleFavoriteInStore(termId: string) {
+  const now = Date.now();
+  const prev = readTermStore();
+  const next = prev.map((t) => {
+    if (t.termId !== termId) return t;
+    const nextFav = !t.isFavorite;
+    return {
+      ...t,
+      isFavorite: nextFav,
+      favoritedAt: nextFav ? now : 0,
+    };
+  });
+  writeTermStore(next);
+}
+
+function getFavoriteIdsFromStore(): string[] {
+  return readTermStore()
+    .filter((t) => t.isFavorite)
+    .map((t) => t.termId);
+}
 
 export default function StepN002() {
   const nav = useNavigate();
   const location = useLocation();
 
-  // StepRunner / StepN001 → 넘어온 값
-  const { articleId, articleUrl, startTime, courseId, sessionId, stepId } =
-    (location.state as StepState) || {};
+  const { articleId, articleUrl, startTime, courseId, sessionId, steps } =
+    (location.state as RouteState) || {};
+
+  const STEP_ORDER = 2;
+  const CONTENT_TYPE = "TERM_LEARNING";
+
+  const currentStep = useMemo(() => {
+    return (steps ?? []).find(
+      (s) => Number(s.stepOrder) === STEP_ORDER && s.contentType === CONTENT_TYPE
+    );
+  }, [steps]);
 
   const [loading, setLoading] = useState(true);
   const [terms, setTerms] = useState<Term[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [opened, setOpened] = useState<string[]>([]);
   const [activeTerm, setActiveTerm] = useState<Term | null>(null);
+  const [submitErr, setSubmitErr] = useState("");
 
-  // ------------------------------------------
-  // 🔸 로컬 JSON에서 TERM_LEARNING 용어 데이터 가져오기
-  // ------------------------------------------
+  // ✅ mount 시: 로컬 즐겨찾기 불러오기
   useEffect(() => {
-    let abort = false;
+    setFavorites(getFavoriteIdsFromStore());
+  }, []);
 
-    (async () => {
-      try {
-        setLoading(true);
+  // ✅ step.content 파싱 + 용어 전체 localStorage 누적 저장
+  useEffect(() => {
+    setLoading(true);
+    setSubmitErr("");
 
-        const pkg: any = economyPackage;
+    try {
+      const rawTerms =
+        currentStep?.content?.contents?.[0]?.terms ??
+        currentStep?.content?.terms ??
+        null;
 
-        // courseId / articleId → 숫자로 (없으면 1번 코스)
-        const numericCourseId = Number(courseId ?? articleId ?? 1);
-        const numericSessionId = Number(sessionId ?? 1);
-
-        const course =
-          pkg.courses?.find((c: any) => c.courseId === numericCourseId) ??
-          pkg.courses?.[0];
-
-        if (!course) {
-          console.warn("[StepN002] 코스 데이터 없음");
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const session =
-          course.sessions?.find(
-            (s: any) => s.sessionId === numericSessionId
-          ) ?? course.sessions?.[0];
-
-        if (!session) {
-          console.warn("[StepN002] 세션 데이터 없음");
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // level === "N" 인 퀴즈 블럭
-        const quizN =
-          session.quizzes?.find((q: any) => q.level === "N") ??
-          session.quizzes?.[0];
-
-        if (!quizN) {
-          console.warn("[StepN002] N 레벨 퀴즈 없음");
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        // stepOrder 2, contentType TERM_LEARNING
-        const step2 =
-          quizN.steps?.find(
-            (s: any) =>
-              s.stepOrder === 2 && s.contentType === "TERM_LEARNING"
-          ) ?? quizN.steps?.find((s: any) => s.contentType === "TERM_LEARNING");
-
-        if (!step2 || !Array.isArray(step2.contents) || !step2.contents[0]) {
-          console.warn("[StepN002] TERM_LEARNING 스텝/contents 없음", step2);
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const termBlocks = step2.contents[0].terms;
-        if (!Array.isArray(termBlocks)) {
-          console.warn("[StepN002] contents[0].terms 배열이 아님", step2.contents[0]);
-          if (!abort) {
-            setTerms([]);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const mapped: Term[] = termBlocks.map((t: any) => ({
-          id: String(t.termId),
-          term: t.name,
-          definition: t.definition,
-          example: t.exampleSentence,
-          extra: t.additionalExplanation,
-        }));
-
-        if (!abort) {
-          setTerms(mapped);
-          setLoading(false);
-        }
-      } catch (err) {
-        console.error("[StepN002] 용어 데이터 로드 실패:", err);
-        if (!abort) {
-          setTerms([]);
-          setLoading(false);
-        }
+      if (!currentStep || !Array.isArray(rawTerms)) {
+        console.warn("[StepN002] TERM_LEARNING terms not found", {
+          currentStep,
+          rawTerms,
+        });
+        setTerms([]);
+        setLoading(false);
+        return;
       }
-    })();
 
-    return () => {
-      abort = true;
-    };
-  }, [articleId, courseId, sessionId]);
+      const mapped: Term[] = rawTerms
+        .map((t: any) => ({
+          id: String(t?.termId ?? t?.id ?? ""),
+          term: String(t?.name ?? t?.term ?? ""),
+          definition: String(t?.definition ?? ""),
+          example: String(t?.exampleSentence ?? t?.example ?? ""),
+          extra: String(t?.additionalExplanation ?? t?.extra ?? ""),
+        }))
+        .filter((x: Term) => x.id && x.term);
 
-  // ------------------------------------------
-  // 상태 변경 핸들러
-  // ------------------------------------------
-  const toggleFavorite = (id: string) => {
-    setFavorites((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
+      setTerms(mapped);
+
+      if (mapped.length > 0) {
+        upsertTermsToStore(mapped);
+        // ✅ upsert 이후 즐겨찾기 상태 다시 로드 (동기화)
+        setFavorites(getFavoriteIdsFromStore());
+      }
+    } catch (err) {
+      console.error("[StepN002] term parse failed:", err);
+      setTerms([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentStep]);
 
   const openTerm = (term: Term) => {
     setActiveTerm(term);
-    setOpened((prev) =>
-      prev.includes(term.id) ? prev : [...prev, term.id]
-    );
+    setOpened((prev) => (prev.includes(term.id) ? prev : [...prev, term.id]));
+    touchTerm(term.id);
   };
 
-  const closeModal = () => setActiveTerm(null);
+  const toggleFavorite = (id: string) => {
+    // ✅ store에 저장
+    toggleFavoriteInStore(id);
+    // ✅ UI state 즉시 반영
+    setFavorites(getFavoriteIdsFromStore());
+  };
 
   const canGoNext = opened.length > 0 && !loading;
 
-// 이전 단계로
-const goPrev = () => {
-  nav("/nie/session/N/step/001", {
-    state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
-  });
-};
+  // ✅ answer 저장(있으면 서버에도 저장)
+  const submitAnswer = async () => {
+    setSubmitErr("");
 
-// 다음 단계로
-const goNext = async () => {
-  if (!canGoNext) return;
+    const cid = Number(courseId ?? articleId);
+    const sid = Number(sessionId);
+    const stepId = Number(currentStep?.stepId);
 
-  if (!courseId || !sessionId || !stepId) {
-    console.warn("필수 값 부족 → API는 건너뛰고 이동만 실행.");
-    nav("/nie/session/N/step/003", {
-      state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
-    });
-    return;
-  }
+    // 식별자 없으면 서버 제출 스킵(프론트는 동작)
+    if (!cid || Number.isNaN(cid) || !sid || Number.isNaN(sid) || !stepId) {
+      return true;
+    }
 
-  try {
     const userAnswer = {
       openedTermIds: opened,
       favoriteTermIds: favorites,
     };
 
-    await submitStepAnswer({
-      courseId,
-      sessionId: String(sessionId),
-      stepId,
-      contentType: "TERM_LEARNING",
-      userAnswer,
+    try {
+      await api.post<ApiResponse<null>>(
+        `/api/edu/courses/${cid}/sessions/${sid}/steps/${stepId}/answer`,
+        {
+          contentType: CONTENT_TYPE,
+          userAnswer,
+        }
+      );
+      return true;
+    } catch (err) {
+      console.error("[StepN002] answer submit failed:", err);
+      setSubmitErr("답안 저장에 실패했어요. 네트워크/로그인 상태를 확인해주세요.");
+      return false;
+    }
+  };
+
+  const goPrev = () => {
+    nav("/nie/session/N/step/001", {
+      state: {
+        articleId,
+        articleUrl,
+        startTime,
+        courseId,
+        sessionId,
+        level: "N",
+        steps,
+      },
     });
+  };
+
+  const goNext = async () => {
+    if (!canGoNext) return;
+    const ok = await submitAnswer();
+    if (!ok) return;
 
     nav("/nie/session/N/step/003", {
-      state: { articleId, articleUrl, startTime, courseId, sessionId, level: "N" }, // ✅
+      state: {
+        articleId,
+        articleUrl,
+        startTime,
+        courseId,
+        sessionId,
+        level: "N",
+        steps,
+      },
     });
-  } catch (err) {
-    console.error("🔥 StepN002 답변 저장 실패:", err);
-  }
-};
-
+  };
 
   return (
     <div className={styles.viewport}>
@@ -223,6 +305,8 @@ const goNext = async () => {
           <br />
           용어 카드로 미리 학습해보세요.
         </p>
+
+        {submitErr && <div className={styles.skel}>{submitErr}</div>}
 
         <section className={styles.cardSection} aria-busy={loading}>
           {loading ? (
@@ -270,6 +354,51 @@ const goNext = async () => {
 
         <div className={styles.bottomSpace} />
       </div>
+{/* ✅ 용어 상세 팝업 (용어사전 팝업과 동일 동작) */}
+{activeTerm && (
+  <div className={styles.modalOverlay} onClick={() => setActiveTerm(null)}>
+    <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className={styles.modalStarBtn}
+        onClick={() => toggleFavorite(activeTerm.id)}
+        aria-label="즐겨찾기"
+      >
+        <img
+          className={styles.modalStarIcon}
+          src={
+            favorites.includes(activeTerm.id)
+              ? "/icons/Frame 1686564291 (1).svg"
+              : "/icons/Frame 1686564291.svg"
+          }
+          alt=""
+        />
+      </button>
+
+      <h2 className={styles.modalTitle}>{activeTerm.term}</h2>
+      <p className={styles.modalDefinition}>{activeTerm.definition}</p>
+
+      <div className={styles.modalBlock}>
+        <div className={styles.modalBlockTitle}>예시 문장</div>
+        <div className={styles.modalBlockBody}>{activeTerm.example}</div>
+      </div>
+
+      <div className={styles.modalBlock}>
+        <div className={styles.modalBlockTitle}>추가 설명</div>
+        <div className={styles.modalBlockBody}>{activeTerm.extra}</div>
+      </div>
+
+      <button
+        type="button"
+        className={styles.modalCloseBtn}
+        onClick={() => setActiveTerm(null)}
+        aria-label="닫기"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+)}
 
       <EduBottomBar
         onPrev={goPrev}
@@ -278,51 +407,6 @@ const goNext = async () => {
         disablePrev={false}
         disableNext={!canGoNext}
       />
-
-      {activeTerm && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modal}>
-            <button
-              type="button"
-              className={styles.modalStarBtn}
-              onClick={() => toggleFavorite(activeTerm.id)}
-            >
-              <img
-                src={
-                  favorites.includes(activeTerm.id)
-                    ? "/icons/Frame 1686564291 (1).svg"
-                    : "/icons/Frame 1686564291.svg"
-                }
-                alt=""
-                className={styles.modalStarIcon}
-              />
-            </button>
-
-            <h3 className={styles.modalTitle}>{activeTerm.term}</h3>
-            <p className={styles.modalDefinition}>
-              {activeTerm.definition}
-            </p>
-
-            <div className={styles.modalBlock}>
-              <div className={styles.modalBlockTitle}>예시 문장</div>
-              <p className={styles.modalBlockBody}>{activeTerm.example}</p>
-            </div>
-
-            <div className={styles.modalBlock}>
-              <div className={styles.modalBlockTitle}>부가 설명</div>
-              <p className={styles.modalBlockBody}>{activeTerm.extra}</p>
-            </div>
-
-            <button
-              type="button"
-              className={styles.modalCloseBtn}
-              onClick={() => setActiveTerm(null)}
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

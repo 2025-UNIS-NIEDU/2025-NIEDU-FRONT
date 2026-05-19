@@ -1,0 +1,171 @@
+/* src/pages/MyPage/Settings/SettingsPage.module.css */
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  background: #eef0f4;
+  overflow-y: auto;
+}
+
+.container {
+  width: 100%;
+  max-width: 700px;
+  min-height: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  padding: 6vh 20px;
+  padding-bottom: 90px;
+  box-sizing: border-box;
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #ffffff;
+  padding: 8px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backBtn {
+  position: absolute;
+  left: 16px;
+  top: 10px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f0f0f;
+  margin: 0;
+}
+
+.profileBlock {
+  margin-top: 30px;
+  margin-left: 20px;
+}
+
+.profileText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profileName {
+  font-size: 26px;
+  font-weight: 900;
+  color: #0f0f0f;
+  line-height: 1.15;
+}
+
+.profileEmail {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(15, 15, 15, 0.55);
+}
+
+.sectionLabel {
+  margin-top: 26px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(15, 15, 15, 0.45);
+  margin-left: 20px;
+}
+
+.rowBtn {
+  width: 100%;
+  height: 46px;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  cursor: pointer;
+  margin-left: 20px;
+}
+
+.rowTitle {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f0f0f;
+}
+
+.dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  width: calc(100% - 60px);
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px 16px 14px;
+  box-sizing: border-box;
+}
+
+.modalTitle {
+  font-size: 16px;
+  font-weight: 900;
+  text-align: center;
+  color: #0f0f0f;
+  margin-bottom: 10px;
+}
+
+.modalDesc {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(15, 15, 15, 0.6);
+  text-align: center;
+  line-height: 1.35;
+  margin-bottom: 12px;
+}
+
+.modalBtns {
+  display: flex;
+  gap: 10px;
+}
+
+.modalBtnGray {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: 0;
+  background: #f1f3f6;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.modalBtnBlue {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: 0;
+  background: #6f8cff;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}

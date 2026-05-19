@@ -1,0 +1,47 @@
+/* src/styles/global.css */
+
+/* Pretendard는 프로젝트에 이미 적용돼있다고 가정 (없으면 폰트 로딩 먼저) */
+:root {
+  --app-max-width: 430px; /* iPhone 14/15 Pro Max 기준 */
+  --bg-desktop: #eef0f4;
+
+  --text: #0f0f0f;
+  --muted: #6c6f76;
+
+  --dot: #d9d9d9;
+  --dot-active: #4285f4;
+
+  --btn-gray-top: #f7f7f7;
+  --btn-gray-bottom: #efefef;
+
+  --kakao: #fee500;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg-desktop);
+}
+
+#root {
+  max-width: none; /* Vite 기본 1280 제한 제거 */
+  padding: 0;
+  position: relative;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  font-family: inherit;
+}

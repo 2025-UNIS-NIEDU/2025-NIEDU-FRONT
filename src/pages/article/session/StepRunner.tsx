@@ -1,5 +1,6 @@
 // src/pages/article/session/StepRunner.tsx
-import { useLocation, useParams } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import StepN001 from "./N/StepN001";
 import StepN002 from "./N/StepN002";
@@ -19,175 +20,129 @@ import StepE004 from "./E/StepE004";
 
 import type { StepMeta } from "@/pages/article/ArticlePrepare";
 
-// ArticlePrepare에서 넘어오는 state
 type LocState = {
   articleId?: string;
   articleUrl?: string;
-  courseId?: string;
-  sessionId?: number | null;
+  courseId?: number | string;
+  sessionId?: number | string | null;
   level?: "N" | "E" | "I";
   steps?: StepMeta[];
   progress?: number;
+  startTime?: number;
+  entryStepId?: number;
 };
 
 type Level = "N" | "E" | "I";
 
+const STORAGE_KEY = "NIEDU_STEP_RUNNER_STATE_V1";
+
 export default function StepRunner() {
-  // URL: /nie/session/:level/step/:stepId  라우트 기준
+  const nav = useNavigate();
+  const location = useLocation();
+
   const { level: levelParam, stepId: stepIdParam } = useParams<{
     level?: string;
     stepId?: string;
   }>();
 
-  const location = useLocation();
   const state = (location.state as LocState | undefined) ?? {};
 
-  // 🔹 URL 경로에서 level 한 번 더 뽑기 (백업용)
-  // 예: /nie/session/I/step/004 → ["", "nie", "session", "I", "step", "004"]
+  // URL에서 level fallback ( /nie/session/{level}/step/{stepOrder} )
   const segments = location.pathname.split("/");
-  const levelFromPath = segments[3]; // "I" / "N" / "E" 예상 위치
+  const levelFromPath = segments[3];
 
-  // 🔹 N / E / I 결정 (state > useParams > pathname 순)
-  const rawLevel = (
-    state.level ??
-    levelParam ??
-    levelFromPath ??
-    ""
-  )
+  const rawLevel = (state.level ?? levelParam ?? levelFromPath ?? "")
     .toString()
     .toUpperCase();
 
-  const lev = rawLevel as Level; // 비교할 때만 쓰고, 잘못된 값이면 if 조건에 안 걸림
+  const lev = rawLevel as Level;
+
+  const stepIdStr = (stepIdParam ?? "").toString(); // "1" | "2" ...
+  const stepOrder = Number(stepIdStr); // 1~5
 
   const steps = state.steps ?? [];
 
-  const stepIdStr = stepIdParam ?? ""; // "1" 또는 "001"
-  const numericStepId = Number(stepIdStr);
+  // ✅ 1) state.steps가 없으면 sessionStorage에서 복구해서 "같은 경로로 replace navigate"로 state 재주입
+  useEffect(() => {
+    if (steps.length > 0) return;
 
-  const currentStep =
-    steps.length && !Number.isNaN(numericStepId)
-      ? steps.find((s) => s.stepId === numericStepId)
-      : undefined;
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
 
-  const sessionIdStr =
-    state.sessionId != null ? String(state.sessionId) : undefined;
+    try {
+      const parsed = JSON.parse(raw) as LocState;
 
-  console.log("[StepRunner]", {
-    pathname: location.pathname,
-    lev,
-    stepIdStr,
-    numericStepId,
-    hasSteps: steps.length,
-    currentStep,
-    state,
-  });
+      // level도 없으면 넣어주기
+      const fixed: LocState = {
+        ...parsed,
+        level: (parsed.level ?? (lev as any)) as any,
+      };
 
-  // -------------------- N 단계 --------------------
+      // steps가 있으면 현재 URL에 state를 다시 실어준다 (Step 컴포넌트들이 state를 쓰기 때문)
+      if (Array.isArray(fixed.steps) && fixed.steps.length > 0) {
+        nav(location.pathname, { state: fixed, replace: true });
+      }
+    } catch (e) {
+      console.warn("[StepRunner] sessionStorage parse fail:", e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (lev === "N" && (stepIdStr === "001" || stepIdStr === "1")) {
+  const debug = useMemo(
+    () => ({
+      pathname: location.pathname,
+      lev,
+      stepIdStr,
+      stepOrder,
+      hasSteps: steps.length,
+      hasState: Boolean(location.state),
+    }),
+    [location.pathname, lev, stepIdStr, stepOrder, steps.length, location.state]
+  );
+
+  console.log("[StepRunner]", debug);
+
+  if (!steps.length) {
     return (
-      <StepN001
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-        courseId={state.courseId ?? state.articleId}
-        sessionId={sessionIdStr}
-        // stepMeta={currentStep}
-      />
+      <div style={{ padding: 16 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>세션 데이터가 없어요.</div>
+        <div style={{ opacity: 0.8, lineHeight: 1.5 }}>
+          이 화면은 ArticlePrepare에서 start API 호출 후 전달되는 <code>steps</code>가 필요해요.
+          <br />
+          ✅ 해결: “학습 시작하기” 버튼으로 다시 진입하거나, 방금 새로고침한 경우엔 한 번 뒤로 갔다가 다시 들어와보세요.
+        </div>
+      </div>
     );
   }
 
-  if (lev === "N" && (stepIdStr === "002" || stepIdStr === "2")) {
-    return <StepN002 />;
-  }
-  if (lev === "N" && (stepIdStr === "003" || stepIdStr === "3")) {
-    return <StepN003 />;
-  }
-  if (lev === "N" && (stepIdStr === "004" || stepIdStr === "4")) {
-    return <StepN004 />;
-  }
-  if (lev === "N" && (stepIdStr === "005" || stepIdStr === "5")) {
-    return <StepN005 />;
+  if (!stepIdStr || Number.isNaN(stepOrder) || stepOrder <= 0) {
+    return <div style={{ padding: 16 }}>잘못된 step 경로입니다. (step: {stepIdStr || "?"})</div>;
   }
 
-  // -------------------- I 단계 --------------------
-
-  if (lev === "I" && (stepIdStr === "001" || stepIdStr === "1")) {
-    return (
-      <StepI001
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-        stepMeta={undefined}
-      />
-    );
+  // N
+  if (lev === "N") {
+    if (stepOrder === 1) return <StepN001 />;
+    if (stepOrder === 2) return <StepN002 />;
+    if (stepOrder === 3) return <StepN003 />;
+    if (stepOrder === 4) return <StepN004 />;
+    if (stepOrder === 5) return <StepN005 />;
   }
 
-  if (lev === "I" && (stepIdStr === "002" || stepIdStr === "2")) {
-    return (
-      <StepI002
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-        stepMeta={undefined}
-      />
-    );
+  // I
+  if (lev === "I") {
+    if (stepOrder === 1) return <StepI001 />;
+    if (stepOrder === 2) return <StepI002 />;
+    if (stepOrder === 3) return <StepI003 />;
+    if (stepOrder === 4) return <StepI004 />;
   }
 
-  if (lev === "I" && (stepIdStr === "003" || stepIdStr === "3")) {
-    return (
-      <StepI003
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-      />
-    );
+  // E
+  if (lev === "E") {
+    if (stepOrder === 1) return <StepE001 />;
+    if (stepOrder === 2) return <StepE002 />;
+    if (stepOrder === 3) return <StepE003 />;
+    if (stepOrder === 4) return <StepE004 />;
   }
-
-  if (lev === "I" && (stepIdStr === "004" || stepIdStr === "4")) {
-    return (
-      <StepI004
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-      />
-    );
-  }
-
-  // -------------------- E 단계 --------------------
-
-  if (lev === "E" && (stepIdStr === "001" || stepIdStr === "1")) {
-    return (
-      <StepE001
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-      />
-    );
-  }
-
-  if (lev === "E" && (stepIdStr === "002" || stepIdStr === "2")) {
-    return (
-      <StepE002
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-      />
-    );
-  }
-
-  if (lev === "E" && (stepIdStr === "003" || stepIdStr === "3")) {
-    return (
-      <StepE003
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-      />
-    );
-  }
-
-  if (lev === "E" && (stepIdStr === "004" || stepIdStr === "4")) {
-    return (
-      <StepE004
-        articleId={state.articleId}
-        articleUrl={state.articleUrl}
-      />
-    );
-  }
-
-  // -------------------- fallback --------------------
 
   return (
     <div style={{ padding: 16 }}>

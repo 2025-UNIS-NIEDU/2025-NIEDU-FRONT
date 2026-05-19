@@ -1,288 +1,194 @@
 // src/pages/article/session/E/StepE003.tsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import EduBottomBar from "@/components/edu/EduBottomBar";
-import { submitStepAnswer } from "@/lib/apiClient";
-import type { StepMeta } from "@/pages/article/ArticlePrepare";
 import styles from "./StepE003.module.css";
+import { submitStepAnswer, quitSession } from "@/lib/apiClient";
 
-import economyPackage from "@/data/economy_2025-11-24_package.json";
-
-type Props = {
-  articleId?: string;
-  articleUrl?: string;
-  courseId?: string;
-  sessionId?: string;
-  stepMeta?: StepMeta;
+type StepMeta = {
+  stepId: number;
+  stepOrder: number;
+  isCompleted: boolean;
+  contentType: string;
+  content: any;
+  userAnswer: any;
 };
 
 type RouteState = {
   articleId?: string;
   articleUrl?: string;
-  courseId?: string;
-  sessionId?: string;
+  startTime?: number;
+  courseId?: number | string;
+  sessionId?: number | string | null;
   level?: "N" | "E" | "I";
+  steps?: StepMeta[];
 };
 
-type ShortAnswerItemFromApi = {
+type ShortAnswerItem = {
   contentId: number;
   question: string;
   correctAnswer: string;
   answerExplanation: string;
-  sourceUrl: string;
+  sourceUrl?: string;
 };
 
-type QuizItem = ShortAnswerItemFromApi;
-
-// 🔍 레벨 E, SHORT_ANSWER(stepOrder=3) 찾기
-function findEShortAnswer(
-  pkg: any,
-  courseId?: string | number,
-  sessionId?: string | number
-): ShortAnswerItemFromApi[] | undefined {
-  const courses = pkg.courses ?? [];
-  if (!courses.length) return undefined;
-
-  const course =
-    courses.find(
-      (c: any) => String(c.courseId) === String(courseId ?? courses[0].courseId)
-    ) ?? courses[0];
-
-  const sessions = course?.sessions ?? [];
-  if (!sessions.length) return undefined;
-
-  const session =
-    sessions.find(
-      (s: any) =>
-        String(s.sessionId) === String(sessionId ?? sessions[0].sessionId)
-    ) ?? sessions[0];
-
-  const quizE = session?.quizzes?.find((q: any) => q.level === "E");
-  const step3 = quizE?.steps?.find(
-    (s: any) => s.stepOrder === 3 && s.contentType === "SHORT_ANSWER"
-  );
-
-  if (Array.isArray(step3?.contents) && step3.contents.length > 0) {
-    return step3.contents as ShortAnswerItemFromApi[];
-  }
-
-  return undefined;
-}
-
-export default function StepE003({
-  articleId,
-  articleUrl,
-  courseId,
-  sessionId,
-  stepMeta,
-}: Props) {
+export default function StepE003() {
   const nav = useNavigate();
   const location = useLocation();
   const state = (location.state as RouteState) || {};
 
-  const aId = state.articleId ?? articleId;
-  const aUrl = state.articleUrl ?? articleUrl;
-  const effectiveCourseId = state.courseId ?? courseId;
-  const effectiveSessionId = state.sessionId ?? sessionId;
+  const startTime = state.startTime ?? Date.now();
+  const courseId = Number(state.courseId ?? state.articleId);
+  const sessionId = Number(state.sessionId);
+  const steps = state.steps ?? [];
 
-  const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
+  const STEP_ORDER = 3;
+  const CONTENT_TYPE = "SHORT_ANSWER";
+
+  const currentStep = useMemo(() => {
+    return steps.find((s) => Number(s.stepOrder) === STEP_ORDER);
+  }, [steps]);
+
+  const [items, setItems] = useState<ShortAnswerItem[]>([]);
   const [index, setIndex] = useState(0);
-  const [userAnswer, setUserAnswer] = useState("");
+  const [input, setInput] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
 
-  // 이 단계에서 걸린 시간 (E004로 넘길 때 사용)
-  const [startTime] = useState(() => Date.now());
-
-  // ✅ stepMeta.content 우선, 없으면 JSON(E-SHORT_ANSWER) 사용
   useEffect(() => {
-    setLoading(true);
-    setLoadError(null);
-
-    try {
-      let parsed: QuizItem[] | undefined;
-
-      const raw = stepMeta?.content as any;
-      if (raw) {
-        let obj = raw;
-        if (typeof raw === "string") {
-          try {
-            obj = JSON.parse(raw);
-          } catch (e) {
-            console.warn("[StepE003] stepMeta.content JSON 파싱 실패", e, raw);
-          }
-        }
-
-        // 1) 바로 contents 배열
-        if (Array.isArray(obj?.contents)) {
-          parsed = obj.contents as QuizItem[];
-        }
-        // 2) 그냥 배열로 내려올 수도 있음
-        else if (Array.isArray(obj)) {
-          parsed = obj as QuizItem[];
-        }
-      }
-
-      if (!parsed) {
-        parsed = findEShortAnswer(
-          economyPackage as any,
-          effectiveCourseId,
-          effectiveSessionId
-        );
-      }
-
-      if (!parsed || parsed.length === 0) {
-        console.warn("[StepE003] SHORT_ANSWER 데이터 없음/포맷 불일치", {
-          stepMeta,
-          effectiveCourseId,
-          effectiveSessionId,
-        });
-        setLoadError("단답형 문제 데이터를 불러오지 못했어요.");
-        setLoading(false);
-        return;
-      }
-
-      setQuizzes(parsed);
-      setIndex(0);
-      setUserAnswer("");
-      setConfirmed(false);
-      setIsCorrect(null);
-      setLoading(false);
-    } catch (e) {
-      console.error("[StepE003] 데이터 로드 오류:", e);
-      setLoadError("단답형 문제 데이터를 불러오는 중 오류가 발생했어요.");
-      setLoading(false);
-    }
-  }, [stepMeta, effectiveCourseId, effectiveSessionId]);
-
-  const q = quizzes[index];
-  const total = quizzes.length;
-
-  const normalize = (str: string) =>
-    str.trim().replace(/\s+/g, "").toLowerCase();
-
-  const handleConfirm = () => {
-    if (!q) return;
-    if (!userAnswer.trim()) return;
-
-    const correct = normalize(userAnswer) === normalize(q.correctAnswer);
-    setIsCorrect(correct);
-    setConfirmed(true);
-  };
-
-  // 한 문제씩 서버에 저장 (있으면)
-  const sendAnswer = async (item: QuizItem, value: string) => {
-    if (!effectiveCourseId || !effectiveSessionId || !stepMeta) {
-      console.warn("StepE003: 답안 저장 정보 부족 → API 스킵");
+    const contents = currentStep?.content?.contents;
+    if (!Array.isArray(contents)) {
+      setItems([]);
       return;
     }
 
+    const mapped: ShortAnswerItem[] = contents
+      .map((c: any) => ({
+        contentId: Number(c?.contentId ?? 0),
+        question: String(c?.question ?? ""),
+        correctAnswer: String(c?.correctAnswer ?? ""),
+        answerExplanation: String(c?.answerExplanation ?? ""),
+        sourceUrl: c?.sourceUrl ? String(c.sourceUrl) : undefined,
+      }))
+      .filter((x) => x.contentId && x.question);
+
+    setItems(mapped);
+    setIndex(0);
+    setInput("");
+    setConfirmed(false);
+    setAnswers({});
+  }, [currentStep]);
+
+  const q = items[index];
+  const total = items.length;
+
+  const isCorrect =
+    confirmed &&
+    input.trim().length > 0 &&
+    input.trim() === (q?.correctAnswer ?? "").trim();
+
+  const submitAll = async (next: Record<number, string>) => {
+    const stepId = Number(currentStep?.stepId);
+    if (!courseId || !sessionId || !stepId || !q) return false;
+
+    const payload = Object.entries(next).map(([contentId, value]) => ({
+      contentId: Number(contentId),
+      value,
+    }));
+
     try {
-      const userAnswerPayload = [
-        {
-          contentId: item.contentId,
-          value,
-        },
-      ];
-
       await submitStepAnswer({
-        courseId: String(effectiveCourseId),
-        sessionId: String(effectiveSessionId),
-        stepId: stepMeta.stepId,
-        contentType: stepMeta.contentType ?? "SHORT_ANSWER",
-        userAnswer: userAnswerPayload,
+        courseId,
+        sessionId,
+        stepId,
+        contentType: CONTENT_TYPE,
+        userAnswer: payload,
       });
+      return true;
     } catch (e) {
-      console.error("StepE003: 답안 저장 실패", e);
+      console.error("[StepE003] submit error:", e);
+      return false;
     }
   };
 
-  const goNextProblem = async () => {
+  const checkAnswer = async () => {
     if (!q) return;
+    const next = { ...answers, [q.contentId]: input };
+    setAnswers(next);
+    const ok = await submitAll(next);
+    if (!ok) return;
+    setConfirmed(true);
+  };
 
-    // 현재 문제 답안 서버 전송
-    await sendAnswer(q, userAnswer);
-
-    if (index < total - 1) {
-      setIndex((prev) => prev + 1);
-      setUserAnswer("");
-      setConfirmed(false);
-      setIsCorrect(null);
-    } else {
-      // 마지막 문제 → E004로 이동 (소요 시간 전달)
-      const diffSec = Math.floor((Date.now() - startTime) / 1000);
-      const minutes = Math.floor(diffSec / 60);
-      const seconds = diffSec % 60;
-      const durationLabel = `${minutes}분 ${seconds}초`;
-
-      nav("/nie/session/E/step/004", {
-        state: {
-          durationLabel,
-          articleId: aId,
-          articleUrl: aUrl,
-          courseId: effectiveCourseId,
-          sessionId: effectiveSessionId,
-          level: "E",
-        },
-      });
+  const nextProblem = () => {
+    if (index >= total - 1) {
+      nav("/nie/session/E/step/4", { state: { ...state, startTime }, replace: true });
+      return;
     }
+    setIndex((i) => i + 1);
+    setInput("");
+    setConfirmed(false);
   };
 
-  const goPrev = () => {
-    nav(-1);
+  const handlePrev = () =>
+    nav("/nie/session/E/step/2", { state: { ...state, startTime }, replace: true });
+
+  const handleNext = async () => {
+    if (!confirmed) {
+      await checkAnswer();
+      return;
+    }
+    nextProblem();
   };
 
-  if (loading) {
-    return <div className={styles.loading}>불러오는 중…</div>;
-  }
+  const handleQuit = async () => {
+    try {
+      if (courseId && sessionId) await quitSession({ courseId, sessionId });
+    } catch (e) {
+      console.error("[StepE003] quit error:", e);
+    }
+    nav("/learn", { replace: true });
+  };
 
-  if (loadError || !q) {
-    return <div className={styles.loading}>{loadError ?? "문제가 없습니다."}</div>;
-  }
+  if (!q)
+    return (
+      <div className={styles.viewport}>
+        <div className={styles.container}>문제가 없습니다.</div>
+      </div>
+    );
 
-  const sourceLink = q.sourceUrl || aUrl || "";
+  const sourceLink = q.sourceUrl || state.articleUrl || "";
 
   return (
     <div className={styles.viewport}>
       <div className={styles.container}>
-        {/* 진행바 */}
         <div className={styles.progressWrap}>
           <div
             className={styles.progress}
-            style={{ width: `${((index + 1) / total) * 100}%` }}
+            style={{ width: `${Math.max(0, Math.min(100, ((index + 1) / total) * 100))}%` }}
           />
         </div>
 
-        <h2 className={styles.question}>{q.question}</h2>
+        <p className={styles.question}>{q.question}</p>
 
-        {/* 입력창 */}
-        <div className={styles.inputWrapper}>
-          <input
-            type="text"
-            className={styles.input}
-            placeholder="답안을 작성하세요."
-            value={userAnswer}
-            onChange={(e) => setUserAnswer(e.target.value)}
-            disabled={confirmed}
-          />
-        </div>
+        <input
+          className={`${styles.input} ${confirmed ? styles.inputDisabled : ""}`}
+          placeholder="답안을 작성하세요."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={confirmed}
+        />
 
-        {/* 정답 확인 버튼 (정답 보기 전) */}
-        {!confirmed && (
-          <button
-            type="button"
-            className={styles.checkBtn}
-            disabled={!userAnswer.trim()}
-            onClick={handleConfirm}
-          >
-            정답 확인하기
-          </button>
-        )}
+        <button
+          type="button"
+          className={styles.checkBtn}
+          onClick={confirmed ? nextProblem : checkAnswer}
+          disabled={!confirmed && input.trim().length === 0}
+        >
+          {confirmed ? "다음" : "답안 제출하기"}
+        </button>
 
-        {/* 정답/오답 해설 박스 */}
         {confirmed && (
           <div
             className={`${styles.answerBox} ${
@@ -290,18 +196,22 @@ export default function StepE003({
             }`}
           >
             <div className={styles.answerHeader}>
-              <span className={styles.answerLabel}>정답: {q.correctAnswer}</span>
-
+              <span className={styles.answerLabel}>
+                {isCorrect ? "정답이에요!" : "정답을 확인해볼까요?"}
+              </span>
               {sourceLink && (
-                <button
+                <a
                   className={styles.sourceBtn}
-                  type="button"
-                  onClick={() => window.open(sourceLink, "_blank")}
+                  href={sourceLink}
+                  target="_blank"
+                  rel="noreferrer"
                 >
-                  뉴스 원문 보기
-                </button>
+                  기사 보러가기
+                </a>
               )}
             </div>
+
+            <p className={styles.answerText}>정답: {q.correctAnswer}</p>
             <p className={styles.answerText}>{q.answerExplanation}</p>
           </div>
         )}
@@ -310,11 +220,10 @@ export default function StepE003({
       </div>
 
       <EduBottomBar
-        onPrev={goPrev}
-        onQuit={() => nav("/learn")}
-        onNext={confirmed ? goNextProblem : undefined}
-        disablePrev={false}
-        disableNext={!confirmed}
+        onPrev={handlePrev}
+        onNext={handleNext}
+        onQuit={handleQuit}
+        disableNext={!confirmed && input.trim().length === 0}
       />
     </div>
   );
